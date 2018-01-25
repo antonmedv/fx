@@ -1,0 +1,29 @@
+{
+  "name": "fx",
+  "version": "0.0.0",
+  "description": "Command-line JSON processing tool",
+  "repository": "antonmedv/fx",
+  "author": "Anton Medvedev <anton@medv.io>",
+  "license": "MIT",
+  "bin": {
+    "fx": "index.js"
+  },
+  "files": [
+    "index.js"
+  ],
+  "scripts": {
+    "test": "bash test.sh"
+  },
+  "keywords": [
+    "json",
+    "cli"
+  ],
+  "engines": {
+    "node": ">=9"
+  },
+  "dependencies": {
+    "cardinal": "^1.0.0",
+    "get-stdin": "^5.0.1",
+    "meow": "^4.0.0"
+  }
+}
