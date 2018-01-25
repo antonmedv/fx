@@ -92,6 +92,12 @@ $ cat package.json | fx "yield* Object.keys(this.dependencies)"
 ]
 ```
 
+Use any npm package:
+```
+$ npm install -g lodash
+$ cat package.json | fx "require('lodash').keys(this.dependencies)"
+```
+
 
 ## Related
 
