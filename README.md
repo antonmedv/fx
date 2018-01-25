@@ -82,6 +82,16 @@ $ echo '{"count": 0}' | fx "{...this, count: 1}"
 }
 ```
 
+Convert object to array:
+```
+$ cat package.json | fx "yield* Object.keys(this.dependencies)"
+[
+    "cardinal",
+    "get-stdin",
+    "meow"
+]
+```
+
 
 ## Related
 
