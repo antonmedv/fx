@@ -12,7 +12,8 @@
     "index.js"
   ],
   "scripts": {
-    "test": "ava"
+    "test": "ava",
+    "release": "pkg . --out-path dist && release-it --github.release --github.assets=dist/*"
   },
   "keywords": [
     "json",
@@ -27,6 +28,8 @@
     "meow": "^4.0.0"
   },
   "devDependencies": {
-    "ava": "^0.24.0"
+    "ava": "^0.24.0",
+    "pkg": "^4.3.0",
+    "release-it": "^6.1.1"
   }
 }
