@@ -10,16 +10,16 @@ const cli = meow(`
     $ fx [code ...]
 
   Examples
-    $ echo '{"key": "value"}' | fx "x => x.key"
+    $ echo '{"key": "value"}' | fx 'x => x.key'
     "value"
 
-    $ echo '[1,2,3]' | fx "this.map(x => x * 2)"
+    $ echo '[1,2,3]' | fx 'this.map(x => x * 2)'
     [2, 4, 6]
 
-    $ echo '{"items": ["one", "two"]}' | fx "this.items" "this[1]"
+    $ echo '{"items": ["one", "two"]}' | fx 'this.items' 'this[1]'
     "two"
 
-    $ echo '{"count": 0}' | fx "{...this, count: 1}"
+    $ echo '{"count": 0}' | fx '{...this, count: 1}'
     {"count": 1}
 `)
 

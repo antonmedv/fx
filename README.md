@@ -24,7 +24,7 @@ Pipe into `fx` any JSON and anonymous function for reducing it.
 $ fx [code ...]
 ```
 
-Pretty print JSON:
+Pretty print JSON without passing any arguments:
 ```
 $ echo '{"key":"value"}' | fx
 {
@@ -32,34 +32,42 @@ $ echo '{"key":"value"}' | fx
 }
 ```
 
-Use anonymous function:
+### Anonymous function
+
+Use an anonymous function as reducer which gets JSON and processes it:
 ```
-$ echo '{"foo": [{"bar": "value"}]}' | fx "x => x.foo[0].bar"
+$ echo '{"foo": [{"bar": "value"}]}' | fx 'x => x.foo[0].bar'
 "value"
 ```
+
+### This Binding
 
 If you don't pass anonymous function `param => ...`, code will be automatically transformed into anonymous function.
 And you can get access to JSON by `this` keyword:
 ```
-$ echo '{"foo": [{"bar": "value"}]}' | fx "this.foo[0].bar"
+$ echo '{"foo": [{"bar": "value"}]}' | fx 'this.foo[0].bar'
 "value"
 ```
 
+### Chain
+
 You can pass any number of anonymous functions for reducing JSON:
 ```
-$ echo '{"foo": [{"bar": "value"}]}' | fx "x => x.foo" "this[0]" "this.bar"
+$ echo '{"foo": [{"bar": "value"}]}' | fx 'x => x.foo' 'this[0]' 'this.bar'
 "value"
 ```
+
+### Generator
 
 If passed code contains `yield` keyword, [generator expression](https://github.com/sebmarkbage/ecmascript-generator-expression)
 will be used:
 ```
-$ curl ... | fx "for (let user of this) if (user.login.startsWith('a')) yield user"
+$ curl ... | fx 'for (let user of this) if (user.login.startsWith("a")) yield user'
 ```
 
 Access to JSON through `this` keyword:
 ```
-$ echo '["a", "b"]' | fx "yield* this"
+$ echo '["a", "b"]' | fx 'yield* this'
 [
     "a",
     "b"
@@ -67,7 +75,7 @@ $ echo '["a", "b"]' | fx "yield* this"
 ```
 
 ```
-$ echo '["a", "b"]' | fx "yield* this; yield 'c';"
+$ echo '["a", "b"]' | fx 'yield* this; yield "c";'
 [
     "a",
     "b",
@@ -75,29 +83,35 @@ $ echo '["a", "b"]' | fx "yield* this; yield 'c';"
 ]
 ```
 
+### Update
+
 You can update existing JSON using spread operator:
 
 ```
-$ echo '{"count": 0}' | fx "{...this, count: 1}"
+$ echo '{"count": 0}' | fx '{...this, count: 1}'
 {
     "count": 1
 }
 ```
 
+### Use npm package
+
+Use any npm package by installing it globally:
+```
+$ npm install -g lodash
+$ cat package.json | fx 'require("lodash").keys(this.dependencies)'
+```
+
+### Other examples
+
 Convert object to array:
 ```
-$ cat package.json | fx "yield* Object.keys(this.dependencies)"
+$ cat package.json | fx 'Object.keys(this.dependencies)'
 [
     "cardinal",
     "get-stdin",
     "meow"
 ]
-```
-
-Use any npm package:
-```
-$ npm install -g lodash
-$ cat package.json | fx "require('lodash').keys(this.dependencies)"
 ```
 
 
