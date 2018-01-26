@@ -105,7 +105,7 @@ $ cat package.json | fx 'require("lodash").keys(this.dependencies)'
 ### Formatting
 
 If you need something different then JSON (for example arguments for xargs) do not return anything from reducer.
-Undefined value printed into stderr by default.
+`undefined` value printed into stderr by default.
 ```
 echo '[]' | fx 'void 0'
 undefined
