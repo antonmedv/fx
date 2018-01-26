@@ -1,6 +1,6 @@
 {
   "name": "fx",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Command-line JSON processing tool",
   "repository": "antonmedv/fx",
   "author": "Anton Medvedev <anton@medv.io>",
