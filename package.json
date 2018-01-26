@@ -12,7 +12,7 @@
     "index.js"
   ],
   "scripts": {
-    "test": "bash test.sh"
+    "test": "ava"
   },
   "keywords": [
     "json",
@@ -25,5 +25,8 @@
     "cardinal": "^1.0.0",
     "get-stdin": "^5.0.1",
     "meow": "^4.0.0"
+  },
+  "devDependencies": {
+    "ava": "^0.24.0"
   }
 }
