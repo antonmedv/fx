@@ -16,6 +16,8 @@ Command-line JSON processing tool
 $ npm install -g fx
 ```
 
+Or download standalone binary from [releases](https://github.com/antonmedv/fx/releases) page.
+
 ## Usage
 
 Pipe into `fx` any JSON and anonymous function for reducing it.
