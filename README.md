@@ -102,6 +102,20 @@ $ npm install -g lodash
 $ cat package.json | fx 'require("lodash").keys(this.dependencies)'
 ```
 
+### Formatting
+
+If you need something different then JSON (for example arguments for xargs) do not return anything from reducer.
+Undefined value printed into stderr by default.
+```
+echo '[]' | fx 'void 0'
+undefined
+```
+
+```
+echo '[1,2,3]' | fx 'this.forEach(x => console.log(x))' 2>/dev/null | xargs echo
+1 2 3
+```
+
 ### Other examples
 
 Convert object to array:

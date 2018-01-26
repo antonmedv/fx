@@ -38,7 +38,7 @@ async function main() {
   const result = cli.input.reduce(reduce, json)
 
   if (typeof result === 'undefined') {
-    console.log(undefined)
+    process.stderr.write('undefined\n')
   } else {
     const text = JSON.stringify(result, null, 4)
     console.log(highlight(text, {theme}))
