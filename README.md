@@ -9,6 +9,7 @@ Command-line JSON processing tool
 * Don't need to learn new syntax
 * Plain JavaScript
 * Formatting and highlighting
+* Standalone binary
 
 ## Install
 
