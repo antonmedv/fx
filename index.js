@@ -1,9 +1,8 @@
 #!/usr/bin/env node
-'use strict';
+'use strict'
 const meow = require('meow')
 const stdin = require('get-stdin')
-const cardinal = require('cardinal')
-const theme = require('cardinal/themes/tomorrow-night')
+const jsome = require('jsome')
 
 const cli = meow(`
   Usage
@@ -23,10 +22,6 @@ const cli = meow(`
     {"count": 1}
 `)
 
-
-
-const highlight = process.stdout.isTTY ? cardinal.highlight : x => x
-
 async function main() {
   const text = await stdin()
 
@@ -39,9 +34,10 @@ async function main() {
 
   if (typeof result === 'undefined') {
     process.stderr.write('undefined\n')
+  } else if (process.stdout.isTTY) {
+    jsome(result)
   } else {
-    const text = JSON.stringify(result, null, 4)
-    console.log(highlight(text, {theme}))
+    console.log(JSON.stringify(result, null, 2))
   }
 }
 

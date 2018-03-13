@@ -23,8 +23,8 @@
     "node": ">=9"
   },
   "dependencies": {
-    "cardinal": "^1.0.0",
     "get-stdin": "^5.0.1",
+    "jsome": "^2.5.0",
     "meow": "^4.0.0"
   },
   "devDependencies": {
