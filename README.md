@@ -138,6 +138,7 @@ $ cat package.json | fx 'Object.keys(this.dependencies)'
 * [jsawk](https://github.com/micha/jsawk) – like awk, but for JSON
 * [json](https://github.com/trentm/json) – another JSON manipulating cli library
 * [jl](https://github.com/chrisdone/jl) – functional sed for JSON on Haskell
+* [ymlx](https://github.com/matthewadams/yml) - `fx`-like YAML cli processor
 
 ## License
 
