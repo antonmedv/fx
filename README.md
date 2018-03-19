@@ -31,7 +31,7 @@ Pretty print JSON without passing any arguments:
 ```
 $ echo '{"key":"value"}' | fx
 {
-   key: "value"
+    "key": "value"
 }
 ```
 
@@ -72,17 +72,17 @@ Access to JSON through `this` keyword:
 ```
 $ echo '["a", "b"]' | fx 'yield* this'
 [
-  "a",
-  "b"
+    "a",
+    "b"
 ]
 ```
 
 ```
 $ echo '["a", "b"]' | fx 'yield* this; yield "c";'
 [
-  "a",
-  "b",
-  "c"
+    "a",
+    "b",
+    "c"
 ]
 ```
 
@@ -93,7 +93,7 @@ You can update existing JSON using spread operator:
 ```
 $ echo '{"count": 0}' | fx '{...this, count: 1}'
 {
-  count: 1
+    "count": 1
 }
 ```
 
