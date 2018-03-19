@@ -131,6 +131,12 @@ $ cat package.json | fx 'Object.keys(this.dependencies)'
 ]
 ```
 
+By the way, fx has shortcut for `Object.keys(this)`. Previous example can be rewritten as:
+
+```
+$ cat package.json | fx this.dependencies ?
+``` 
+
 
 ## Related
 

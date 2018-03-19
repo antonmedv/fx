@@ -55,6 +55,8 @@ function reduce(json, code) {
       }; fn
     `)
     return fx.call(json)
+  } else if (/^\?$/.test(code)) {
+    return Object.keys(json)
   } else {
     const fx = eval(`function fn() { return ${code} }; fn`)
     return fx.call(json)
