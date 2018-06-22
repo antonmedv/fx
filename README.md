@@ -141,9 +141,8 @@ $ cat package.json | fx this.dependencies ?
 ## Related
 
 * [jq](https://github.com/stedolan/jq) – cli JSON processor on C
-* [jsawk](https://github.com/micha/jsawk) – like awk, but for JSON
-* [json](https://github.com/trentm/json) – another JSON manipulating cli library
 * [jl](https://github.com/chrisdone/jl) – functional sed for JSON on Haskell
+* [xx](https://github.com/antonmedv/xx) – `fx`-like JSON tool on Go
 * [ymlx](https://github.com/matthewadams/ymlx) - `fx`-like YAML cli processor
 
 ## License
