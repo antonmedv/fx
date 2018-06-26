@@ -2,7 +2,7 @@
 'use strict'
 const meow = require('meow')
 const stdin = require('get-stdin')
-const jsome = require('jsome')
+const pretty = require('@medv/prettyjson')
 
 const cli = meow(`
   Usage
@@ -35,7 +35,7 @@ async function main() {
   if (typeof result === 'undefined') {
     process.stderr.write('undefined\n')
   } else if (process.stdout.isTTY) {
-    jsome(result)
+    console.log(pretty(result))
   } else {
     console.log(JSON.stringify(result, null, 2))
   }

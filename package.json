@@ -23,13 +23,13 @@
     "node": ">=8"
   },
   "dependencies": {
-    "get-stdin": "^5.0.1",
-    "jsome": "^2.5.0",
-    "meow": "^4.0.0"
+    "@medv/prettyjson": "^1.0.0",
+    "get-stdin": "^6.0.0",
+    "meow": "^5.0.0"
   },
   "devDependencies": {
-    "ava": "^0.24.0",
-    "pkg": "^4.3.0",
-    "release-it": "^6.1.1"
+    "ava": "^0.25.0",
+    "pkg": "^4.3.3",
+    "release-it": "^7.4.7"
   }
 }
