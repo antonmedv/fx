@@ -40,7 +40,7 @@ $ echo '{"key":"value"}' | fx
 Use an anonymous function as reducer which gets JSON and processes it:
 ```
 $ echo '{"foo": [{"bar": "value"}]}' | fx 'x => x.foo[0].bar'
-"value"
+value
 ```
 
 ### This Binding
@@ -49,7 +49,16 @@ If you don't pass anonymous function `param => ...`, code will be automatically 
 And you can get access to JSON by `this` keyword:
 ```
 $ echo '{"foo": [{"bar": "value"}]}' | fx 'this.foo[0].bar'
-"value"
+value
+```
+
+### Dot
+
+It is possible to omit `this` keyword:
+
+```
+$ echo '{"foo": [{"bar": "value"}]}' | fx .foo[0].bar
+value
 ```
 
 ### Chain
@@ -57,7 +66,7 @@ $ echo '{"foo": [{"bar": "value"}]}' | fx 'this.foo[0].bar'
 You can pass any number of anonymous functions for reducing JSON:
 ```
 $ echo '{"foo": [{"bar": "value"}]}' | fx 'x => x.foo' 'this[0]' 'this.bar'
-"value"
+value
 ```
 
 ### Generator

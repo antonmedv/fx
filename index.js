@@ -10,16 +10,22 @@ const cli = meow(`
 
   Examples
     $ echo '{"key": "value"}' | fx 'x => x.key'
-    "value"
+    value
 
     $ echo '[1,2,3]' | fx 'this.map(x => x * 2)'
     [2, 4, 6]
 
     $ echo '{"items": ["one", "two"]}' | fx 'this.items' 'this[1]'
-    "two"
+    two
 
     $ echo '{"count": 0}' | fx '{...this, count: 1}'
     {"count": 1}
+    
+    $ echo '{"foo": 1, "bar": 2}' | fx ?
+    ["foo", "bar"]
+    
+    $ echo '{"key": "value"}' | fx .key
+    value
 `)
 
 async function main() {
@@ -34,6 +40,8 @@ async function main() {
 
   if (typeof result === 'undefined') {
     process.stderr.write('undefined\n')
+  } else if (typeof result === 'string') {
+    console.log(result)
   } else if (process.stdout.isTTY) {
     console.log(pretty(result))
   } else {
@@ -45,7 +53,9 @@ function reduce(json, code) {
   if (/^\w+\s*=>/.test(code)) {
     const fx = eval(code)
     return fx(json)
-  } else if (/yield/.test(code)) {
+  }
+
+  if (/yield/.test(code)) {
     const fx = eval(`
       function fn() {
         const gen = (function*(){ 
@@ -55,12 +65,19 @@ function reduce(json, code) {
       }; fn
     `)
     return fx.call(json)
-  } else if (/^\?$/.test(code)) {
+  }
+
+  if (/^\?$/.test(code)) {
     return Object.keys(json)
-  } else {
-    const fx = eval(`function fn() { return ${code} }; fn`)
+  }
+
+  if (/^\./.test(code)) {
+    const fx = eval(`function fn() { return ${code === '.' ? 'this' : 'this' + code} }; fn`)
     return fx.call(json)
   }
+
+  const fx = eval(`function fn() { return ${code} }; fn`)
+  return fx.call(json)
 }
 
 main()
