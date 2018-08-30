@@ -29,7 +29,7 @@
   },
   "devDependencies": {
     "ava": "^0.25.0",
-    "pkg": "^4.3.3",
-    "release-it": "^7.4.7"
+    "pkg": "^4.3.4",
+    "release-it": "^7.6.0"
   }
 }
