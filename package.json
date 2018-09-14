@@ -23,9 +23,7 @@
     "node": ">=8"
   },
   "dependencies": {
-    "@medv/prettyjson": "^1.0.0",
-    "get-stdin": "^6.0.0",
-    "meow": "^5.0.0"
+    "@medv/prettyjson": "^1.0.0"
   },
   "devDependencies": {
     "ava": "^0.25.0",

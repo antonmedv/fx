@@ -134,9 +134,7 @@ Convert object to array:
 ```
 $ cat package.json | fx 'Object.keys(this.dependencies)'
 [
-  "@medv/prettyjson",
-  "get-stdin",
-  "meow"
+  "@medv/prettyjson"
 ]
 ```
 

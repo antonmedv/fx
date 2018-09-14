@@ -1,10 +1,8 @@
 #!/usr/bin/env node --max-old-space-size=8192
 'use strict'
-const meow = require('meow')
-const stdin = require('get-stdin')
 const pretty = require('@medv/prettyjson')
 
-const cli = meow(`
+const usage = `
   Usage
     $ fx [code ...]
 
@@ -26,17 +24,16 @@ const cli = meow(`
     
     $ echo '{"key": "value"}' | fx .key
     value
-`)
+`
 
-async function main() {
-  const text = await stdin()
-
-  if (text === '') {
-    cli.showHelp()
+function main(input) {
+  if (input === '') {
+    console.log(usage)
+    process.exit(2)
   }
 
-  const json = JSON.parse(text)
-  const result = cli.input.reduce(reduce, json)
+  const json = JSON.parse(input)
+  const result = process.argv.slice(2).reduce(reduce, json)
 
   if (typeof result === 'undefined') {
     process.stderr.write('undefined\n')
@@ -80,4 +77,23 @@ function reduce(json, code) {
   return fx.call(json)
 }
 
-main()
+const stdin = process.stdin
+let buff = ''
+
+if (stdin.isTTY) {
+  main(buff)
+}
+
+stdin.setEncoding('utf8')
+
+stdin.on('readable', () => {
+  let chunk
+
+  while ((chunk = stdin.read())) {
+    buff += chunk
+  }
+})
+
+stdin.on('end', () => {
+  main(buff)
+})
