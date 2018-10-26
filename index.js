@@ -1,4 +1,4 @@
-#!/usr/bin/env node --max-old-space-size=8192
+#!/usr/bin/env node
 'use strict'
 const pretty = require('@medv/prettyjson')
 
