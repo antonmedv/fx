@@ -23,11 +23,11 @@
     "node": ">=8"
   },
   "dependencies": {
-    "@medv/prettyjson": "^1.0.0"
+    "@medv/prettyjson": "^1.0.1"
   },
   "devDependencies": {
     "ava": "^0.25.0",
     "pkg": "^4.3.4",
-    "release-it": "^7.6.0"
+    "release-it": "^7.6.2"
   }
 }
