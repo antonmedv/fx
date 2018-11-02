@@ -15,6 +15,9 @@
     "test": "ava",
     "release": "pkg . --out-path dist && release-it --github.release --github.assets=dist/*"
   },
+  "pkg": {
+    "scripts": "node_modules/neo-blessed/lib/**/*.js"
+  },
   "keywords": [
     "json",
     "cli"
@@ -23,7 +26,11 @@
     "node": ">=8"
   },
   "dependencies": {
-    "@medv/prettyjson": "^1.0.1"
+    "@medv/prettyjson": "^1.0.1",
+    "chalk": "^2.4.1",
+    "indent-string": "^3.2.0",
+    "neo-blessed": "^0.2.0",
+    "string-width": "^2.1.1"
   },
   "devDependencies": {
     "ava": "^0.25.0",

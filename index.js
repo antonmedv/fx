@@ -24,22 +24,32 @@ const usage = `
     
     $ echo '{"key": "value"}' | fx .key
     value
+
 `
 
 function main(input) {
+  const {stdout, stderr} = process
+
   if (input === '') {
-    console.log(usage)
+    stderr.write(usage)
     process.exit(2)
   }
 
   const json = JSON.parse(input)
-  const result = process.argv.slice(2).reduce(reduce, json)
+  const args = process.argv.slice(2)
+
+  if (args.length === 0 && stdout.isTTY) {
+    require('./fx')(json)
+    return
+  }
+
+  const result = args.reduce(reduce, json)
 
   if (typeof result === 'undefined') {
-    process.stderr.write('undefined\n')
+    stderr.write('undefined\n')
   } else if (typeof result === 'string') {
     console.log(result)
-  } else if (process.stdout.isTTY) {
+  } else if (stdout.isTTY) {
     console.log(pretty(result))
   } else {
     console.log(JSON.stringify(result, null, 2))
@@ -77,23 +87,27 @@ function reduce(json, code) {
   return fx.call(json)
 }
 
-const stdin = process.stdin
-let buff = ''
+function run() {
+  const stdin = process.stdin
+  stdin.setEncoding('utf8')
 
-if (stdin.isTTY) {
-  main(buff)
+  let buff = ''
+
+  if (stdin.isTTY) {
+    main('')
+  }
+
+  stdin.on('readable', () => {
+    let chunk
+
+    while ((chunk = stdin.read())) {
+      buff += chunk
+    }
+  })
+
+  stdin.on('end', () => {
+    main(buff)
+  })
 }
 
-stdin.setEncoding('utf8')
-
-stdin.on('readable', () => {
-  let chunk
-
-  while ((chunk = stdin.read())) {
-    buff += chunk
-  }
-})
-
-stdin.on('end', () => {
-  main(buff)
-})
+run()

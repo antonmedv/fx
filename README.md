@@ -1,4 +1,7 @@
-<img src="https://user-images.githubusercontent.com/141232/35405308-4b41f446-0238-11e8-86c1-21f407cc8460.png" height="100" alt="fx">
+<p align="center"><img src="https://user-images.githubusercontent.com/141232/35405308-4b41f446-0238-11e8-86c1-21f407cc8460.png" height="100" alt="fx"></p>
+<p align="center"><img src="https://user-images.githubusercontent.com/141232/47933350-f0f22900-df06-11e8-9cf2-88492c1be774.gif" width="530" alt="fx example"></p>
+
+_* Function eXecution_
 
 # [![Build Status](https://travis-ci.org/antonmedv/fx.svg?branch=master)](https://travis-ci.org/antonmedv/fx)
 
@@ -10,6 +13,7 @@ Command-line JSON processing tool
 * Plain JavaScript
 * Formatting and highlighting
 * Standalone binary
+* Interactive mode 🎉
 
 ## Install
 
@@ -22,17 +26,13 @@ Or download standalone binary from [releases](https://github.com/antonmedv/fx/re
 ## Usage
 
 Pipe into `fx` any JSON and anonymous function for reducing it.
+```
+$ echo '{...}' | fx [code ...]
+```
 
+Start interactive mode without passing any arguments:
 ```
-$ fx [code ...]
-```
-
-Pretty print JSON without passing any arguments:
-```
-$ echo '{"key":"value"}' | fx
-{
-  "key": "value"
-}
+$ curl ... | fx
 ```
 
 ### Anonymous function
@@ -43,7 +43,7 @@ $ echo '{"foo": [{"bar": "value"}]}' | fx 'x => x.foo[0].bar'
 value
 ```
 
-### This Binding
+### Binding
 
 If you don't pass anonymous function `param => ...`, code will be automatically transformed into anonymous function.
 And you can get access to JSON by `this` keyword:
@@ -55,10 +55,17 @@ value
 ### Dot
 
 It is possible to omit `this` keyword:
-
 ```
 $ echo '{"foo": [{"bar": "value"}]}' | fx .foo[0].bar
 value
+```
+
+If single dot is passed, JSON will be processed without modification:
+```
+$ echo '{"foo": "bar"}' | fx .
+{
+  "foo": "bar"
+}
 ```
 
 ### Chain
@@ -106,7 +113,7 @@ $ echo '{"count": 0}' | fx '{...this, count: 1}'
 }
 ```
 
-### Use npm package
+### Using packages
 
 Use any npm package by installing it globally:
 ```
@@ -144,13 +151,32 @@ By the way, fx has shortcut for `Object.keys(this)`. Previous example can be rew
 $ cat package.json | fx this.dependencies ?
 ``` 
 
+### Interactive mode
+
+Start interactive mode without passing any arguments:
+```
+$ curl ... | fx
+```
+Click on fields to expand or collapse JSON tree, use mouse wheel to scroll view. To select text, press `alt` or `option` key.
+
+Next commands available in interactive mode:
+
+| Key | Command |
+|-----|---------|
+| `q` or `Esc` or `Ctrl`+`c` | Exit    |
+| `e`/`E`  | Expand/Collapse all |
+| `up`/`down` or `k`/`j` | Scroll up/down one line |
+| `g`/`G` | Goto top/bottom |
+
 
 ## Related
 
 * [jq](https://github.com/stedolan/jq) – cli JSON processor on C
 * [jl](https://github.com/chrisdone/jl) – functional sed for JSON on Haskell
-* [xx](https://github.com/antonmedv/xx) – `fx`-like JSON tool on Go
+* [xx](https://github.com/antonmedv/xx) – `fx`-like JSON tool (*go*)
 * [ymlx](https://github.com/matthewadams/ymlx) - `fx`-like YAML cli processor
+* [jv](https://github.com/maxzender/jv) – interactive JSON viewer (*go*)
+* [jid](https://github.com/simeji/jid) – interactive cli tool based on jq (*go*)
 
 ## License
 
