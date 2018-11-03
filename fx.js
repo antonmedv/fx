@@ -89,6 +89,10 @@ module.exports = function start(input) {
   })
 
   function walk(v, cb, path = '') {
+    if (!v) {
+      return
+    }
+
     if (Array.isArray(v)) {
       cb(path)
       let i = 0
