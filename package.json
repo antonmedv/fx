@@ -9,7 +9,8 @@
     "fx": "index.js"
   },
   "files": [
-    "index.js"
+    "index.js",
+    "fx.js"
   ],
   "scripts": {
     "test": "ava",
