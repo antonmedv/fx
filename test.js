@@ -30,3 +30,8 @@ test('chain', t => {
   const r = fx({"items": ["foo", "bar"]}, "'this.items' 'yield* this' 'x => x[1]'")
   t.deepEqual(r, 'bar\n')
 })
+
+test('.fxrc', t => {
+  const r = fx({"foo": 1, "bar": 3}, "'_.mapValues(this, n => n * 3)'")
+  t.deepEqual(JSON.parse(r), { foo: 3, bar: 9 })
+})
