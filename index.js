@@ -1,6 +1,22 @@
 #!/usr/bin/env node
 'use strict'
 const pretty = require('@medv/prettyjson')
+const fs = require('fs')
+const path = require('path')
+const os = require('os')
+
+const configFile = '.fxrc'
+const readSyncSafe = file => {
+  try {
+    return fs.readFileSync(file, 'utf8')
+  } catch (err) {}
+}
+
+
+const configFileContent =
+  readSyncSafe(configFile) ||
+  readSyncSafe(path.join(os.homedir(), configFile)) ||
+  ''
 
 const usage = `
   Usage
@@ -28,7 +44,7 @@ const usage = `
 `
 
 function main(input) {
-  const {stdout, stderr} = process
+  const { stdout, stderr } = process
 
   if (input === '') {
     stderr.write(usage)
@@ -56,21 +72,25 @@ function main(input) {
   }
 }
 
+const evalFn = code => eval(`
+  ${configFileContent}
+  function fn() {
+    return ${code}
+  }; fn
+`)
+
 function reduce(json, code) {
   if (/^\w+\s*=>/.test(code)) {
-    const fx = eval(code)
+    const fx = evalFn(code)()
     return fx(json)
   }
 
   if (/yield/.test(code)) {
-    const fx = eval(`
-      function fn() {
-        const gen = (function*(){ 
-          ${code.replace(/\\\n/g, '')} 
-        }).call(this)
-        return [...gen]
-      }; fn
-    `)
+    const fx = evalFn(`[
+      ...((function*(){
+        ${code.replace(/\\\n/g, '')}
+      }).call(this))
+    ]`)
     return fx.call(json)
   }
 
@@ -79,11 +99,11 @@ function reduce(json, code) {
   }
 
   if (/^\./.test(code)) {
-    const fx = eval(`function fn() { return ${code === '.' ? 'this' : 'this' + code} }; fn`)
+    const fx = evalFn(code === '.' ? 'this' : 'this' + code)
     return fx.call(json)
   }
 
-  const fx = eval(`function fn() { return ${code} }; fn`)
+  const fx = evalFn(code)
   return fx.call(json)
 }
 
