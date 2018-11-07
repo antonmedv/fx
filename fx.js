@@ -245,7 +245,8 @@ module.exports = function start(input) {
       row++
     }
 
-    box.setContent(content)
+    const noTag = true
+    box.setContent(content, null, noTag)
     screen.render()
   }
 
