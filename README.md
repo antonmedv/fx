@@ -121,6 +121,28 @@ $ npm install -g lodash
 $ cat package.json | fx 'require("lodash").keys(this.dependencies)'
 ```
 
+### Using .fxrc
+
+Create _.fxrc_ file in `$HOME` directory, and require any packages or define global functions.
+
+For example, access all lodash methods without `_` prefix. Put in your `.fxrc` file:
+
+```js
+Object.assign(global, require('lodash'))
+```
+
+And now you will be able to call all lodash methods. For example, see who's been committing to react recently:
+
+```
+curl 'https://api.github.com/repos/facebook/react/commits?per_page=100' \
+| fx 'mapValues(groupBy(this, "commit.committer.name"), size)'
+```
+
+> To be able require global modules make sure you have correct `NODE_PATH` env variable.
+> ```bash
+> export NODE_PATH=/usr/local/lib/node_modules
+> ```
+
 ### Formatting
 
 If you need something different then JSON (for example arguments for xargs) do not return anything from reducer.

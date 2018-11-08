@@ -1,6 +1,17 @@
 #!/usr/bin/env node
 'use strict'
+const os = require('os')
+const path = require('path')
 const pretty = require('@medv/prettyjson')
+const {stdin, stdout, stderr} = process
+
+try {
+  require(path.join(os.homedir(), '.fxrc'))
+} catch (err) {
+  if (err.code !== 'MODULE_NOT_FOUND') {
+    throw err
+  }
+}
 
 const usage = `
   Usage
@@ -28,8 +39,6 @@ const usage = `
 `
 
 function main(input) {
-  const {stdout, stderr} = process
-
   if (input === '') {
     stderr.write(usage)
     process.exit(2)
@@ -88,15 +97,13 @@ function reduce(json, code) {
 }
 
 function run() {
-  const stdin = process.stdin
   stdin.setEncoding('utf8')
-
-  let buff = ''
 
   if (stdin.isTTY) {
     main('')
   }
 
+  let buff = ''
   stdin.on('readable', () => {
     let chunk
 
