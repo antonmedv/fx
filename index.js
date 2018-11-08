@@ -35,7 +35,7 @@ function main(input) {
     process.exit(2)
   }
 
-  const json = JSON.parse(input)
+  const json = JSON.parse(JSON.stringify(input))
   const args = process.argv.slice(2)
 
   if (args.length === 0 && stdout.isTTY) {
