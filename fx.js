@@ -153,7 +153,7 @@ module.exports = function start(input) {
       index.set(row, path)
 
       if (!expanded.has(path)) {
-        return '[\u2026]'
+          return `[\u2026] (${v.length} items)`
       }
 
       let output = '[' + eol()
@@ -175,7 +175,7 @@ module.exports = function start(input) {
       index.set(row, path)
 
       if (!expanded.has(path)) {
-        return '{\u2026}'
+          return `{\u2026} (${Object.keys(v).length} keys)`
       }
 
       let output = '{' + eol()
