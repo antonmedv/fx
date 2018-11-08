@@ -79,7 +79,7 @@ module.exports = function start(input) {
   expanded.add('') // Root of JSON
 
   box.key('e', function () {
-    walk(input, path => expanded.add(path))
+    walk(input, path => expanded.size < 1000 && expanded.add(path))
     render()
   })
   box.key('S-e', function () {
