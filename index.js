@@ -35,7 +35,8 @@ function main(input) {
     process.exit(2)
   }
 
-  const json = JSON.parse(input)
+  const jsonStr = input.replace(/(?:\s*['"]*)?([a-zA-Z0-9]+)(?:['"]*\s*)?:/g, "\"$1\":")
+  const json = JSON.parse(jsonStr)
   const args = process.argv.slice(2)
 
   if (args.length === 0 && stdout.isTTY) {
