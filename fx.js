@@ -26,7 +26,7 @@ module.exports = function start(input) {
 
   const box = blessed.box({
     parent: screen,
-    tags: true,
+    tags: false,
     left: 0,
     top: 0,
     width: '100%',
@@ -40,7 +40,7 @@ module.exports = function start(input) {
   const test = blessed.box({
     parent: screen,
     hidden: true,
-    tags: true,
+    tags: false,
     width: '100%',
   })
 
