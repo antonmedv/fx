@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 'use strict'
 const os = require('os')
+const fs = require('fs')
 const path = require('path')
-const pretty = require('@medv/prettyjson')
 const {stdin, stdout, stderr} = process
-
 try {
   require(path.join(os.homedir(), '.fxrc'))
 } catch (err) {
@@ -12,14 +11,21 @@ try {
     throw err
   }
 }
+const print = require('./print')
+const reduce = require('./reduce')
 
 const usage = `
   Usage
     $ fx [code ...]
 
   Examples
+    $ fx package.json
+  
     $ echo '{"key": "value"}' | fx 'x => x.key'
     value
+    
+    $ echo '{"key": "value"}' | fx .key
+    value    
 
     $ echo '[1,2,3]' | fx 'this.map(x => x * 2)'
     [2, 4, 6]
@@ -32,68 +38,41 @@ const usage = `
     
     $ echo '{"foo": 1, "bar": 2}' | fx ?
     ["foo", "bar"]
-    
-    $ echo '{"key": "value"}' | fx .key
-    value
-
+  
 `
 
 function main(input) {
+  let args = process.argv.slice(2)
+  let filename = 'fx'
+
   if (input === '') {
-    stderr.write(usage)
-    process.exit(2)
+    if (args.length === 0) {
+      stderr.write(usage)
+      process.exit(2)
+    }
+
+    input = fs.readFileSync(args[0])
+    filename = path.basename(args[0])
+    args = args.slice(1)
   }
 
   const json = JSON.parse(input)
-  const args = process.argv.slice(2)
 
   if (args.length === 0 && stdout.isTTY) {
-    require('./fx')(json)
+    require('./fx')(filename, json)
     return
   }
 
-  const result = args.reduce(reduce, json)
+  const output = args.reduce(reduce, json)
 
-  if (typeof result === 'undefined') {
+  if (typeof output === 'undefined') {
     stderr.write('undefined\n')
-  } else if (typeof result === 'string') {
-    console.log(result)
-  } else if (stdout.isTTY) {
-    console.log(pretty(result))
+  } else if (typeof output === 'string') {
+    console.log(output)
   } else {
-    console.log(JSON.stringify(result, null, 2))
+    const [text] = print(output)
+    console.log(text)
   }
-}
-
-function reduce(json, code) {
-  if (/^\w+\s*=>/.test(code)) {
-    const fx = eval(code)
-    return fx(json)
-  }
-
-  if (/yield/.test(code)) {
-    const fx = eval(`
-      function fn() {
-        const gen = (function*(){ 
-          ${code.replace(/\\\n/g, '')} 
-        }).call(this)
-        return [...gen]
-      }; fn
-    `)
-    return fx.call(json)
-  }
-
-  if (/^\?$/.test(code)) {
-    return Object.keys(json)
-  }
-
-  if (/^\./.test(code)) {
-    const fx = eval(`function fn() { return ${code === '.' ? 'this' : 'this' + code} }; fn`)
-    return fx.call(json)
-  }
-
-  const fx = eval(`function fn() { return ${code} }; fn`)
-  return fx.call(json)
 }
 
 function run() {
@@ -101,6 +80,7 @@ function run() {
 
   if (stdin.isTTY) {
     main('')
+    return
   }
 
   let buff = ''

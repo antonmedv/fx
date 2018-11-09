@@ -34,15 +34,15 @@
     "node": ">=8"
   },
   "dependencies": {
-    "@medv/prettyjson": "^1.0.1",
+    "@medv/blessed": "^1.0.0",
     "chalk": "^2.4.1",
+    "editor-widget": "^1.1.1",
     "indent-string": "^3.2.0",
-    "neo-blessed": "^0.2.0",
     "string-width": "^2.1.1"
   },
   "devDependencies": {
     "ava": "^0.25.0",
     "pkg": "^4.3.4",
-    "release-it": "^7.6.2"
+    "release-it": "^8.2.0"
   }
 }
