@@ -157,16 +157,25 @@ Start interactive mode without passing any arguments:
 ```
 $ curl ... | fx
 ```
-Click on fields to expand or collapse JSON tree, use mouse wheel to scroll view. To select text, press `alt` or `option` key.
+Click on fields to expand or collapse JSON tree, use mouse wheel to scroll view.
 
 Next commands available in interactive mode:
 
-| Key | Command |
-|-----|---------|
-| `q` or `Esc` or `Ctrl`+`c` | Exit    |
-| `e`/`E`  | Expand/Collapse all |
-| `up`/`down` or `k`/`j` | Scroll up/down one line |
-| `g`/`G` | Goto top/bottom |
+|             Key            |         Command         |
+|----------------------------|-------------------------|
+| `q` or `Esc` or `Ctrl`+`c` | Exit                    |
+| `e`/`E`                    | Expand/Collapse all     |
+| `up`/`down` or `k`/`j`     | Scroll up/down one line |
+| `g`/`G`                    | Goto top/bottom         |
+
+#### Selecting text
+
+You may found what you can't just select text in fx. This is due the fact that all mouse events redirected to stdin. To be able select again you need instruct your terminal not to do it. This can be done by holding special keys while selecting: 
+
+| Key              |   Terminal   |
+|------------------|--------------|
+| `Option`+`Mouse` | iTerm2       |
+| `Fn`+`Mouse`     | terminal.app |
 
 
 ## Related
