@@ -1,11 +1,17 @@
+'use strict'
 const fs = require('fs')
 const tty = require('tty')
-const blessed = require('neo-blessed')
+const blessed = require('@medv/blessed')
 const stringWidth = require('string-width')
-const indent = require('indent-string')
-const chalk = require('chalk')
+const reduce = require('./reduce')
+const print = require('./print')
 
-module.exports = function start(input) {
+module.exports = function start(filename, source) {
+  let json = source
+  let index = new Map()
+  const expanded = new Set()
+  expanded.add('') // Root of JSON
+
   const ttyFd = fs.openSync('/dev/tty', 'r+')
 
   const program = blessed.program({
@@ -18,11 +24,6 @@ module.exports = function start(input) {
     smartCSR: true,
     fullUnicode: true,
   })
-  screen.title = 'fx'
-  screen.key(['escape', 'q', 'C-c'], function (ch, key) {
-    return process.exit(0)
-  })
-  screen.on('resize', render)
 
   const box = blessed.box({
     parent: screen,
@@ -31,8 +32,10 @@ module.exports = function start(input) {
     top: 0,
     width: '100%',
     height: '100%',
+    mouse: true,
     keys: true,
     vi: true,
+    ignoreArrows: true,
     alwaysScroll: true,
     scrollable: true,
   })
@@ -44,169 +47,142 @@ module.exports = function start(input) {
     width: '100%',
   })
 
-  const scrollSpeed = (() => {
-    let prev = new Date()
-    return () => {
-      const now = new Date()
-      const lines = now - prev < 20 ? 3 : 1 // TODO: Speed based on terminal.
-      prev = now
-      return lines
+  const input = blessed.textbox({
+    parent: screen,
+    bottom: 0,
+    left: 0,
+    height: 1,
+    width: '100%',
+  })
+
+  screen.title = filename
+  input.hide()
+
+  screen.key(['escape', 'q', 'C-c'], function (ch, key) {
+    // If exit program immediately, stdin may still receive mouse events which will be printed in stdout.
+    program.disableMouse()
+    setTimeout(() => process.exit(0), 10)
+  })
+
+  screen.on('resize', render)
+
+  input.on('action', function (code) {
+    if (code && code.length !== 0) {
+      try {
+        json = reduce(source, code)
+      } catch (e) {
+        // pass
+      }
+    } else {
+      box.height = '100%'
+      input.hide()
+      json = source
     }
-  })()
-
-  box.on('wheeldown', function () {
-    box.scroll(scrollSpeed())
-    screen.render()
-  })
-  box.on('wheelup', function () {
-    box.scroll(-scrollSpeed())
-    screen.render()
-  })
-
-  // TODO: fx input
-  // const inputBar = blessed.textbox({
-  //   parent: screen,
-  //   bottom: 0,
-  //   left: 0,
-  //   height: 1,
-  //   width: '100%',
-  //   keys: true,
-  //   mouse: true,
-  //   inputOnFocus: true,
-  // })
-
-  const expanded = new Set()
-  expanded.add('') // Root of JSON
-
-  box.key('e', function () {
-    walk(input, path => expanded.size < 1000 && expanded.add(path))
+    box.focus()
+    program.cursorPos(0, 0)
     render()
   })
+
+  input.on('update', function (code) {
+    if (code && code.length !== 0) {
+      try {
+        const pretender = reduce(source, code)
+        if (typeof pretender !== 'undefined') {
+          json = pretender
+        }
+      } catch (e) {
+        // pass
+      }
+    }
+    render()
+  })
+
+
+  box.key(':', function () {
+    box.height = '100%-1'
+    input.show()
+    input.readInput()
+    render()
+  })
+
+  box.key('e', function () {
+    walk(json, path => expanded.size < 1000 && expanded.add(path))
+    render()
+  })
+
   box.key('S-e', function () {
     expanded.clear()
     expanded.add('')
     render()
   })
 
-  function walk(v, cb, path = '') {
-    if (!v) {
-      return
-    }
+  box.key('up', function () {
+    program.showCursor()
 
-    if (Array.isArray(v)) {
-      cb(path)
-      let i = 0
-      for (let item of v) {
-        walk(item, cb, path + '[' + (i++) + ']')
+    const pos = box.childBase + program.y
+    const rest = [...index.keys()].filter(i => i < pos)
+    if (rest.length > 0) {
+      const next = Math.max(...rest)
+      const y = next - box.childBase
+      if (y <= 0) {
+        box.scroll(-1)
+        screen.render()
       }
+      const line = box.getScreenLines()[next]
+      const x = line.search(/\S/)
+      program.cursorPos(y, x)
     }
+  })
 
-    if (typeof v === 'object' && v.constructor === Object) {
-      cb(path)
-      let i = 0
-      for (let [key, value] of Object.entries(v)) {
-        walk(value, cb, path + '.' + key)
+  box.key('down', function () {
+    program.showCursor()
+
+    const pos = box.childBase + program.y
+    const rest = [...index.keys()].filter(i => i > pos)
+    if (rest.length > 0) {
+      const next = Math.min(...rest)
+      const y = next - box.childBase
+      if (y >= box.height) {
+        box.scroll(1)
+        screen.render()
       }
+      const line = box.getScreenLines()[next]
+      const x = line.search(/\S/)
+      program.cursorPos(y, x)
     }
-  }
+  })
 
-  const space = 2
-
-  let index = new Map()
-  let row = 0
-
-  function print(input) {
-    row = 0
-    index = new Map()
-    return doPrint(input)
-  }
-
-  function doPrint(v, path = '') {
-    const eol = () => {
-      row++
-      return '\n'
+  box.key('right', function () {
+    program.showCursor()
+    const pos = box.childBase + program.y
+    const path = index.get(pos)
+    if (!expanded.has(path)) {
+      expanded.add(path)
+      render()
     }
+  })
 
-    if (typeof v === 'undefined') {
-      return void 0
+  box.key('left', function () {
+    program.showCursor()
+    const pos = box.childBase + program.y
+    const path = index.get(pos)
+    if (expanded.has(path)) {
+      expanded.delete(path)
+      render()
     }
-
-    if (v === null) {
-      return chalk.grey.bold(v)
-    }
-
-    if (typeof v === 'number' && Number.isFinite(v)) {
-      return chalk.cyan.bold(v)
-
-    }
-
-    if (typeof v === 'boolean') {
-      return chalk.yellow.bold(v)
-
-    }
-
-    if (typeof v === 'string') {
-      return chalk.green.bold(JSON.stringify(v))
-    }
-
-    if (Array.isArray(v)) {
-      index.set(row, path)
-
-      if (!expanded.has(path)) {
-        return '[\u2026]'
-      }
-
-      let output = '[' + eol()
-
-      const len = v.length
-      let i = 0
-
-      for (let item of v) {
-        const value = typeof item === 'undefined' ? null : item // JSON.stringify compatibility
-        output += indent(doPrint(value, path + '[' + i + ']'), space)
-        output += i++ < len - 1 ? ',' : ''
-        output += eol()
-      }
-
-      return output + ']'
-    }
-
-    if (typeof v === 'object' && v.constructor === Object) {
-      index.set(row, path)
-
-      if (!expanded.has(path)) {
-        return '{\u2026}'
-      }
-
-      let output = '{' + eol()
-
-      const entries = Object.entries(v).filter(noUndefined) // JSON.stringify compatibility
-      const len = entries.length
-
-      let i = 0
-      for (let [key, value] of entries) {
-        const part = chalk.blue.bold(JSON.stringify(key)) + ': ' + doPrint(value, path + '.' + key)
-        output += indent(part, space)
-        output += i++ < len - 1 ? ',' : ''
-        output += eol()
-      }
-
-      return output + '}'
-    }
-
-    return JSON.stringify(v)
-  }
-
-  function noUndefined([key, value]) {
-    return typeof value !== 'undefined'
-  }
+  })
 
   box.on('click', function (mouse) {
+    program.hideCursor()
+
     const pos = box.childBase + mouse.y
     const line = box.getScreenLines()[pos]
     if (mouse.x >= stringWidth(line)) {
       return
     }
+
+    const x = line.search(/\S/)
+    program.cursorPos(mouse.y, x)
 
     const path = index.get(pos)
     if (expanded.has(path)) {
@@ -218,7 +194,12 @@ module.exports = function start(input) {
   })
 
   function render() {
-    const content = print(input)
+    let content
+    [content, index] = print(json, expanded)
+
+    if (typeof content === 'undefined') {
+      content = 'undefined'
+    }
 
     // TODO: Move to own fork of blessed.
     let row = 0
@@ -251,4 +232,26 @@ module.exports = function start(input) {
 
   box.focus()
   render()
+}
+
+function walk(v, cb, path = '') {
+  if (!v) {
+    return
+  }
+
+  if (Array.isArray(v)) {
+    cb(path)
+    let i = 0
+    for (let item of v) {
+      walk(item, cb, path + '[' + (i++) + ']')
+    }
+  }
+
+  if (typeof v === 'object' && v.constructor === Object) {
+    cb(path)
+    let i = 0
+    for (let [key, value] of Object.entries(v)) {
+      walk(value, cb, path + '.' + key)
+    }
+  }
 }
