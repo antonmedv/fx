@@ -187,6 +187,11 @@ You may found what you can't just select text in fx. This is due the fact that a
 * [jv](https://github.com/maxzender/jv) – interactive JSON viewer (*go*)
 * [jid](https://github.com/simeji/jid) – interactive cli tool based on jq (*go*)
 
+#### `fx` variants
+
+* [fx-jsy](https://github.com/jsy-lang/node-fx-jsy) – fx with JSY syntax dialect.
+
+
 ## License
 
 MIT
