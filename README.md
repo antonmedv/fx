@@ -194,10 +194,10 @@ Next commands available in interactive mode:
 
 You may found what you can't just select text in fx. This is due the fact that all mouse events redirected to stdin. To be able select again you need instruct your terminal not to do it. This can be done by holding special keys while selecting: 
 
-| Key              |   Terminal   |
-|------------------|--------------|
-| `Option`+`Mouse` | iTerm2       |
-| `Fn`+`Mouse`     | terminal.app |
+| Key              |   Terminal    |
+|------------------|---------------|
+| `Option`+`Mouse` | iTerm2, Hyper |
+| `Fn`+`Mouse`     | Terminal.app  |
 
 
 ## Related
