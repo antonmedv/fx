@@ -202,12 +202,9 @@ You may found what you can't just select text in fx. This is due the fact that a
 
 ## Related
 
-* [jq](https://github.com/stedolan/jq) – cli JSON processor on C
-* [jl](https://github.com/chrisdone/jl) – functional sed for JSON on Haskell
+* [jq](https://github.com/stedolan/jq) – cli JSON processor (*c*)
 * [xx](https://github.com/antonmedv/xx) – `fx`-like JSON tool (*go*)
 * [ymlx](https://github.com/matthewadams/ymlx) - `fx`-like YAML cli processor
-* [jv](https://github.com/maxzender/jv) – interactive JSON viewer (*go*)
-* [jid](https://github.com/simeji/jid) – interactive cli tool based on jq (*go*)
 
 ## License
 
