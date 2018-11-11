@@ -21,7 +21,13 @@
   },
   "keywords": [
     "json",
-    "cli"
+    "cli",
+    "terminal",
+    "term",
+    "console",
+    "ascii",
+    "unicode",
+    "blessed"
   ],
   "engines": {
     "node": ">=8"
