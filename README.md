@@ -198,7 +198,7 @@ You may found what you can't just select text in fx. This is due the fact that a
 |------------------|---------------|
 | `Option`+`Mouse` | iTerm2, Hyper |
 | `Fn`+`Mouse`     | Terminal.app  |
-
+| `Shift`+`Mouse`  | Linux         |
 
 ## Related
 
