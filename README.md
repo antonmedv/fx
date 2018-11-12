@@ -208,4 +208,4 @@ You may found what you can't just select text in fx. This is due the fact that a
 
 ## License
 
-MIT
+[MIT](https://github.com/antonmedv/fx/blob/master/LICENSE)  
