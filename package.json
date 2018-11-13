@@ -1,7 +1,7 @@
 {
   "name": "fx",
   "version": "3.1.0",
-  "description": "Command-line JSON processing tool",
+  "description": "Command-line JSON viewer",
   "repository": "antonmedv/fx",
   "author": "Anton Medvedev <anton@medv.io>",
   "license": "MIT",
@@ -21,6 +21,7 @@
   },
   "keywords": [
     "json",
+    "viewer",
     "cli",
     "terminal",
     "term",
