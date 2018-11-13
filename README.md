@@ -5,7 +5,6 @@ _* Function eXecution_
 
 [![Build Status](https://travis-ci.org/antonmedv/fx.svg?branch=master)](https://travis-ci.org/antonmedv/fx)
 [![npm version](https://badgen.net/npm/v/fx)](https://www.npmjs.com/package/fx)
-[![install size](https://badgen.net/packagephobia/install/fx)](https://packagephobia.now.sh/result?p=fx)
 
 Command-line JSON processing tool
 
