@@ -203,7 +203,7 @@ You may found what you can't just select text in fx. This is due the fact that a
 
 ## Related
 
-* [xx](https://github.com/antonmedv/xx) – fx-like JSON tool (*go*)
+* [xx](https://github.com/antonmedv/xx) - fx-like JSON tool (*go*)
 * [ymlx](https://github.com/matthewadams/ymlx) - fx-like YAML cli processor
 
 ## License
