@@ -4,7 +4,8 @@
 _* Function eXecution_
 
 [![Build Status](https://travis-ci.org/antonmedv/fx.svg?branch=master)](https://travis-ci.org/antonmedv/fx)
-[![npm version](https://badgen.net/npm/v/fx)](https://www.npmjs.com/package/fx)
+[![Npm Version](https://badgen.net/npm/v/fx)](https://www.npmjs.com/package/fx)
+[![Brew Version](https://badgen.net/homebrew/v/fx)](https://formulae.brew.sh/formula/fx)
 
 Command-line JSON processing tool
 
@@ -20,6 +21,10 @@ Command-line JSON processing tool
 
 ```
 $ npm install -g fx
+```
+Or via Homebrew
+```
+$ brew install fx
 ```
 
 Or download standalone binary from [releases](https://github.com/antonmedv/fx/releases) page.
