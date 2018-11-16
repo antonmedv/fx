@@ -13,6 +13,18 @@ try {
   }
 }
 
+// polyfill Object.entries
+if (!Object.entries) {
+  Object.entries = function(obj) {
+    var ownProps = Object.keys(obj);
+    var i = ownProps.length;
+    var resArray = new Array(i); // preallocate the Array
+    while (i--)
+      resArray[i] = [ownProps[i], obj[ownProps[i]]];
+    return resArray;
+  };
+}
+
 const usage = `
   Usage
     $ fx [code ...]
@@ -29,10 +41,10 @@ const usage = `
 
     $ echo '{"count": 0}' | fx '{...this, count: 1}'
     {"count": 1}
-    
+
     $ echo '{"foo": 1, "bar": 2}' | fx ?
     ["foo", "bar"]
-    
+
     $ echo '{"key": "value"}' | fx .key
     value
 
@@ -74,8 +86,8 @@ function reduce(json, code) {
   if (/yield/.test(code)) {
     const fx = eval(`
       function fn() {
-        const gen = (function*(){ 
-          ${code.replace(/\\\n/g, '')} 
+        const gen = (function*(){
+          ${code.replace(/\\\n/g, '')}
         }).call(this)
         return [...gen]
       }; fn
