@@ -124,9 +124,9 @@ module.exports = function start(input) {
   function printExpandSymbol(v, path = '') {
     if (Array.isArray(v) || (typeof v === 'object' && v.constructor === Object)) {
       if (!expanded.has(path)) {
-        return chalk.grey('+');
+        return chalk.grey('›');
       }
-      return chalk.grey('-');
+      return chalk.grey('⌄');
     }
     return '';
   }
