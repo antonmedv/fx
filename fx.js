@@ -124,9 +124,9 @@ module.exports = function start(input) {
   function printExpandSymbol(v, path = '') {
     if (Array.isArray(v) || (typeof v === 'object' && v.constructor === Object)) {
       if (!expanded.has(path)) {
-        return chalk.grey('+ ');
+        return chalk.grey('+');
       }
-      return chalk.grey('- ');
+      return chalk.grey('-');
     }
     return '';
   }
@@ -196,8 +196,12 @@ module.exports = function start(input) {
       let i = 0
       for (let [key, value] of entries) {
         const expandSymbol = printExpandSymbol(value, path + '.' + key);
-        const part = expandSymbol + chalk.blue.bold(JSON.stringify(key)) + ': ' + doPrint(value, path + '.' + key)
-        output += indent(part, expandSymbol ? 0 : space)
+        const part = chalk.blue.bold(JSON.stringify(key)) + ': ' + doPrint(value, path + '.' + key)
+        let lineString = indent(part, space)
+        if (expandSymbol) {
+          lineString = expandSymbol + lineString.substring(1);
+        }
+        output += lineString
         output += i++ < len - 1 ? ',' : ''
         output += eol()
       }
