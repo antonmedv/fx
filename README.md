@@ -152,7 +152,7 @@ curl 'https://api.github.com/repos/facebook/react/commits?per_page=100' \
 ### Formatting
 
 If you need something different then JSON (for example arguments for xargs) do not return anything from reducer.
-`undefined` value printed into stderr by default.
+`undefined` value is printed into stderr by default.
 ```
 echo '[]' | fx 'void 0'
 undefined
