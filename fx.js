@@ -40,13 +40,6 @@ module.exports = function start(filename, source) {
     scrollable: true,
   })
 
-  const test = blessed.box({
-    parent: screen,
-    hidden: true,
-    tags: false,
-    width: '100%',
-  })
-
   const input = blessed.textbox({
     parent: screen,
     bottom: 0,
@@ -125,43 +118,48 @@ module.exports = function start(filename, source) {
   box.key('up', function () {
     program.showCursor()
 
-    const pos = box.childBase + program.y
-    const rest = [...index.keys()].filter(i => i < pos)
+    const [n] = getLine(program.y)
+    const rest = [...index.keys()].filter(i => i < n)
     if (rest.length > 0) {
       const next = Math.max(...rest)
-      const y = next - box.childBase
+
+      let y = box.getScreenNumber(next) - box.childBase
       if (y <= 0) {
         box.scroll(-1)
         screen.render()
+        y = 0
       }
-      const line = box.getScreenLines()[next]
-      const x = line.search(/\S/)
-      program.cursorPos(y, x)
+
+      const line = box.getScreenLine(y + box.childBase)
+      program.cursorPos(y, line.search(/\S/))
     }
   })
 
   box.key('down', function () {
     program.showCursor()
 
-    const pos = box.childBase + program.y
-    const rest = [...index.keys()].filter(i => i > pos)
+    const [n] = getLine(program.y)
+    const rest = [...index.keys()].filter(i => i > n)
     if (rest.length > 0) {
       const next = Math.min(...rest)
-      const y = next - box.childBase
+
+      let y = box.getScreenNumber(next) - box.childBase
       if (y >= box.height) {
         box.scroll(1)
         screen.render()
+        y = box.height - 1
       }
-      const line = box.getScreenLines()[next]
-      const x = line.search(/\S/)
-      program.cursorPos(y, x)
+
+      const line = box.getScreenLine(y + box.childBase)
+      program.cursorPos(y, line.search(/\S/))
     }
   })
 
   box.key('right', function () {
+    const [n, line] = getLine(program.y)
     program.showCursor()
-    const pos = box.childBase + program.y
-    const path = index.get(pos)
+    program.cursorPos(program.y, line.search(/\S/))
+    const path = index.get(n)
     if (!expanded.has(path)) {
       expanded.add(path)
       render()
@@ -169,9 +167,10 @@ module.exports = function start(filename, source) {
   })
 
   box.key('left', function () {
+    const [n, line] = getLine(program.y)
     program.showCursor()
-    const pos = box.childBase + program.y
-    const path = index.get(pos)
+    program.cursorPos(program.y, line.search(/\S/))
+    const path = index.get(n)
     if (expanded.has(path)) {
       expanded.delete(path)
       render()
@@ -179,18 +178,15 @@ module.exports = function start(filename, source) {
   })
 
   box.on('click', function (mouse) {
-    program.hideCursor()
-
-    const pos = box.childBase + mouse.y
-    const line = box.getScreenLines()[pos]
+    const [n, line] = getLine(mouse.y)
     if (mouse.x >= stringWidth(line)) {
       return
     }
 
-    const x = line.search(/\S/)
-    program.cursorPos(mouse.y, x)
+    program.hideCursor()
+    program.cursorPos(mouse.y, line.search(/\S/))
 
-    const path = index.get(pos)
+    const path = index.get(n)
     if (expanded.has(path)) {
       expanded.delete(path)
     } else {
@@ -199,37 +195,19 @@ module.exports = function start(filename, source) {
     render()
   })
 
+  function getLine(y) {
+    const dy = box.childBase + y
+    const n = box.getNumber(dy)
+    const line = box.getScreenLine(dy)
+    return [n, line]
+  }
+
   function render() {
     let content
-    [content, index] = print(json, expanded)
+    [content, index] = print(json, {expanded})
 
     if (typeof content === 'undefined') {
       content = 'undefined'
-    }
-
-    // TODO: Move to own fork of blessed.
-    let row = 0
-    for (let line of content.split('\n')) {
-      if (stringWidth(line) > box.width) {
-        test.setContent(line)
-        const pad = test.getScreenLines().length - 1
-
-        const update = new Map()
-        for (let [i, path] of index.entries()) {
-          if (i > row) {
-            index.delete(i)
-            update.set(i + pad, path)
-          }
-        }
-
-        row += pad
-
-        for (let [i, path] of update.entries()) {
-          index.set(i, path)
-        }
-
-      }
-      row++
     }
 
     box.setContent(content)

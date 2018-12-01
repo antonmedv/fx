@@ -7,14 +7,12 @@ function reduce(json, code) {
   }
 
   if (/yield/.test(code)) {
-    const fx = eval(`
-      function fn() {
-        const gen = (function*(){ 
-          ${code.replace(/\\\n/g, '')} 
-        }).call(this)
-        return [...gen]
-      }; fn
-    `)
+    const fx = eval(`function fn() {
+      const gen = (function*(){ 
+        ${code.replace(/\\\n/g, '')} 
+      }).call(this)
+      return [...gen]
+      }; fn`)
     return fx.call(json)
   }
 
@@ -23,11 +21,15 @@ function reduce(json, code) {
   }
 
   if (/^\./.test(code)) {
-    const fx = eval(`function fn() { return ${code === '.' ? 'this' : 'this' + code} }; fn`)
+    const fx = eval(`function fn() { 
+      return ${code === '.' ? 'this' : 'this' + code} 
+    }; fn`)
     return fx.call(json)
   }
 
-  const fx = eval(`function fn() { return ${code} }; fn`)
+  const fx = eval(`function fn() { 
+    return ${code} 
+  }; fn`)
   return fx.call(json)
 }
 
