@@ -19,8 +19,6 @@ const usage = `
     $ fx [code ...]
 
   Examples
-    $ fx package.json
-  
     $ echo '{"key": "value"}' | fx 'x => x.key'
     value
     
