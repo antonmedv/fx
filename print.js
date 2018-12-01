@@ -2,7 +2,8 @@
 const indent = require('indent-string')
 const config = require('./config')
 
-function print(input, expanded = null) {
+function print(input, options = {}) {
+  const {expanded} = options
   const index = new Map()
   let row = 0
 
@@ -77,7 +78,7 @@ function print(input, expanded = null) {
       return output + config.bracket('}')
     }
 
-    return v.toString()
+    return void 0
   }
 
   return [doPrint(input), index]
