@@ -59,14 +59,17 @@ module.exports = function start(filename, source) {
   input.hide()
 
   screen.key(['escape', 'q', 'C-c'], function (ch, key) {
-    // If exit program immediately, stdin may still receive mouse events which will be printed in stdout.
-    program.disableMouse()
-    setTimeout(() => process.exit(0), 10)
+    program.disableMouse()                // If exit program immediately, stdin may still receive
+    setTimeout(() => process.exit(0), 10) // mouse events which will be printed in stdout.
   })
 
-  screen.on('resize', render)
+  screen.on('resize', function () {
+    render()
+  })
 
-  input.on('action', function (code) {
+  input.on('action', function () {
+    const code = input.getValue()
+
     if (code && code.length !== 0) {
       try {
         json = reduce(source, code)
@@ -87,7 +90,7 @@ module.exports = function start(filename, source) {
     if (code && code.length !== 0) {
       try {
         const pretender = reduce(source, code)
-        if (typeof pretender !== 'undefined') {
+        if (typeof pretender !== 'undefined' && typeof pretender !== 'function') {
           json = pretender
         }
       } catch (e) {
@@ -98,9 +101,12 @@ module.exports = function start(filename, source) {
   })
 
 
-  box.key(':', function () {
+  box.key('.', function () {
     box.height = '100%-1'
     input.show()
+    if (input.getValue() === '') {
+      input.setValue('.')
+    }
     input.readInput()
     render()
   })
