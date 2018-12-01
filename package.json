@@ -14,10 +14,8 @@
   ],
   "scripts": {
     "test": "ava",
-    "release": "pkg . --out-path dist && release-it --github.release --github.assets=dist/*"
-  },
-  "pkg": {
-    "scripts": "node_modules/neo-blessed/lib/**/*.js"
+    "build": "pkg . --out-path dist -t node10-linux-x64,node10-macos-x64,node10-win-x64",
+    "release": "npm run build && release-it --github.release --github.assets=dist/*"
   },
   "keywords": [
     "json",
@@ -34,9 +32,8 @@
     "node": ">=8"
   },
   "dependencies": {
-    "@medv/blessed": "^1.0.0",
+    "@medv/blessed": "^1.1.0",
     "chalk": "^2.4.1",
-    "editor-widget": "^1.1.1",
     "indent-string": "^3.2.0",
     "string-width": "^2.1.1"
   },

@@ -48,7 +48,7 @@ function print(input, options = {}) {
 
       for (let item of v) {
         const value = typeof item === 'undefined' ? null : item // JSON.stringify compatibility
-        output += indent(doPrint(value, path + '[' + i + ']'))
+        output += indent(doPrint(value, path + '[' + i + ']'), config.space)
         output += i++ < len - 1 ? config.comma(',') : ''
         output += eol()
       }
