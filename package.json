@@ -17,7 +17,7 @@
   ],
   "scripts": {
     "test": "ava",
-    "build": "pkg . --out-path dist -t node10-linux-x64,node10-macos-x64,node10-win-x64",
+    "build": "pkg . --out-path dist -t node8-linux-x64,node8-macos-x64,node8-win-x64",
     "release": "npm run build && release-it --github.release --github.assets=dist/*"
   },
   "keywords": [
