@@ -35,11 +35,6 @@ Or download standalone binary from [releases](https://github.com/antonmedv/fx/re
 
 ## Usage
 
-Pipe into `fx` any JSON and anonymous function for reducing it.
-```
-$ cat ... | fx [code ...]
-```
-
 Start interactive mode without passing any arguments.
 ```
 $ curl ... | fx
@@ -48,6 +43,17 @@ $ curl ... | fx
 Or by passing filename as first argument.
 ```
 $ fx data.json
+```
+
+Pipe into `fx` any JSON and anonymous function for reducing it.
+```bash
+$ curl ... | fx 'json => json.message'
+```
+
+Or same as above but sorter.
+```bash
+$ curl ... | fx this.message
+$ curl ... | fx .message
 ```
 
 ## Documentation
