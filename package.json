@@ -9,8 +9,11 @@
     "fx": "index.js"
   },
   "files": [
+    "config.js",
+    "fx.js",
     "index.js",
-    "fx.js"
+    "print.js",
+    "reduce.js"
   ],
   "scripts": {
     "test": "ava",
