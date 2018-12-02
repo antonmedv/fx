@@ -84,10 +84,10 @@ module.exports = function start(filename, source) {
       // Autocomplete selected
       let code = input.getValue()
       let replace = autocomplete.getSelected()
-      if (/^\w+$/.test(replace)) {
+      if (/^[a-z]\w+$/.test(replace)) {
         replace = '.' + replace
       } else {
-        replace = `['${replace}']`
+        replace = `["${replace}"]`
       }
       code = code.replace(/\.\w*$/, replace)
 
