@@ -50,10 +50,15 @@ Pipe into `fx` any JSON and anonymous function for reducing it.
 $ curl ... | fx 'json => json.message'
 ```
 
-Or same as above but sorter.
+Or same as above but short.
 ```bash
 $ curl ... | fx this.message
 $ curl ... | fx .message
+```
+
+Pass any numbers of arguments as code.
+```
+curl ... | fx 'json => json.message' 'json => json.filter(x => x.startsWith("a"))' 
 ```
 
 ## Documentation
