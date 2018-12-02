@@ -285,8 +285,9 @@ module.exports = function start(filename, source) {
       if (typeof json === 'object' && json.constructor === Object) {
         const keys = Object.keys(json).filter(key => key.startsWith(match[1]))
 
-        // Don't show if there is complete match.
-        if (keys.length === 1 && keys[0] === match[1]) {
+        // Hide if there is nothing to show or
+        // don't show if there is complete match.
+        if (keys.length === 0 || (keys.length === 1 && keys[0] === match[1])) {
           autocomplete.hide()
           return
         }
