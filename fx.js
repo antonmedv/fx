@@ -48,10 +48,27 @@ module.exports = function start(filename, source) {
     width: '100%',
   })
 
-  screen.title = filename
-  input.hide()
+  const autocomplete = blessed.list({
+    parent: screen,
+    width: 6,
+    height: 7,
+    left: 1,
+    bottom: 1,
+    style: {
+      fg: 'black',
+      bg: 'cyan',
+      selected: {
+        bg: 'magenta'
+      }
+    },
+  })
 
-  screen.key(['escape', 'q', 'C-c'], function (ch, key) {
+  screen.title = filename
+  box.focus()
+  input.hide()
+  autocomplete.hide()
+
+  screen.key(['escape', 'q', 'C-c'], function () {
     program.disableMouse()                // If exit program immediately, stdin may still receive
     setTimeout(() => process.exit(0), 10) // mouse events which will be printed in stdout.
   })
@@ -60,51 +77,82 @@ module.exports = function start(filename, source) {
     render()
   })
 
-  input.on('action', function () {
-    const code = input.getValue()
-
-    if (code && code.length !== 0) {
-      try {
-        json = reduce(source, code)
-      } catch (e) {
-        // pass
-      }
+  input.on('submit', function () {
+    if (autocomplete.hidden) {
+      apply()
     } else {
-      box.height = '100%'
-      input.hide()
-      json = source
+      // Autocomplete selected
+      let code = input.getValue()
+      code = code.replace(/\.\w*$/, '.' + autocomplete.getSelected())
+
+      input.setValue(code)
+      autocomplete.hide()
+      update(code)
+
+      // Keep editing code
+      input.readInput()
     }
-    box.focus()
-    program.cursorPos(0, 0)
-    render()
+  })
+
+  input.on('cancel', function () {
+    if (autocomplete.hidden) {
+      apply()
+    } else {
+      // Autocomplete not selected
+      autocomplete.hide()
+      screen.render()
+
+      // Keep editing code
+      input.readInput()
+    }
   })
 
   input.on('update', function (code) {
-    if (code && code.length !== 0) {
-      try {
-        const pretender = reduce(source, code)
-        if (typeof pretender !== 'undefined' && typeof pretender !== 'function') {
-          json = pretender
-        }
-      } catch (e) {
-        // pass
-      }
+    update(code)
+    complete(code)
+  })
+
+  input.key('up', function () {
+    if (!autocomplete.hidden) {
+      autocomplete.up()
+      screen.render()
     }
+  })
+
+  input.key('down', function () {
+    if (!autocomplete.hidden) {
+      autocomplete.down()
+      screen.render()
+    }
+  })
+
+  input.key('C-u', function () {
+    input.setValue('')
+    update('')
     render()
   })
 
+  input.key('C-w', function () {
+    let code = input.getValue()
+    code = code.replace(/\.[^\.]*$/, '')
+    input.setValue(code)
+    update(code)
+    render()
+  })
 
   box.key('.', function () {
     box.height = '100%-1'
     input.show()
     if (input.getValue() === '') {
       input.setValue('.')
+      complete('.')
     }
     input.readInput()
     render()
   })
 
   box.key('e', function () {
+    expanded.clear()
     walk(json, path => expanded.size < 1000 && expanded.add(path))
     render()
   })
@@ -185,6 +233,7 @@ module.exports = function start(filename, source) {
 
     program.hideCursor()
     program.cursorPos(mouse.y, line.search(/\S/))
+    autocomplete.hide()
 
     const path = index.get(n)
     if (expanded.has(path)) {
@@ -202,6 +251,85 @@ module.exports = function start(filename, source) {
     return [n, line]
   }
 
+  function apply() {
+    const code = input.getValue()
+
+    if (code && code.length !== 0) {
+      try {
+        json = reduce(source, code)
+      } catch (e) {
+        // pass
+      }
+    } else {
+      box.height = '100%'
+      input.hide()
+      json = source
+    }
+    box.focus()
+    program.cursorPos(0, 0)
+    render()
+  }
+
+  function complete(inputCode) {
+    const match = inputCode.match(/\.(\w*)$/)
+    const code = /^\.\w*$/.test(inputCode) ? '.' : inputCode.replace(/\.\w*$/, '')
+
+    let json
+    try {
+      json = reduce(source, code)
+    } catch (e) {
+    }
+
+    if (match) {
+      if (typeof json === 'object' && json.constructor === Object) {
+        const keys = Object.keys(json).filter(key => key.startsWith(match[1]))
+
+        // Don't show if there is complete match.
+        if (keys.length === 1 && keys[0] === match[1]) {
+          autocomplete.hide()
+          return
+        }
+
+        autocomplete.width = Math.max(...keys.map(key => key.length)) + 1
+        autocomplete.height = Math.min(7, keys.length)
+        autocomplete.left = Math.min(
+          screen.width - autocomplete.width,
+          code.length === 1 ? 1 : code.length + 1
+        )
+
+        let selectFirst = autocomplete.items.length !== keys.length
+        autocomplete.setItems(keys)
+
+        if (selectFirst) {
+          autocomplete.select(autocomplete.items.length - 1)
+        }
+        if (autocomplete.hidden) {
+          autocomplete.show()
+        }
+      } else {
+        autocomplete.clearItems()
+        autocomplete.hide()
+      }
+    }
+  }
+
+  function update(code) {
+    if (code && code.length !== 0) {
+      try {
+        const pretender = reduce(source, code)
+        if (typeof pretender !== 'undefined' && typeof pretender !== 'function') {
+          json = pretender
+        }
+      } catch (e) {
+        // pass
+      }
+    }
+    if (code === '') {
+      json = source
+    }
+    render()
+  }
+
   function render() {
     let content
     [content, index] = print(json, {expanded})
@@ -214,7 +342,6 @@ module.exports = function start(filename, source) {
     screen.render()
   }
 
-  box.focus()
   render()
 }
 
