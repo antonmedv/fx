@@ -74,6 +74,11 @@ $ echo '{"count": 0}' | fx '{...this, count: 1}'
 }
 ```
 
+Pretty print JSON with dot.
+```bash
+$ curl ... | fx .
+```
+
 ## Documentation
 
 See full [documentation](https://github.com/antonmedv/fx/blob/master/docs.md).
