@@ -83,7 +83,13 @@ module.exports = function start(filename, source) {
     } else {
       // Autocomplete selected
       let code = input.getValue()
-      code = code.replace(/\.\w*$/, '.' + autocomplete.getSelected())
+      let replace = autocomplete.getSelected()
+      if (/^\w+$/.test(replace)) {
+        replace = '.' + replace
+      } else {
+        replace = `['${replace}']`
+      }
+      code = code.replace(/\.\w*$/, replace)
 
       input.setValue(code)
       autocomplete.hide()
@@ -134,7 +140,7 @@ module.exports = function start(filename, source) {
 
   input.key('C-w', function () {
     let code = input.getValue()
-    code = code.replace(/\.[^\.]*$/, '')
+    code = code.replace(/[\.\[][^\.\[]*$/, '')
     input.setValue(code)
     update(code)
     render()
