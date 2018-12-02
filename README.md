@@ -57,8 +57,21 @@ $ curl ... | fx .message
 ```
 
 Pass any numbers of arguments as code.
+```bash
+$ curl ... | fx 'json => json.message' 'json => json.filter(x => x.startsWith("a"))' 
 ```
-curl ... | fx 'json => json.message' 'json => json.filter(x => x.startsWith("a"))' 
+
+Access all lodash (or ramda, etc) methods by using [.fxrc](https://github.com/antonmedv/fx/blob/master/docs.md#using-fxrc) file.
+```bash
+$ curl ... | fx '_.mapValues(_.groupBy(this, "commit.committer.name"), _.size)'
+```
+
+Update JSON using spread operator.
+```bash
+$ echo '{"count": 0}' | fx '{...this, count: 1}'
+{
+  "count": 1
+}
 ```
 
 ## Documentation
