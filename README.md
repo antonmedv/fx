@@ -11,11 +11,10 @@ Command-line JSON processing tool
 
 ## Features
 
-* Don't need to learn new syntax
-* Plain JavaScript
 * Formatting and highlighting
 * Standalone binary
 * Interactive mode 🎉
+* Themes support 🎨
 
 ## Install
 

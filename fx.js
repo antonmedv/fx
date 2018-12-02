@@ -5,6 +5,7 @@ const blessed = require('@medv/blessed')
 const stringWidth = require('string-width')
 const reduce = require('./reduce')
 const print = require('./print')
+const config = require('./config')
 
 module.exports = function start(filename, source) {
   let json = source
@@ -54,13 +55,7 @@ module.exports = function start(filename, source) {
     height: 7,
     left: 1,
     bottom: 1,
-    style: {
-      fg: 'black',
-      bg: 'cyan',
-      selected: {
-        bg: 'magenta'
-      }
-    },
+    style: config.list,
   })
 
   screen.title = filename

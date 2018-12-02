@@ -1,6 +1,13 @@
 'use strict'
 const chalk = require('chalk')
 const noop = x => x
+const list = {
+  fg: 'black',
+  bg: 'cyan',
+  selected: {
+    bg: 'magenta'
+  }
+}
 
 module.exports = {
   space:   global.FX_STYLE_SPACE   || 2,
@@ -12,4 +19,5 @@ module.exports = {
   bracket: global.FX_STYLE_BRACKET || noop,
   comma:   global.FX_STYLE_COMMA   || noop,
   colon:   global.FX_STYLE_COLON   || noop,
+  list:    global.FX_STYLE_LIST    || list,
 }
