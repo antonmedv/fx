@@ -87,6 +87,7 @@ See full [documentation](https://github.com/antonmedv/fx/blob/master/docs.md).
 * [xx](https://github.com/antonmedv/xx) - fx-like JSON tool (*go*)
 * [ymlx](https://github.com/matthewadams/ymlx) - fx-like YAML cli processor
 * [fx-theme-monokai](https://github.com/antonmedv/fx-theme-monokai) – monokai theme
+* [fx-theme-night](https://github.com/antonmedv/fx-theme-night) – night theme
 
 ## License
 
