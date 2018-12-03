@@ -1,5 +1,5 @@
 <p align="center"><img src="https://user-images.githubusercontent.com/141232/35405308-4b41f446-0238-11e8-86c1-21f407cc8460.png" height="100" alt="fx"></p>
-<p align="center"><img src="https://user-images.githubusercontent.com/141232/47933350-f0f22900-df06-11e8-9cf2-88492c1be774.gif" width="530" alt="fx example"></p>
+<p align="center"><img src="https://medv.io/assets/fx.gif" width="562" alt="fx example"></p>
 
 _* Function eXecution_
 
@@ -34,7 +34,7 @@ Or download standalone binary from [releases](https://github.com/antonmedv/fx/re
 
 ## Usage
 
-Start interactive mode without passing any arguments.
+Start [interactive mode](https://github.com/antonmedv/fx/blob/master/docs.md#interactive-mode) without passing any arguments.
 ```
 $ curl ... | fx
 ```
