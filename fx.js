@@ -164,7 +164,7 @@ module.exports = function start(filename, source) {
     render()
   })
 
-  box.key('up', function () {
+  box.key(['up', 'k'], function () {
     program.showCursor()
 
     const [n] = getLine(program.y)
@@ -184,7 +184,7 @@ module.exports = function start(filename, source) {
     }
   })
 
-  box.key('down', function () {
+  box.key(['down', 'j'], function () {
     program.showCursor()
 
     const [n] = getLine(program.y)
@@ -204,7 +204,7 @@ module.exports = function start(filename, source) {
     }
   })
 
-  box.key('right', function () {
+  box.key(['right', 'l'], function () {
     const [n, line] = getLine(program.y)
     program.showCursor()
     program.cursorPos(program.y, line.search(/\S/))
@@ -215,7 +215,7 @@ module.exports = function start(filename, source) {
     }
   })
 
-  box.key('left', function () {
+  box.key(['left', 'h'], function () {
     const [n, line] = getLine(program.y)
     program.showCursor()
     program.cursorPos(program.y, line.search(/\S/))
