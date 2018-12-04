@@ -163,8 +163,8 @@ Next commands available in interactive mode:
 | `q` or `Esc` or `Ctrl`+`c`    | Exit                    |
 | `e`/`E`                       | Expand/Collapse all     |
 | `g`/`G`                       | Goto top/bottom         |
-| `up`/`down`                   | Move cursor up/down     |
-| `left`/`right`                | Expand/Collapse         |
+| `up`/`down` or `k/j`          | Move cursor up/down     |
+| `left`/`right` or `h/l`       | Expand/Collapse         |
 | `.`                           | Edit filter             |
 
 These commands are available when editing the filter:
