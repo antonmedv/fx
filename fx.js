@@ -440,7 +440,6 @@ function walk(v, cb, path = '') {
 
   if (typeof v === 'object' && v.constructor === Object) {
     cb(path)
-    let i = 0
     for (let [key, value] of Object.entries(v)) {
       walk(value, cb, path + '.' + key)
     }
