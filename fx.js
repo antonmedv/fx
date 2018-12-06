@@ -5,6 +5,7 @@ const blessed = require('@medv/blessed')
 const stringWidth = require('string-width')
 const reduce = require('./reduce')
 const print = require('./print')
+const search = require('./search')
 const config = require('./config')
 
 module.exports = function start(filename, source) {
@@ -55,22 +56,6 @@ module.exports = function start(filename, source) {
     width: '100%',
   })
 
-  const searchInput = blessed.textbox({
-    parent: screen,
-    bottom: 0,
-    left: 0,
-    height: 1,
-    width: '100%',
-  })
-
-  const searchResult = blessed.text({
-    parent: screen,
-    bottom: 1,
-    left: 0,
-    height: 1,
-    width: '100%',
-  })
-
   const autocomplete = blessed.list({
     parent: screen,
     width: 6,
@@ -83,9 +68,8 @@ module.exports = function start(filename, source) {
   screen.title = filename
   box.focus()
   input.hide()
-  searchInput.hide()
-  searchResult.hide()
   autocomplete.hide()
+  search({blessed, program, screen, box})
 
   screen.key(['escape', 'q', 'C-c'], function () {
     program.disableMouse()                // If exit program immediately, stdin may still receive
@@ -291,45 +275,6 @@ module.exports = function start(filename, source) {
       expanded.add(path)
     }
     render()
-  })
-
-  let boxLine = -1
-
-  box.key('/', function () {
-    log('box.key /')
-    boxLine = program.y
-    box.height = '100%-1'
-    searchInput.show()
-    searchInput.readInput()
-    screen.render()
-  })
-
-  searchInput.on('submit', function () {
-    log('searchInput.on submit')
-    box.height = '100%-2'
-    searchResult.show()
-    searchResult.content = 'searched!'
-    searchInput.readInput() // keep input so we can receive "cancel" event
-    render()
-  })
-
-  searchInput.on('cancel', function () {
-    log('searchInput.on cancel')
-    box.height = '100%'
-    searchInput.hide()
-    searchResult.hide()
-    box.focus()
-
-    const [n, line] = getLine(boxLine)
-    program.cursorPos(boxLine, line.search(/\S/))
-    program.showCursor()
-
-    screen.render()
-  })
-
-  searchInput.key('C-u', function () {
-    searchInput.setValue('')
-    screen.render()
   })
 
   function getLine(y) {
