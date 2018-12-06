@@ -55,6 +55,22 @@ module.exports = function start(filename, source) {
     width: '100%',
   })
 
+  const searchInput = blessed.textbox({
+    parent: screen,
+    bottom: 0,
+    left: 0,
+    height: 1,
+    width: '100%',
+  })
+
+  const searchResult = blessed.text({
+    parent: screen,
+    bottom: 1,
+    left: 0,
+    height: 1,
+    width: '100%',
+  })
+
   const autocomplete = blessed.list({
     parent: screen,
     width: 6,
@@ -67,6 +83,8 @@ module.exports = function start(filename, source) {
   screen.title = filename
   box.focus()
   input.hide()
+  searchInput.hide()
+  searchResult.hide()
   autocomplete.hide()
 
   screen.key(['escape', 'q', 'C-c'], function () {
@@ -272,6 +290,33 @@ module.exports = function start(filename, source) {
     } else {
       expanded.add(path)
     }
+    render()
+  })
+
+  box.key('/', function () {
+    log('box.key /')
+    box.height = '100%-1'
+    searchInput.show()
+    searchInput.readInput()
+    render()
+  })
+
+  searchInput.on('submit', function () {
+    log('searchInput.on submit')
+    box.height = '100%-2'
+    searchResult.show()
+    searchResult.content = 'searched!'
+    searchInput.readInput() // keep input so we can receive "cancel" event
+    render()
+  })
+
+  searchInput.on('cancel', function () {
+    log('searchInput.on cancel')
+    box.height = '100%'
+    searchInput.hide()
+    searchResult.hide()
+    box.focus()
+    program.cursorPos(0, 0)
     render()
   })
 
