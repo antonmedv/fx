@@ -301,7 +301,7 @@ module.exports = function start(filename, source) {
     box.height = '100%-1'
     searchInput.show()
     searchInput.readInput()
-    render()
+    screen.render()
   })
 
   searchInput.on('submit', function () {
@@ -324,12 +324,12 @@ module.exports = function start(filename, source) {
     program.cursorPos(boxLine, line.search(/\S/))
     program.showCursor()
 
-    render()
+    screen.render()
   })
 
   searchInput.key('C-u', function () {
     searchInput.setValue('')
-    render()
+    screen.render()
   })
 
   function getLine(y) {
