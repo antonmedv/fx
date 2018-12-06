@@ -293,8 +293,11 @@ module.exports = function start(filename, source) {
     render()
   })
 
+  let boxLine = -1
+
   box.key('/', function () {
     log('box.key /')
+    boxLine = program.y
     box.height = '100%-1'
     searchInput.show()
     searchInput.readInput()
@@ -316,7 +319,16 @@ module.exports = function start(filename, source) {
     searchInput.hide()
     searchResult.hide()
     box.focus()
-    program.cursorPos(0, 0)
+
+    const [n, line] = getLine(boxLine)
+    program.cursorPos(boxLine, line.search(/\S/))
+    program.showCursor()
+
+    render()
+  })
+
+  searchInput.key('C-u', function () {
+    searchInput.setValue('')
     render()
   })
 
