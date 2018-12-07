@@ -1,15 +1,9 @@
 'use strict'
-const config = require('./config')
 const fs = require('fs')
+const { walk, log } = require('./helpers')
 
 function search(options = {}) {
   const { blessed, program, screen, box } = options
-
-  function log(...args) {
-    if (config.log) {
-      fs.appendFileSync(config.log, args.join(' ') + '\n')
-    }
-  }
 
   const searchInput = blessed.textbox({
     parent: screen,
@@ -49,7 +43,6 @@ function search(options = {}) {
     box.height = '100%-2'
     searchResult.show()
     const hit = Math.random()
-    log('searchInput.on submit', hit)
     if (hit > 0.5) {
       searchResult.content = 'found something'
       box.data.search = hit // this will tell fx.js to do something

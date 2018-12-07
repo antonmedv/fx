@@ -7,12 +7,7 @@ const reduce = require('./reduce')
 const print = require('./print')
 const search = require('./search')
 const config = require('./config')
-
-function log(...args) {
-  if (config.log) {
-    fs.appendFileSync(config.log, args.join(' ') + '\n')
-  }
-}
+const { walk, log } = require('./helpers')
 
 module.exports = function start(filename, source) {
   // Current rendered object on a screen.
@@ -395,25 +390,4 @@ module.exports = function start(filename, source) {
   }
 
   render()
-}
-
-function walk(v, cb, path = '') {
-  if (!v) {
-    return
-  }
-
-  if (Array.isArray(v)) {
-    cb(path)
-    let i = 0
-    for (let item of v) {
-      walk(item, cb, path + '[' + (i++) + ']')
-    }
-  }
-
-  if (typeof v === 'object' && v.constructor === Object) {
-    cb(path)
-    for (let [key, value] of Object.entries(v)) {
-      walk(value, cb, path + '.' + key)
-    }
-  }
 }
