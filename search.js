@@ -3,7 +3,7 @@ const fs = require('fs')
 const { walk, log } = require('./helpers')
 
 function setup(options = {}) {
-  const { blessed, program, screen, box } = options
+  const { blessed, program, screen, box, source } = options
 
   const searchInput = blessed.textbox({
     parent: screen,
@@ -40,12 +40,12 @@ function setup(options = {}) {
   })
 
   searchInput.on('submit', function () {
+    const hits = find(source, searchInput.content)
     box.height = '100%-2'
     searchResult.show()
-    const hit = Math.random()
-    if (hit > 0.5) {
+    if (hits.length) {
       searchResult.content = 'found something'
-      box.data.search = hit // this will tell fx.js to do something
+      box.data.search = hits // this will tell fx.js to do something
       backToBox()
     }
     else {
@@ -72,4 +72,34 @@ function setup(options = {}) {
   searchResult.hide()
 }
 
-module.exports = { setup }
+function find(source, query) {
+  if (/^\s*$/.test(query)) {
+    return []
+  }
+
+  const m = query.match(/^\/(.*)\/([gimuy]*)$/)
+  const regex = new RegExp(m ? m[1] : query, m ? m[2] : '')
+  let hits = []
+
+  walk(source, function(path, v) {
+    if (typeof v === 'object' && v.constructor === Object) {
+      // walk already passes us `path` for:
+      //   - scalars
+      //   - array elements
+      //   - object VALUES
+      // ...but not object KEYS, which we have to check ourselves
+      for (let key in Object.keys(v)) {
+        if (regex.test(key)) {
+          hits.push(path + '.' + key)
+        }
+      }
+    }
+    else if (typeof v === 'string' && regex.test(v)) {
+      hits.push(path)
+    }
+  })
+
+  return hits
+}
+
+module.exports = { setup, find }

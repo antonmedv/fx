@@ -3,11 +3,11 @@ const fs = require('fs')
 const tty = require('tty')
 const blessed = require('@medv/blessed')
 const stringWidth = require('string-width')
+const { walk, log } = require('./helpers')
 const reduce = require('./reduce')
 const print = require('./print')
 const search = require('./search')
 const config = require('./config')
-const { walk, log } = require('./helpers')
 
 module.exports = function start(filename, source) {
   // Current rendered object on a screen.
@@ -68,7 +68,7 @@ module.exports = function start(filename, source) {
 
   box.on('focus', function () {
     if (box.data.search) {
-      log('box focused with search result:', box.data.search)
+      log('box focused with search result:', JSON.stringify(box.data.search))
       box.data.search = null
       // update the box UI based on what search found
       screen.render() // tbd
@@ -79,7 +79,7 @@ module.exports = function start(filename, source) {
   box.focus()
   input.hide()
   autocomplete.hide()
-  search.setup({blessed, program, screen, box})
+  search.setup({blessed, program, screen, box, source})
 
   screen.key(['escape', 'q', 'C-c'], function () {
     program.disableMouse()                // If exit program immediately, stdin may still receive
