@@ -161,7 +161,7 @@ module.exports = function start(filename, source) {
   box.key('S-e', function () {
     expanded.clear()
     expanded.add('')
-    render()
+    apply()
   })
 
   box.key(['up', 'k'], function () {
