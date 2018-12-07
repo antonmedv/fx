@@ -37,48 +37,52 @@ function print(input, options = {}) {
     }
 
     if (Array.isArray(v)) {
-      if (expanded && !expanded.has(path)) {
-        return config.bracket('[') + '\u2026' + config.bracket(']')
-      }
-
-      let output = config.bracket('[') + eol()
-
+      let output = config.bracket('[')
       const len = v.length
-      let i = 0
 
-      for (let item of v) {
-        const value = typeof item === 'undefined' ? null : item // JSON.stringify compatibility
-        output += indent(doPrint(value, path + '[' + i + ']'), config.space)
-        output += i++ < len - 1 ? config.comma(',') : ''
-        output += eol()
+      if (len > 0) {
+        if (expanded && !expanded.has(path)) {
+          output += '\u2026'
+        } else {
+          output += eol()
+          let i = 0
+          for (let item of v) {
+            const value = typeof item === 'undefined' ? null : item // JSON.stringify compatibility
+            output += indent(doPrint(value, path + '[' + i + ']'), config.space)
+            output += i++ < len - 1 ? config.comma(',') : ''
+            output += eol()
+          }
+        }
       }
 
       return output + config.bracket(']')
     }
 
     if (typeof v === 'object' && v.constructor === Object) {
-      if (expanded && !expanded.has(path)) {
-        return config.bracket('{') + '\u2026' + config.bracket('}')
-      }
+      let output = config.bracket('{')
 
-      let output = config.bracket('{') + eol()
-
-      const entries = Object.entries(v)
-        .filter(([key, value]) => typeof value !== 'undefined') // JSON.stringify compatibility
+      const entries = Object.entries(v).filter(([key, value]) => typeof value !== 'undefined') // JSON.stringify compatibility
       const len = entries.length
 
-      let i = 0
-      for (let [key, value] of entries) {
-        const part = config.key(JSON.stringify(key)) + config.colon(':') + ' ' + doPrint(value, path + '.' + key)
-        output += indent(part, config.space)
-        output += i++ < len - 1 ? config.comma(',') : ''
-        output += eol()
+      if (len > 0) {
+        if (expanded && !expanded.has(path)) {
+          output += '\u2026'
+        } else {
+          output += eol()
+          let i = 0
+          for (let [key, value] of entries) {
+            const part = config.key(JSON.stringify(key)) + config.colon(':') + ' ' + doPrint(value, path + '.' + key)
+            output += indent(part, config.space)
+            output += i++ < len - 1 ? config.comma(',') : ''
+            output += eol()
+          }
+        }
       }
 
       return output + config.bracket('}')
     }
 
-    return void 0
+    return JSON.stringify(v, null, config.space)
   }
 
   return [doPrint(input), index]
