@@ -20,4 +20,5 @@ module.exports = {
   comma:   global.FX_STYLE_COMMA   || noop,
   colon:   global.FX_STYLE_COLON   || noop,
   list:    global.FX_STYLE_LIST    || list,
+  log: 'log.txt',
 }
