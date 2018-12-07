@@ -12,7 +12,17 @@ test('pass', t => {
 })
 
 test('anon func', t => {
+  const r = fx({"key": "value"}, "'function (x) { return x.key }'")
+  t.deepEqual(r, 'value\n')
+})
+
+test('arrow func', t => {
   const r = fx({"key": "value"}, "'x => x.key'")
+  t.deepEqual(r, 'value\n')
+})
+
+test('arrow func ()', t => {
+  const r = fx({"key": "value"}, "'(x) => x.key'")
   t.deepEqual(r, 'value\n')
 })
 
