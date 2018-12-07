@@ -79,7 +79,7 @@ module.exports = function start(filename, source) {
   box.focus()
   input.hide()
   autocomplete.hide()
-  search({blessed, program, screen, box})
+  search.setup({blessed, program, screen, box})
 
   screen.key(['escape', 'q', 'C-c'], function () {
     program.disableMouse()                // If exit program immediately, stdin may still receive

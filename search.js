@@ -2,7 +2,7 @@
 const fs = require('fs')
 const { walk, log } = require('./helpers')
 
-function search(options = {}) {
+function setup(options = {}) {
   const { blessed, program, screen, box } = options
 
   const searchInput = blessed.textbox({
@@ -72,4 +72,4 @@ function search(options = {}) {
   searchResult.hide()
 }
 
-module.exports = search
+module.exports = { setup }
