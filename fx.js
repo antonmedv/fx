@@ -8,6 +8,12 @@ const print = require('./print')
 const search = require('./search')
 const config = require('./config')
 
+function log(...args) {
+  if (config.log) {
+    fs.appendFileSync(config.log, args.join(' ') + '\n')
+  }
+}
+
 module.exports = function start(filename, source) {
   // Current rendered object on a screen.
   let json = source
@@ -63,6 +69,15 @@ module.exports = function start(filename, source) {
     left: 1,
     bottom: 1,
     style: config.list,
+  })
+
+  box.on('focus', function () {
+    if (box.data.search) {
+      log('box focused with search result:', box.data.search)
+      box.data.search = null
+      // update the box UI based on what search found
+      screen.render() // tbd
+    }
   })
 
   screen.title = filename

@@ -5,10 +5,6 @@ const fs = require('fs')
 function search(options = {}) {
   const { blessed, program, screen, box } = options
 
-  function getLine(y) {
-    return box.getScreenLine(box.childBase + y)
-  }
-
   function log(...args) {
     if (config.log) {
       fs.appendFileSync(config.log, args.join(' ') + '\n')
@@ -32,6 +28,13 @@ function search(options = {}) {
   })
 
   let boxLine = -1
+  function backToBox() {
+    const line = box.getScreenLine(box.childBase + boxLine)
+    program.cursorPos(boxLine, line.search(/\S/))
+    program.showCursor()
+    box.focus()
+    screen.render()
+  }
 
   box.key('/', function () {
     log('box.key /')
@@ -43,12 +46,20 @@ function search(options = {}) {
   })
 
   searchInput.on('submit', function () {
-    log('searchInput.on submit')
     box.height = '100%-2'
     searchResult.show()
-    searchResult.content = 'searched!'
-    searchInput.readInput() // keep input so we can receive "cancel" event
-    screen.render()
+    const hit = Math.random()
+    log('searchInput.on submit', hit)
+    if (hit > 0.5) {
+      searchResult.content = 'found something'
+      box.data.search = hit // this will tell fx.js to do something
+      backToBox()
+    }
+    else {
+      searchResult.content = 'nothing found'
+      searchInput.readInput() // keep input so we can receive "cancel" event
+      screen.render()
+    }
   })
 
   searchInput.on('cancel', function () {
@@ -56,13 +67,7 @@ function search(options = {}) {
     box.height = '100%'
     searchInput.hide()
     searchResult.hide()
-    box.focus()
-
-    const line = getLine(boxLine)
-    program.cursorPos(boxLine, line.search(/\S/))
-    program.showCursor()
-
-    screen.render()
+    backToBox()
   })
 
   searchInput.key('C-u', function () {
