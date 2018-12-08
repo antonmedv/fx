@@ -8,13 +8,19 @@ const print = require('./print')
 const config = require('./config')
 
 module.exports = function start(filename, source) {
+  // Current rendered object on a screen.
   let json = source
+
+  // Contains map from row number to expand path.
+  // Example: {0: '', 1: '.foo', 2: '.foo[0]'}
   let index = new Map()
+
+  // Contains expanded paths. Example: ['', '.foo']
+  // Empty string represents root path.
   const expanded = new Set()
-  expanded.add('') // Root of JSON
+  expanded.add('')
 
   const ttyFd = fs.openSync('/dev/tty', 'r+')
-
   const program = blessed.program({
     input: tty.ReadStream(ttyFd),
     output: tty.WriteStream(ttyFd),
@@ -162,13 +168,33 @@ module.exports = function start(filename, source) {
     expanded.clear()
     expanded.add('')
     render()
+
+    // Make sure cursor stay on JSON object.
+    const [n] = getLine(program.y)
+    if (typeof n === 'undefined' || !index.has(n)) {
+      // No line under cursor
+      let rest = [...index.keys()]
+      if (rest.length > 0) {
+        const next = Math.max(...rest)
+        let y = box.getScreenNumber(next) - box.childBase
+        if (y <= 0) {
+          y = 0
+        }
+        const line = box.getScreenLine(y + box.childBase)
+        program.cursorPos(y, line.search(/\S/))
+      }
+    }
   })
 
   box.key(['up', 'k'], function () {
     program.showCursor()
+    let rest = [...index.keys()]
 
     const [n] = getLine(program.y)
-    const rest = [...index.keys()].filter(i => i < n)
+    if (typeof n !== 'undefined') {
+      rest = rest.filter(i => i < n)
+    }
+
     if (rest.length > 0) {
       const next = Math.max(...rest)
 
@@ -186,9 +212,13 @@ module.exports = function start(filename, source) {
 
   box.key(['down', 'j'], function () {
     program.showCursor()
+    let rest = [...index.keys()]
 
     const [n] = getLine(program.y)
-    const rest = [...index.keys()].filter(i => i > n)
+    if (typeof n !== 'undefined') {
+      rest = rest.filter(i => i > n)
+    }
+
     if (rest.length > 0) {
       const next = Math.min(...rest)
 
@@ -249,6 +279,9 @@ module.exports = function start(filename, source) {
     const dy = box.childBase + y
     const n = box.getNumber(dy)
     const line = box.getScreenLine(dy)
+    if (typeof line === 'undefined') {
+      return [n, '']
+    }
     return [n, line]
   }
 
