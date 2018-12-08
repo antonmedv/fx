@@ -34,9 +34,6 @@ function setup(options = {}) {
     program.cursorPos(boxLine, line.search(/\S/))
     program.showCursor()
     box.focus()
-
-    // all done
-    screen.render()
   }
 
   box.key('/', function () {

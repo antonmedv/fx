@@ -69,9 +69,12 @@ module.exports = function start(filename, source) {
   box.on('focus', function () {
     if (box.data.searchHit) {
       json = source
-      input.setValue(box.data.searchHit)
+      expanded.clear()
+      expanded.add('')
+      expanded.add(box.data.searchHit)
+      log('focus:', box.data.searchHit, JSON.stringify(Array.from(expanded)))
       box.data.searchHit = null
-      apply()
+      render()
     }
   })
 
