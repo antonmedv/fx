@@ -22,16 +22,24 @@ function setup(options = {}) {
   })
 
   let boxLine = -1
+  let hits = []
+  let hitIndex = 0
   function backToBox() {
+    // update our result, and tell box to re-render the current hitIndex
+    searchResult.content = `${hitIndex + 1} of ${hits.length} found`
+    box.data.searchHit = hits[hitIndex]
+
+    // put the cursor back
     const line = box.getScreenLine(box.childBase + boxLine)
     program.cursorPos(boxLine, line.search(/\S/))
     program.showCursor()
     box.focus()
+
+    // all done
     screen.render()
   }
 
   box.key('/', function () {
-    log('box.key /')
     boxLine = program.y
     box.height = '100%-1'
     searchInput.show()
@@ -39,17 +47,25 @@ function setup(options = {}) {
     screen.render()
   })
 
+  box.key('n', function () {
+    if (hitIndex + 1 > hits.length - 1) {
+      return
+    }
+    hitIndex++
+    backToBox()
+  })
+
   searchInput.on('submit', function () {
-    const hits = find(source, searchInput.content)
     box.height = '100%-2'
     searchResult.show()
+    hits = find(source, searchInput.content)
     if (hits.length) {
-      searchResult.content = 'found something'
-      box.data.search = hits // this will tell fx.js to do something
+      log('searchInput.on submit:', hits.length)
+      hitIndex = 0
       backToBox()
     }
     else {
-      searchResult.content = 'nothing found'
+      searchResult.content = 'no hits found'
       searchInput.readInput() // keep input so we can receive "cancel" event
       screen.render()
     }

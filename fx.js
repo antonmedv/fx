@@ -67,11 +67,11 @@ module.exports = function start(filename, source) {
   })
 
   box.on('focus', function () {
-    if (box.data.search) {
-      log('box focused with search result:', JSON.stringify(box.data.search))
-      box.data.search = null
-      // update the box UI based on what search found
-      screen.render() // tbd
+    if (box.data.searchHit) {
+      json = source
+      input.setValue(box.data.searchHit)
+      box.data.searchHit = null
+      apply()
     }
   })
 
