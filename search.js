@@ -23,16 +23,22 @@ function setup(options = {}) {
 
   let boxLine = -1
   let hits = []
+  let hitPath = ''
   let hitIndex = 0
   function backToBox() {
-    // update our result, and tell box to re-render the current hitIndex
-    searchResult.content = `${hitIndex + 1} of ${hits.length} found`
-    box.data.searchHit = hits[hitIndex]
-
-    // put the cursor back
-    const line = box.getScreenLine(box.childBase + boxLine)
-    program.cursorPos(boxLine, line.search(/\S/))
+    if (hits.length) {
+      // update our result, and tell box to re-render the current hitIndex
+      const hit = hits[hitIndex]
+      searchResult.content = `${hitIndex + 1} of ${hits.length} found: ${hit.path}`
+      box.data.searchHit = hit
+    }
+    else {
+      // put the cursor back
+      const line = box.getScreenLine(box.childBase + boxLine)
+      program.cursorPos(boxLine, line.search(/\S/))
+    }
     program.showCursor()
+    screen.render()
     box.focus()
   }
 
@@ -94,7 +100,7 @@ function find(source, query) {
   const regex = new RegExp(m ? m[1] : query, m ? m[2] : '')
   let hits = []
 
-  walk(source, function(path, v) {
+  walk(source, function(path, v, paths) {
     if (typeof v === 'object' && v.constructor === Object) {
       // walk already passes us `path` for:
       //   - scalars
@@ -103,12 +109,18 @@ function find(source, query) {
       // ...but not object KEYS, which we have to check ourselves
       for (let key in Object.keys(v)) {
         if (regex.test(key)) {
-          hits.push(path + '.' + key)
+          hits.push({
+            path: path,
+            route: paths.slice(),
+          })
         }
       }
     }
     else if (typeof v === 'string' && regex.test(v)) {
-      hits.push(path)
+      hits.push({
+        path: path,
+        route: paths.slice(),
+      })
     }
   })
 

@@ -71,8 +71,9 @@ module.exports = function start(filename, source) {
       json = source
       expanded.clear()
       expanded.add('')
-      expanded.add(box.data.searchHit)
-      log('focus:', box.data.searchHit, JSON.stringify(Array.from(expanded)))
+      box.data.searchHit.route.forEach(h => expanded.add(h))
+      log('box.on focus:', JSON.stringify(Array.from(expanded)))
+      let highlight = box.data.searchHit.path
       box.data.searchHit = null
       render()
     }
