@@ -85,7 +85,7 @@ module.exports = function start(filename, source) {
       // Autocomplete selected
       let code = input.getValue()
       let replace = autocomplete.getSelected()
-      if (/^[a-z]\w*$/.test(replace)) {
+      if (/^[a-z]\w*$/i.test(replace)) {
         replace = '.' + replace
       } else {
         replace = `["${replace}"]`
