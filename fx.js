@@ -22,6 +22,8 @@ module.exports = function start(filename, source) {
   const expanded = new Set()
   expanded.add('')
 
+  let pathIndex = new Map()
+
   const ttyFd = fs.openSync('/dev/tty', 'r+')
   const program = blessed.program({
     input: tty.ReadStream(ttyFd),
@@ -75,7 +77,7 @@ module.exports = function start(filename, source) {
       log('box.on focus:', JSON.stringify(Array.from(expanded)))
       let highlight = box.data.searchHit.path
       box.data.searchHit = null
-      render()
+      render(highlight)
     }
   })
 
@@ -210,6 +212,7 @@ module.exports = function start(filename, source) {
     if (typeof n !== 'undefined') {
       rest = rest.filter(i => i < n)
     }
+    log('up:', program.y, n)
 
     if (rest.length > 0) {
       const next = Math.max(...rest)
@@ -234,6 +237,7 @@ module.exports = function start(filename, source) {
     if (typeof n !== 'undefined') {
       rest = rest.filter(i => i > n)
     }
+    log('down:', program.y, n)
 
     if (rest.length > 0) {
       const next = Math.min(...rest)
@@ -381,15 +385,25 @@ module.exports = function start(filename, source) {
     render()
   }
 
-  function render() {
+  function render(path = '') {
     let content
-    [content, index] = print(json, {expanded})
+    [content, index, pathIndex] = print(json, {expanded})
 
     if (typeof content === 'undefined') {
       content = 'undefined'
     }
 
     box.setContent(content)
+
+    if (path)  {
+      const printedLine = pathIndex.get(path)
+      if (printedLine > box.childBase + box.height) {
+        box.scrollTo(printedLine - 1)
+      }
+      const [n, line] = getLine(pathIndex.get(path))
+      program.cursorPos(printedLine - box.childBase, line.search(/\S/))
+    }
+
     screen.render()
   }
 
