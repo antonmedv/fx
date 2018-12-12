@@ -107,14 +107,14 @@ Create _.fxrc_ file in `$HOME` directory, and require any packages or define glo
 For example, access all lodash methods without `_` prefix. Put in your `.fxrc` file:
 
 ```js
-Object.assign(global, require('lodash'))
+Object.assign(global, require('lodash/fp'))
 ```
 
 And now you will be able to call all lodash methods. For example, see who's been committing to react recently:
 
 ```
 curl 'https://api.github.com/repos/facebook/react/commits?per_page=100' \
-| fx 'mapValues(groupBy(this, "commit.committer.name"), size)'
+| fx 'groupBy("commit.author.name")' 'mapValues(size)' toPairs 'sortBy(1)' reverse 'take(10)' fromPairs
 ```
 
 > To be able require global modules make sure you have correct `NODE_PATH` env variable.
