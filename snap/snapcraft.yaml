@@ -1,7 +1,7 @@
 name: fx
 base: core18 # the base snap is the execution environment for this snap
 version: git
-summary: Command-line tool and terminal JSON viewer 🔥
+summary: Command-line tool and terminal JSON viewer
 description: |
   Command-line JSON processing tool
   Features
