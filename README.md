@@ -62,7 +62,7 @@ $ curl ... | fx 'json => json.message' 'json => json.filter(x => x.startsWith("a
 
 Access all lodash (or ramda, etc) methods by using [.fxrc](https://github.com/antonmedv/fx/blob/master/docs.md#using-fxrc) file.
 ```bash
-$ curl ... | fx '_.mapValues(_.groupBy(this, "commit.committer.name"), _.size)'
+$ curl ... | fx '_.groupBy("commit.committer.name")' '_.mapValues(_.size)'
 ```
 
 Update JSON using spread operator.
