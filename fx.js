@@ -402,7 +402,7 @@ module.exports = function start(filename, source) {
         box.scrollTo(printedLine - 1)
       }
       const [n, line] = getLine(pathIndex.get(path))
-      program.cursorPos(printedLine - box.childBase, line.search(/\S/))
+      program.cursorPos(printedLine - box.childBase, line ? line.search(/\S/) : 0)
     }
 
     screen.render()
