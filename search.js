@@ -107,7 +107,7 @@ function find(source, query) {
       //   - array elements
       //   - object VALUES
       // ...but not object KEYS, which we have to check ourselves
-      for (let key in Object.keys(v)) {
+      for (let [key, value] of Object.entries(v)) {
         if (regex.test(key)) {
           hits.push({
             path: path,

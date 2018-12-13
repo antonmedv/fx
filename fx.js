@@ -398,6 +398,7 @@ module.exports = function start(filename, source) {
     if (path)  {
       const printedLine = pathIndex.get(path)
       if (printedLine > box.childBase + box.height) {
+        box.resetScroll()
         box.scrollTo(printedLine - 1)
       }
       const [n, line] = getLine(pathIndex.get(path))
