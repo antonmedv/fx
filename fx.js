@@ -395,14 +395,23 @@ module.exports = function start(filename, source) {
 
     box.setContent(content)
 
-    if (path)  {
-      const printedLine = pathIndex.get(path)
-      if (printedLine > box.childBase + box.height) {
-        box.resetScroll()
-        box.scrollTo(printedLine - 1)
+    if (path) {
+      const lines = box.getLines()
+      const screenLines = box.getScreenLines()
+      const showLine = pathIndex.get(path)
+      let screenLine = showLine
+      while(screenLine < screenLines.length) {
+        log('lines:', lines[screenLine], screenLines[screenLine])
+        if (lines[showLine] === screenLines[screenLine])
+          break;
+        screenLine++
       }
-      const [n, line] = getLine(pathIndex.get(path))
-      program.cursorPos(printedLine - box.childBase, line ? line.search(/\S/) : 0)
+
+      log('render:', box.childBase, lines.length, screenLines.length, showLine, screenLine)
+      fs.writeFileSync('/tmp/bar.txt', content)
+      box.scrollTo(screenLine - 1)
+      const line = screenLines[screenLine]
+      program.cursorPos(screenLine - box.childBase, line ? line.search(/\S/) : 0)
     }
 
     screen.render()
