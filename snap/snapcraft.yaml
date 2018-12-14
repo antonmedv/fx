@@ -15,7 +15,6 @@ confinement: strict
 parts:
   fx:
     plugin: nodejs
-    nodejs-version: "8.14.0"
     source: .
 
 apps:
