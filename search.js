@@ -36,7 +36,7 @@ function setup(options = {}) {
     else {
       // put the cursor back
       const line = box.getScreenLine(box.childBase + boxLine)
-      program.cursorPos(boxLine, line.search(/\S/))
+      program.cursorPos(boxLine, line ? line.search(/\S/) : 0)
     }
     program.showCursor()
     screen.render()
@@ -93,12 +93,15 @@ function setup(options = {}) {
     }
   })
 
-  searchInput.on('cancel', function () {
+  function hide() {
     box.height = '100%'
     searchPrompt.hide()
     searchInput.hide()
     backToBox()
-  })
+  }
+
+  searchInput.on('cancel', hide)
+  box.on('hidesearch', hide)
 
   searchInput.key('C-u', function () {
     searchInput.setValue('')

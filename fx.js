@@ -163,6 +163,7 @@ module.exports = function start(filename, source) {
 
   box.key('.', function () {
     box.height = '100%-1'
+    box.emit('hidesearch')
     input.show()
     if (input.getValue() === '') {
       input.setValue('.')
