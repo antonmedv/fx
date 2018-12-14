@@ -22,8 +22,6 @@ module.exports = function start(filename, source) {
   const expanded = new Set()
   expanded.add('')
 
-  let pathIndex = new Map()
-
   const ttyFd = fs.openSync('/dev/tty', 'r+')
   const program = blessed.program({
     input: tty.ReadStream(ttyFd),
@@ -387,7 +385,7 @@ module.exports = function start(filename, source) {
 
   function render(path = '') {
     let content
-    [content, index, pathIndex] = print(json, {expanded})
+    [content, index] = print(json, {expanded})
 
     if (typeof content === 'undefined') {
       content = 'undefined'
@@ -398,7 +396,7 @@ module.exports = function start(filename, source) {
     if (path) {
       const lines = box.getLines()
       const screenLines = box.getScreenLines()
-      const showLine = pathIndex.get(path)
+      const [showLine] = [...index].find(pair => pair[1] === path)
       let screenLine = showLine
       while(screenLine < screenLines.length) {
         log('lines:', lines[screenLine], screenLines[screenLine])

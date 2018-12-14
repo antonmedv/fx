@@ -5,12 +5,10 @@ const config = require('./config')
 function print(input, options = {}) {
   const {expanded} = options
   const index = new Map()
-  const pathIndex = new Map()
   let row = 0
 
   function doPrint(v, path = '') {
     index.set(row, path)
-    pathIndex.set(path, row)
 
     const eol = () => {
       row++
@@ -87,7 +85,7 @@ function print(input, options = {}) {
     return JSON.stringify(v, null, config.space)
   }
 
-  return [doPrint(input), index, pathIndex]
+  return [doPrint(input), index]
 }
 
 module.exports = print
