@@ -166,15 +166,26 @@ Next commands available in interactive mode:
 | `up`/`down` or `k/j`          | Move cursor up/down     |
 | `left`/`right` or `h/l`       | Expand/Collapse         |
 | `.`                           | Edit filter             |
+| `/`                           | Search                  |
+| `n`/`p`                       | Next/previous result    |
 
-These commands are available when editing the filter:
+These commands are available when editing the filter, or when inputting a
+search query:
 
-|             Key               |         Command         |
-|-------------------------------|-------------------------|
-| `Enter`                       | Apply filter            |
-| `Ctrl`+`u`                    | Clear filter            |
-| `Ctrl`+`w`                    | Delete last part        |
-| `up`/`down`                   | Select autocomplete     |
+|     Key      |        Command          | Filter/Search |
+|--------------|-------------------------|---------------|
+| `Enter`      | Apply filter/Do search  | Both          |
+| `Ctrl`+`u`   | Clear filter/query      | Both          |
+| `Ctrl`+`w`   | Delete last part        | Filter only   |
+| `up`/`down`  | Select autocomplete     | Filter only   |
+
+The search query can either be plaintext, or if the query looks like a regex
+(quoted with slashes, with optional regex flags after the trailing slash), it
+will be used as a regex. The search is made against:
+
+- strings
+- array elements
+- hash keys and values
 
 ### Selecting text
 
