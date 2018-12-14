@@ -124,10 +124,17 @@ function find(source, query) {
     return []
   }
 
+  let regex
   const m = query.match(/^\/(.*)\/([gimuy]*)$/)
-  const regex = new RegExp(m ? m[1] : query, m ? m[2] : '')
-  let hits = []
+  if (m) {
+    regex = new RegExp(m[1], m[2])
+  }
+  else {
+    // https://stackoverflow.com/a/3561711/2926055
+    regex = new RegExp(query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'))
+  }
 
+  const hits = []
   walk(source, function(path, v, paths) {
     if (typeof v === 'object' && v.constructor === Object) {
       // walk already passes us `path` for:
