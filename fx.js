@@ -393,14 +393,26 @@ module.exports = function start(filename, source) {
     box.setContent(content)
 
     if (path) {
+      // todo: make this more accurate: because of the difference in line/row
+      // indexing between `content` and `box.getScreenLines()`, we cannot
+      // exactly address the lines in `index`. So, we have to rely on the
+      // imperfect method of relying on the printed-and-indented json lines
+      // being unique enough that we can rely on this search method. The worst
+      // that happens is the cursor does not land on the right line when
+      // cycling through search results, so it's not the worst hack ever.
       const lines = box.getLines()
       const screenLines = box.getScreenLines()
       const [showLine] = [...index].find(pair => pair[1] === path)
       let screenLine = showLine
-      while(screenLine < screenLines.length) {
-        log('lines:', lines[screenLine], screenLines[screenLine])
-        if (lines[showLine] === screenLines[screenLine])
+      log('looking for:', lines[showLine])
+      while(lines.length !== screenLines.length && screenLine < screenLines.length) {
+        log('comparing:  ', screenLines[screenLine])
+        if (lines[showLine] === screenLines[screenLine]) {
           break;
+        }
+        if (lines[showLine].startsWith(screenLines[screenLine])) {
+          break;
+        }
         screenLine++
       }
 
