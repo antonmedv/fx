@@ -400,16 +400,23 @@ module.exports = function start(filename, source) {
       // cycling through search results, so it's not the worst hack ever.
       const lines = box.getLines()
       const screenLines = box.getScreenLines()
-      const [showLine] = [...index].find(pair => pair[1] === path)
-      let screenLine = showLine
-      while(lines.length !== screenLines.length && screenLine < screenLines.length) {
-        if (lines[showLine] === screenLines[screenLine]) {
-          break;
+      const match = [...index].find(pair => pair[1] === path)
+      let screenLine
+      if (match) {
+        const showLine = screenLine = match[0]
+        while(lines.length !== screenLines.length && screenLine < screenLines.length) {
+          if (lines[showLine] === screenLines[screenLine]) {
+            break;
+          }
+          if (lines[showLine].startsWith(screenLines[screenLine])) {
+            break;
+          }
+          screenLine++
         }
-        if (lines[showLine].startsWith(screenLines[screenLine])) {
-          break;
-        }
-        screenLine++
+      }
+      else {
+        // some internal error, just go to first line
+        screenLine = 1
       }
 
       box.scrollTo(screenLine - 1)
