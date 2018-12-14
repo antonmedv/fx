@@ -13,7 +13,8 @@
     "fx.js",
     "index.js",
     "print.js",
-    "reduce.js"
+    "helpers.js",
+    "search.js"
   ],
   "scripts": {
     "test": "ava",

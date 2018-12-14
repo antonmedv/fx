@@ -405,7 +405,6 @@ module.exports = function start(filename, source) {
       }
 
       log('render:', box.childBase, lines.length, screenLines.length, showLine, screenLine)
-      fs.writeFileSync('/tmp/bar.txt', content)
       box.scrollTo(screenLine - 1)
       const line = screenLines[screenLine]
       program.cursorPos(screenLine - box.childBase, line ? line.search(/\S/) : 0)
