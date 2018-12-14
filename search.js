@@ -10,14 +10,14 @@ function setup(options = {}) {
     bottom: 0,
     left: 0,
     height: 1,
-    width: 7,
-    content: 'regex:',
+    width: 8,
+    content: 'search:',
   })
 
   const searchInput = blessed.textbox({
     parent: screen,
     bottom: 0,
-    left: 7,
+    left: 8,
     height: 1,
     width: '100%',
   })
@@ -32,7 +32,6 @@ function setup(options = {}) {
 
   let boxLine = -1
   let hits = []
-  let hitPath = ''
   let hitIndex = 0
   function backToBox() {
     if (hits.length) {
@@ -53,7 +52,11 @@ function setup(options = {}) {
 
   box.key('/', function () {
     boxLine = program.y
-    box.height = '100%-1'
+    box.height = '100%-2'
+    if (!searchResult.getContent()) {
+      searchResult.setContent('Enter a string or a /regex/')
+    }
+    searchResult.show()
     searchPrompt.show()
     searchInput.show()
     searchInput.readInput()
@@ -65,6 +68,15 @@ function setup(options = {}) {
       return
     }
     hitIndex++
+    backToBox()
+  })
+
+  box.key('p', function () {
+    // todo: "N" would be prefereable, but `box.key('N', ...)` does not hook into "N" keypresses
+    if (hitIndex - 1 < 0) {
+      return
+    }
+    hitIndex--
     backToBox()
   })
 
@@ -98,9 +110,13 @@ function setup(options = {}) {
     screen.render()
   })
 
+  searchInput.key('C-c', function () {
+    searchInput.emit('cancel')
+  })
+
+  searchResult.hide()
   searchPrompt.hide()
   searchInput.hide()
-  searchResult.hide()
 }
 
 function find(source, query) {
