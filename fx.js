@@ -67,7 +67,6 @@ module.exports = function start(filename, source) {
 
   box.on('focus', function () {
     if (box.data.searchHit) {
-      json = source
       expanded.clear()
       expanded.add('')
       box.data.searchHit.route.forEach(h => expanded.add(h))
@@ -314,6 +313,7 @@ module.exports = function start(filename, source) {
       input.hide()
       json = source
     }
+    box.emit('updatesearchsource', json)
     box.focus()
     program.cursorPos(0, 0)
     render()
@@ -326,6 +326,7 @@ module.exports = function start(filename, source) {
     let json
     try {
       json = reduce(source, code)
+      // NOTE: do not emit "updatesearchsource", this `json` is LOCAL scope
     } catch (e) {
     }
 
@@ -377,6 +378,7 @@ module.exports = function start(filename, source) {
     if (code === '') {
       json = source
     }
+    box.emit('updatesearchsource', json)
     render()
   }
 

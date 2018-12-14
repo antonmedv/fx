@@ -3,7 +3,8 @@ const fs = require('fs')
 const { walk } = require('./helpers')
 
 function setup(options = {}) {
-  const { blessed, program, screen, box, source } = options
+  const { blessed, program, screen, box } = options
+  let { source } = options
 
   const searchPrompt = blessed.text({
     parent: screen,
@@ -99,7 +100,6 @@ function setup(options = {}) {
     searchInput.hide()
     backToBox()
   }
-
   searchInput.on('cancel', hide)
   box.on('hidesearch', hide)
 
@@ -110,6 +110,10 @@ function setup(options = {}) {
 
   searchInput.key('C-c', function () {
     searchInput.emit('cancel')
+  })
+
+  box.on('updatesearchsource', function(json) {
+    source = json
   })
 
   searchPrompt.hide()
