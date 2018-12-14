@@ -5,6 +5,7 @@ const blessed = require('@medv/blessed')
 const stringWidth = require('string-width')
 const reduce = require('./reduce')
 const print = require('./print')
+const find = require('./find')
 const config = require('./config')
 
 module.exports = function start(filename, source) {
@@ -19,6 +20,10 @@ module.exports = function start(filename, source) {
   // Empty string represents root path.
   const expanded = new Set()
   expanded.add('')
+
+  // Current search regexp and generator.
+  let highlight = null
+  let findGen = null
 
   const ttyFd = fs.openSync('/dev/tty', 'r+')
   const program = blessed.program({
@@ -55,6 +60,14 @@ module.exports = function start(filename, source) {
     width: '100%',
   })
 
+  const search = blessed.textbox({
+    parent: screen,
+    bottom: 0,
+    left: 0,
+    height: 1,
+    width: '100%',
+  })
+
   const autocomplete = blessed.list({
     parent: screen,
     width: 6,
@@ -67,6 +80,7 @@ module.exports = function start(filename, source) {
   screen.title = filename
   box.focus()
   input.hide()
+  search.hide()
   autocomplete.hide()
 
   screen.key(['escape', 'q', 'C-c'], function () {
@@ -147,6 +161,48 @@ module.exports = function start(filename, source) {
     render()
   })
 
+  search.on('submit', function (pattern) {
+    let regex
+    const m = pattern.match(/^\/(.*)\/?([gimuy]*)$/)
+    if (m) {
+      try {
+        regex = new RegExp(m[1], m[2])
+      } catch (e) {
+        // Wrong regexp.
+      }
+    }
+    highlight = regex
+
+    if (highlight) {
+      findGen = find(json, highlight)
+      findNext()
+    } else {
+      findGen = null
+    }
+
+    search.hide()
+    search.setValue('')
+
+    box.height = '100%'
+    box.focus()
+
+    program.cursorPos(0, 0)
+    render()
+  })
+
+  search.on('cancel', function () {
+    highlight = null
+
+    search.hide()
+    search.setValue('')
+
+    box.height = '100%'
+    box.focus()
+
+    program.cursorPos(0, 0)
+    render()
+  })
+
   box.key('.', function () {
     box.height = '100%-1'
     input.show()
@@ -155,7 +211,15 @@ module.exports = function start(filename, source) {
       complete('.')
     }
     input.readInput()
-    render()
+    screen.render()
+  })
+
+  box.key('/', function () {
+    box.height = '100%-1'
+    search.show()
+    search.setValue('/')
+    search.readInput()
+    screen.render()
   })
 
   box.key('e', function () {
@@ -184,6 +248,10 @@ module.exports = function start(filename, source) {
         program.cursorPos(y, line.search(/\S/))
       }
     }
+  })
+
+  box.key('n', function () {
+    findNext()
   })
 
   box.key(['up', 'k'], function () {
@@ -362,12 +430,37 @@ module.exports = function start(filename, source) {
     if (code === '') {
       json = source
     }
+
+    findGen = find(json, highlight)
     render()
+  }
+
+  function findNext() {
+    if (!findGen) {
+      return
+    }
+    const {value: path, done} = findGen.next()
+    if (!done) {
+      let value = ''
+      for (let p of path) {
+        expanded.add(value += p)
+      }
+console.error(value)
+      render()
+
+      for (let [k, v] of index) {
+        if (v === value) {
+          const y = box.getScreenNumber(k)
+          box.scrollTo(y)
+          screen.render()
+        }
+      }
+    }
   }
 
   function render() {
     let content
-    [content, index] = print(json, {expanded})
+    [content, index] = print(json, {expanded, highlight})
 
     if (typeof content === 'undefined') {
       content = 'undefined'
