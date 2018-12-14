@@ -12,7 +12,7 @@ try {
   }
 }
 const print = require('./print')
-const reduce = require('./reduce')
+const {reduce} = require('./helpers')
 
 const usage = `
   Usage
