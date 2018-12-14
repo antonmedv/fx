@@ -30,18 +30,10 @@ function walk(v, cb, path = '', paths = []) {
 }
 
 function reduce(json, code) {
-  if (/^\w+\s*=>/.test(code)) {
-    const fx = eval(code)
-    return fx(json)
-  }
-
-  if (/yield/.test(code)) {
-    const fx = eval(`function fn() {
-      const gen = (function*(){
-        ${code.replace(/\\\n/g, '')}
-      }).call(this)
-      return [...gen]
-      }; fn`)
+  if (/^\./.test(code)) {
+    const fx = eval(`function fn() { 
+      return ${code === '.' ? 'this' : 'this' + code} 
+    }; fn`)
     return fx.call(json)
   }
 
@@ -49,17 +41,25 @@ function reduce(json, code) {
     return Object.keys(json)
   }
 
-  if (/^\./.test(code)) {
+  if (/yield\*?\s/.test(code)) {
     const fx = eval(`function fn() {
-      return ${code === '.' ? 'this' : 'this' + code}
-    }; fn`)
+      const gen = (function*(){ 
+        ${code.replace(/\\\n/g, '')} 
+      }).call(this)
+      return [...gen]
+      }; fn`)
     return fx.call(json)
   }
 
-  const fx = eval(`function fn() {
-    return ${code}
+  const fx = eval(`function fn() { 
+    return ${code} 
   }; fn`)
-  return fx.call(json)
+
+  const fn = fx.call(json)
+  if (typeof fn === 'function') {
+    return fn(json)
+  }
+  return fn
 }
 
 function log(...args) {
