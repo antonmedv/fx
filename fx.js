@@ -24,6 +24,7 @@ module.exports = function start(filename, source) {
   // Current search regexp and generator.
   let highlight = null
   let findGen = null
+  let currentPath = null
 
   const ttyFd = fs.openSync('/dev/tty', 'r+')
   const program = blessed.program({
@@ -178,6 +179,7 @@ module.exports = function start(filename, source) {
       findNext()
     } else {
       findGen = null
+      currentPath = null
     }
 
     search.hide()
@@ -192,6 +194,7 @@ module.exports = function start(filename, source) {
 
   search.on('cancel', function () {
     highlight = null
+    currentPath = null
 
     search.hide()
     search.setValue('')
@@ -441,14 +444,14 @@ module.exports = function start(filename, source) {
     }
     const {value: path, done} = findGen.next()
     if (!done) {
-      let value = ''
+      currentPath = ''
       for (let p of path) {
-        expanded.add(value += p)
+        expanded.add(currentPath += p)
       }
       render()
 
       for (let [k, v] of index) {
-        if (v === value) {
+        if (v === currentPath) {
           const y = box.getScreenNumber(k)
           box.scrollTo(y)
           screen.render()
@@ -459,7 +462,7 @@ module.exports = function start(filename, source) {
 
   function render() {
     let content
-    [content, index] = print(json, {expanded, highlight})
+    [content, index] = print(json, {expanded, highlight, currentPath})
 
     if (typeof content === 'undefined') {
       content = 'undefined'
