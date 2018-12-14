@@ -1,0 +1,25 @@
+name: fx
+base: core18 # the base snap is the execution environment for this snap
+version: git
+summary: Command-line tool and terminal JSON viewer
+description: |
+  Command-line JSON processing tool
+  Features
+    * Formatting and highlighting
+    * Interactive mode
+    * Themes support
+
+grade: stable
+confinement: strict
+
+parts:
+  fx:
+    plugin: nodejs
+    nodejs-version: "8.14.0"
+    source: .
+
+apps:
+  fx:
+    command: fx
+    plugs:
+      - network
