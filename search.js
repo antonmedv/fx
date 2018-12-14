@@ -109,10 +109,10 @@ function find(source, query) {
       // ...but not object KEYS, which we have to check ourselves
       for (let [key, value] of Object.entries(v)) {
         if (regex.test(key)) {
-          hits.push({
-            path: path,
-            route: paths.slice(),
-          })
+          path += '.' + key
+          const route = paths.slice()
+          route.push(path)
+          hits.push({ path, route })
         }
       }
     }
