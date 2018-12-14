@@ -67,12 +67,12 @@ module.exports = function start(filename, source) {
 
   box.on('focus', function () {
     if (box.data.searchHit) {
+      const { hit, highlight } = box.data.searchHit
+      box.data.searchHit = null
       expanded.clear()
       expanded.add('')
-      box.data.searchHit.route.forEach(h => expanded.add(h))
-      let highlight = box.data.searchHit.path
-      box.data.searchHit = null
-      render(highlight)
+      hit.route.forEach(h => expanded.add(h))
+      render({path:hit.path, highlight})
     }
   })
 
@@ -80,7 +80,7 @@ module.exports = function start(filename, source) {
   box.focus()
   input.hide()
   autocomplete.hide()
-  search.setup({blessed, program, screen, box, source})
+  search({blessed, program, screen, box, source})
 
   screen.key(['escape', 'q', 'C-c'], function () {
     program.disableMouse()                // If exit program immediately, stdin may still receive
@@ -382,9 +382,13 @@ module.exports = function start(filename, source) {
     render()
   }
 
-  function render(path = '') {
+  // `searchInfo` is passed to us via:
+  //   - searchInput.on("submit")
+  //   - box.on("focus")
+  function render(searchInfo = '') {
+    const { path, highlight } = searchInfo
     let content
-    [content, index] = print(json, {expanded})
+    [content, index] = print(json, {expanded, currentPath:path, highlight})
 
     if (typeof content === 'undefined') {
       content = 'undefined'
