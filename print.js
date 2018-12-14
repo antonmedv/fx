@@ -3,9 +3,21 @@ const indent = require('indent-string')
 const config = require('./config')
 
 function print(input, options = {}) {
-  const {expanded} = options
+  const {expanded, highlight, currentPath} = options
   const index = new Map()
   let row = 0
+
+  function format(text, style, path) {
+    if (!highlight) {
+      return style(text)
+    }
+    const highlightStyle = (currentPath === path) ? config.highlightCurrent : config.highlight
+    return text
+      .replace(highlight, s => '<fx>' + s + '<fx>')
+      .split(/<fx>/g)
+      .map((s, i) => i % 2 !== 0 ? highlightStyle(s) : style(s))
+      .join('')
+  }
 
   function doPrint(v, path = '') {
     index.set(row, path)
@@ -20,20 +32,20 @@ function print(input, options = {}) {
     }
 
     if (v === null) {
-      return config.null(v)
+      return format('null', config.null, path)
     }
 
     if (typeof v === 'number' && Number.isFinite(v)) {
-      return config.number(v)
+      return format(v.toString(), config.number, path)
     }
 
     if (typeof v === 'boolean') {
-      return config.boolean(v)
+      return format(v.toString(), config.boolean, path)
 
     }
 
     if (typeof v === 'string') {
-      return config.string(JSON.stringify(v))
+      return format(JSON.stringify(v), config.string, path)
     }
 
     if (Array.isArray(v)) {
@@ -71,7 +83,7 @@ function print(input, options = {}) {
           output += eol()
           let i = 0
           for (let [key, value] of entries) {
-            const part = config.key(JSON.stringify(key)) + config.colon(':') + ' ' + doPrint(value, path + '.' + key)
+            const part = format(JSON.stringify(key), config.key, path + '.' + key) + config.colon(':') + ' ' + doPrint(value, path + '.' + key)
             output += indent(part, config.space)
             output += i++ < len - 1 ? config.comma(',') : ''
             output += eol()
