@@ -5,10 +5,19 @@ const { walk, log } = require('./helpers')
 function setup(options = {}) {
   const { blessed, program, screen, box, source } = options
 
-  const searchInput = blessed.textbox({
+  const searchPrompt = blessed.text({
     parent: screen,
     bottom: 0,
     left: 0,
+    height: 1,
+    width: 7,
+    content: 'regex:',
+  })
+
+  const searchInput = blessed.textbox({
+    parent: screen,
+    bottom: 0,
+    left: 7,
     height: 1,
     width: '100%',
   })
@@ -45,6 +54,7 @@ function setup(options = {}) {
   box.key('/', function () {
     boxLine = program.y
     box.height = '100%-1'
+    searchPrompt.show()
     searchInput.show()
     searchInput.readInput()
     screen.render()
@@ -77,6 +87,7 @@ function setup(options = {}) {
   searchInput.on('cancel', function () {
     log('searchInput.on cancel')
     box.height = '100%'
+    searchPrompt.hide()
     searchInput.hide()
     searchResult.hide()
     backToBox()
@@ -87,6 +98,7 @@ function setup(options = {}) {
     screen.render()
   })
 
+  searchPrompt.hide()
   searchInput.hide()
   searchResult.hide()
 }
