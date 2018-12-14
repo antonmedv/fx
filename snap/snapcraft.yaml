@@ -9,6 +9,12 @@ description: |
     * Interactive mode
     * Themes support
 
+architectures:
+  - build-on: i386
+  - build-on: amd64
+  - build-on: armhf
+  - build-on: arm64
+
 grade: stable
 confinement: strict
 
