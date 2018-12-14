@@ -62,10 +62,4 @@ function reduce(json, code) {
   return fn
 }
 
-function log(...args) {
-  if (config.log) {
-    fs.appendFileSync(config.log, args.join(' ') + '\n')
-  }
-}
-
-module.exports = { walk, reduce, log }
+module.exports = { walk, reduce }

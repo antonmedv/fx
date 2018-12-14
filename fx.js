@@ -3,7 +3,7 @@ const fs = require('fs')
 const tty = require('tty')
 const blessed = require('@medv/blessed')
 const stringWidth = require('string-width')
-const { walk, reduce, log } = require('./helpers')
+const { walk, reduce } = require('./helpers')
 const print = require('./print')
 const search = require('./search')
 const config = require('./config')
@@ -71,7 +71,6 @@ module.exports = function start(filename, source) {
       expanded.clear()
       expanded.add('')
       box.data.searchHit.route.forEach(h => expanded.add(h))
-      log('box.on focus:', JSON.stringify(Array.from(expanded)))
       let highlight = box.data.searchHit.path
       box.data.searchHit = null
       render(highlight)
@@ -209,7 +208,6 @@ module.exports = function start(filename, source) {
     if (typeof n !== 'undefined') {
       rest = rest.filter(i => i < n)
     }
-    log('up:', program.y, n)
 
     if (rest.length > 0) {
       const next = Math.max(...rest)
@@ -234,7 +232,6 @@ module.exports = function start(filename, source) {
     if (typeof n !== 'undefined') {
       rest = rest.filter(i => i > n)
     }
-    log('down:', program.y, n)
 
     if (rest.length > 0) {
       const next = Math.min(...rest)
@@ -404,9 +401,7 @@ module.exports = function start(filename, source) {
       const screenLines = box.getScreenLines()
       const [showLine] = [...index].find(pair => pair[1] === path)
       let screenLine = showLine
-      log('looking for:', lines[showLine])
       while(lines.length !== screenLines.length && screenLine < screenLines.length) {
-        log('comparing:  ', screenLines[screenLine])
         if (lines[showLine] === screenLines[screenLine]) {
           break;
         }
@@ -416,7 +411,6 @@ module.exports = function start(filename, source) {
         screenLine++
       }
 
-      log('render:', box.childBase, lines.length, screenLines.length, showLine, screenLine)
       box.scrollTo(screenLine - 1)
       const line = screenLines[screenLine]
       program.cursorPos(screenLine - box.childBase, line ? line.search(/\S/) : 0)

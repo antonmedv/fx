@@ -1,6 +1,6 @@
 'use strict'
 const fs = require('fs')
-const { walk, log } = require('./helpers')
+const { walk } = require('./helpers')
 
 function setup(options = {}) {
   const { blessed, program, screen, box, source } = options
@@ -85,7 +85,6 @@ function setup(options = {}) {
     searchResult.show()
     hits = find(source, searchInput.content)
     if (hits.length) {
-      log('searchInput.on submit:', hits.length)
       hitIndex = 0
       backToBox()
     }
@@ -97,7 +96,6 @@ function setup(options = {}) {
   })
 
   searchInput.on('cancel', function () {
-    log('searchInput.on cancel')
     box.height = '100%'
     searchPrompt.hide()
     searchInput.hide()
