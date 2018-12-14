@@ -6,9 +6,8 @@ description: |
   Command-line JSON processing tool
   Features
     * Formatting and highlighting
-    * Standalone binary
-    * Interactive mode tada
-    * Themes support art
+    * Interactive mode
+    * Themes support
 
 grade: stable
 confinement: strict
