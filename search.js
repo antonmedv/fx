@@ -22,22 +22,15 @@ function setup(options = {}) {
     width: '100%',
   })
 
-  const searchResult = blessed.text({
-    parent: screen,
-    bottom: 1,
-    left: 0,
-    height: 1,
-    width: '100%',
-  })
-
   let boxLine = -1
   let hits = []
   let hitIndex = 0
+  let query = ''
   function backToBox() {
     if (hits.length) {
       // update our result, and tell box to re-render the current hitIndex
       const hit = hits[hitIndex]
-      searchResult.content = `${hitIndex + 1} of ${hits.length} found: ${hit.path}`
+      searchInput.setContent(`${hitIndex + 1} of ${hits.length} found: ${hit.path}`)
       box.data.searchHit = hit
     }
     else {
@@ -52,11 +45,10 @@ function setup(options = {}) {
 
   box.key('/', function () {
     boxLine = program.y
-    box.height = '100%-2'
-    if (!searchResult.getContent()) {
-      searchResult.setContent('Enter a string or a /regex/')
+    if (query) {
+      searchInput.setContent(query)
     }
-    searchResult.show()
+    box.height = '100%-1'
     searchPrompt.show()
     searchInput.show()
     searchInput.readInput()
@@ -81,17 +73,23 @@ function setup(options = {}) {
   })
 
   searchInput.on('submit', function () {
-    box.height = '100%-2'
-    searchResult.show()
-    hits = find(source, searchInput.content)
-    if (hits.length) {
-      hitIndex = 0
+    box.height = '100%-1'
+    if (query === searchInput.content) {
+      // no changes
       backToBox()
     }
     else {
-      searchResult.content = 'no hits found'
-      searchInput.readInput() // keep input so we can receive "cancel" event
-      screen.render()
+      // fresh search
+      query = searchInput.content
+      hits = find(source, searchInput.content)
+      if (hits.length) {
+        hitIndex = 0
+        backToBox()
+      }
+      else {
+        searchInput.setContent('no hits found')
+        backToBox()
+      }
     }
   })
 
@@ -99,7 +97,6 @@ function setup(options = {}) {
     box.height = '100%'
     searchPrompt.hide()
     searchInput.hide()
-    searchResult.hide()
     backToBox()
   })
 
@@ -112,7 +109,6 @@ function setup(options = {}) {
     searchInput.emit('cancel')
   })
 
-  searchResult.hide()
   searchPrompt.hide()
   searchInput.hide()
 }
