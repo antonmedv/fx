@@ -445,7 +445,6 @@ module.exports = function start(filename, source) {
       for (let p of path) {
         expanded.add(value += p)
       }
-console.error(value)
       render()
 
       for (let [k, v] of index) {
