@@ -69,6 +69,15 @@ module.exports = function start(filename, source) {
     width: '100%',
   })
 
+  const statusBar = blessed.box({
+    parent: screen,
+    tags: false,
+    bottom: 0,
+    left: 0,
+    height: 1,
+    width: '100%',
+  })
+
   const autocomplete = blessed.list({
     parent: screen,
     width: 6,
@@ -82,6 +91,7 @@ module.exports = function start(filename, source) {
   box.focus()
   input.hide()
   search.hide()
+  statusBar.hide()
   autocomplete.hide()
 
   screen.key(['escape', 'q', 'C-c'], function () {
@@ -189,6 +199,7 @@ module.exports = function start(filename, source) {
   })
 
   box.key('.', function () {
+    hideStatusBar()
     box.height = '100%-1'
     input.show()
     if (input.getValue() === '') {
@@ -200,6 +211,7 @@ module.exports = function start(filename, source) {
   })
 
   box.key('/', function () {
+    hideStatusBar()
     box.height = '100%-1'
     search.show()
     search.setValue('/')
@@ -208,12 +220,14 @@ module.exports = function start(filename, source) {
   })
 
   box.key('e', function () {
+    hideStatusBar()
     expanded.clear()
     walk(json, path => expanded.size < 1000 && expanded.add(path))
     render()
   })
 
   box.key('S-e', function () {
+    hideStatusBar()
     expanded.clear()
     expanded.add('')
     render()
@@ -236,10 +250,12 @@ module.exports = function start(filename, source) {
   })
 
   box.key('n', function () {
+    hideStatusBar()
     findNext()
   })
 
   box.key(['up', 'k'], function () {
+    hideStatusBar()
     program.showCursor()
     let rest = [...index.keys()]
 
@@ -264,6 +280,7 @@ module.exports = function start(filename, source) {
   })
 
   box.key(['down', 'j'], function () {
+    hideStatusBar()
     program.showCursor()
     let rest = [...index.keys()]
 
@@ -288,6 +305,7 @@ module.exports = function start(filename, source) {
   })
 
   box.key(['right', 'l'], function () {
+    hideStatusBar()
     const [n, line] = getLine(program.y)
     program.showCursor()
     program.cursorPos(program.y, line.search(/\S/))
@@ -299,6 +317,7 @@ module.exports = function start(filename, source) {
   })
 
   box.key(['left', 'h'], function () {
+    hideStatusBar()
     const [n, line] = getLine(program.y)
     program.showCursor()
     program.cursorPos(program.y, line.search(/\S/))
@@ -310,6 +329,7 @@ module.exports = function start(filename, source) {
   })
 
   box.on('click', function (mouse) {
+    hideStatusBar()
     const [n, line] = getLine(mouse.y)
     if (mouse.x >= stringWidth(line)) {
       return
@@ -326,6 +346,10 @@ module.exports = function start(filename, source) {
       expanded.add(path)
     }
     render()
+  })
+
+  box.on('scroll', function () {
+    hideStatusBar()
   })
 
   function getLine(y) {
@@ -465,8 +489,13 @@ module.exports = function start(filename, source) {
     if (!findGen) {
       return
     }
+
     const {value: path, done} = findGen.next()
-    if (!done) {
+
+    if (done) {
+      showStatusBar('Pattern not found')
+    } else {
+
       currentPath = ''
       for (let p of path) {
         expanded.add(currentPath += p)
@@ -486,6 +515,20 @@ module.exports = function start(filename, source) {
           screen.render()
         }
       }
+    }
+  }
+
+  function showStatusBar(status) {
+    statusBar.show()
+    statusBar.setContent(config.statusBar(` ${status} `))
+    screen.render()
+  }
+
+  function hideStatusBar() {
+    if (!statusBar.hidden) {
+      statusBar.hide()
+      statusBar.setContent('')
+      screen.render()
     }
   }
 
