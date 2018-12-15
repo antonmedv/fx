@@ -22,4 +22,5 @@ module.exports = {
   list:             global.FX_STYLE_LIST              || list,
   highlight:        global.FX_STYLE_HIGHLIGHT         || chalk.black.bgYellow,
   highlightCurrent: global.FX_STYLE_HIGHLIGHT_CURRENT || chalk.inverse,
+  statusBar:        global.FX_STYLE_STATUS_BAR        || chalk.inverse,
 }
