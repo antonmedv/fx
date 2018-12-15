@@ -1,11 +1,6 @@
 'use strict'
 
 function* find(v, regex, path = []) {
-  if (regex.test(path.join(''))) {
-    yield path
-    return
-  }
-
   if (typeof v === 'undefined' || v === null) {
     return
   }
@@ -21,7 +16,13 @@ function* find(v, regex, path = []) {
   if (typeof v === 'object' && v.constructor === Object) {
     const entries = Object.entries(v)
     for (let [key, value] of entries) {
-      yield* find(value, regex, path.concat(['.' + key]))
+      const nextPath = path.concat(['.' + key])
+
+      if (regex.test(key)) {
+        yield nextPath
+      }
+
+      yield* find(value, regex, nextPath)
     }
     return
   }
