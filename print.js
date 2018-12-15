@@ -2,26 +2,35 @@
 const indent = require('indent-string')
 const config = require('./config')
 
+function format(value, style, highlightStyle, regexp, transform = x => x) {
+  if (!regexp) {
+    return config.string(transform(value))
+  }
+  const marked = value
+    .replace(regexp, s => '<highlight>' + s + '<highlight>')
+
+  return transform(marked)
+    .split(/<highlight>/g)
+    .map((s, i) => i % 2 !== 0 ? highlightStyle(s) : style(s))
+    .join('')
+}
+
 function print(input, options = {}) {
   const {expanded, highlight, currentPath} = options
   const index = new Map()
   let row = 0
 
-  function format(text, style, path) {
-    text = JSON.stringify(text)
-    if (!highlight) {
-      return style(text)
-    }
-    const highlightStyle = (currentPath === path) ? config.highlightCurrent : config.highlight
-    return text
-      .replace(highlight, s => '<fx>' + s + '<fx>')
-      .split(/<fx>/g)
-      .map((s, i) => i % 2 !== 0 ? highlightStyle(s) : style(s))
-      .join('')
-  }
-
   function doPrint(v, path = '') {
     index.set(row, path)
+
+    // Code for highlighting parts become cumbersome.
+    // Maybe we should refactor this part.
+    const highlightStyle = (currentPath === path) ? config.highlightCurrent : config.highlight
+    const formatStyle = (v, style) => format(JSON.stringify(v), style, highlightStyle, highlight)
+    const formatText = (v, style, path) => {
+      const highlightStyle = (currentPath === path) ? config.highlightCurrent : config.highlight
+      return format(v, style, highlightStyle, highlight, JSON.stringify)
+    }
 
     const eol = () => {
       row++
@@ -33,20 +42,20 @@ function print(input, options = {}) {
     }
 
     if (v === null) {
-      return format(v, config.null, path)
+      return formatStyle(v, config.null)
     }
 
     if (typeof v === 'number' && Number.isFinite(v)) {
-      return format(v, config.number, path)
+      return formatStyle(v, config.number)
     }
 
     if (typeof v === 'boolean') {
-      return format(v, config.boolean, path)
+      return formatStyle(v, config.boolean)
 
     }
 
     if (typeof v === 'string') {
-      return format(v, config.string, path)
+      return formatText(v, config.string, path)
     }
 
     if (Array.isArray(v)) {
@@ -84,7 +93,7 @@ function print(input, options = {}) {
           output += eol()
           let i = 0
           for (let [key, value] of entries) {
-            const part = format(key, config.key, path + '.' + key) + config.colon(':') + ' ' + doPrint(value, path + '.' + key)
+            const part = formatText(key, config.key, path + '.' + key) + config.colon(':') + ' ' + doPrint(value, path + '.' + key)
             output += indent(part, config.space)
             output += i++ < len - 1 ? config.comma(',') : ''
             output += eol()
