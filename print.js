@@ -4,7 +4,7 @@ const config = require('./config')
 
 function format(value, style, highlightStyle, regexp, transform = x => x) {
   if (!regexp) {
-    return config.string(transform(value))
+    return style(transform(value))
   }
   const marked = value
     .replace(regexp, s => '<highlight>' + s + '<highlight>')
