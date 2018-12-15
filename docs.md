@@ -166,6 +166,8 @@ Next commands available in interactive mode:
 | `up`/`down` or `k/j`          | Move cursor up/down     |
 | `left`/`right` or `h/l`       | Expand/Collapse         |
 | `.`                           | Edit filter             |
+| `/`                           | Search                  |
+| `n`                           | Goto next found pattern |
 
 These commands are available when editing the filter:
 
@@ -175,6 +177,19 @@ These commands are available when editing the filter:
 | `Ctrl`+`u`                    | Clear filter            |
 | `Ctrl`+`w`                    | Delete last part        |
 | `up`/`down`                   | Select autocomplete     |
+
+### Search
+
+Press `/` and type regexp pattern to search in current JSON. Search work with currently applied filter.
+
+Examples of pattern and corresponding regexp: 
+
+|   Pattern  |    RegExp   |
+|------------|-------------|
+| `/apple`   | `/apple/ig` |
+| `/apple/`  | `/apple/`   |
+| `/apple/u` | `/apple/u`  |
+| `/\w+`     | `/\w+/ig`   | 
 
 ### Selecting text
 
