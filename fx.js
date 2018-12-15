@@ -164,10 +164,18 @@ module.exports = function start(filename, source) {
 
   search.on('submit', function (pattern) {
     let regex
-    const m = pattern.match(/^\/(.*)\/?([gimuy]*)$/)
+    let m = pattern.match(/^\/(.*)\/([gimuy]*)$/)
     if (m) {
       try {
         regex = new RegExp(m[1], m[2])
+      } catch (e) {
+        // Wrong regexp.
+      }
+    }
+    m = pattern.match(/^\/(.*)$/)
+    if (m) {
+      try {
+        regex = new RegExp(m[1], 'gi')
       } catch (e) {
         // Wrong regexp.
       }
@@ -452,7 +460,13 @@ module.exports = function start(filename, source) {
 
       for (let [k, v] of index) {
         if (v === currentPath) {
-          const y = box.getScreenNumber(k)
+          let y = box.getScreenNumber(k)
+
+          // Scroll one line up for better view and make sure it's not negative.
+          if (--y < 0) {
+            y = 0
+          }
+
           box.scrollTo(y)
           screen.render()
         }
