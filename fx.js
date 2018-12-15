@@ -95,7 +95,14 @@ module.exports = function start(filename, source) {
 
   input.on('submit', function () {
     if (autocomplete.hidden) {
-      apply()
+      const code = input.getValue()
+      if (/^\//.test(code)) {
+        // Forgive a mistake to the user. This looks like user wanted to search something.
+        apply('')
+        applyPattern(code)
+      } else {
+        apply(code)
+      }
     } else {
       // Autocomplete selected
       let code = input.getValue()
@@ -118,7 +125,8 @@ module.exports = function start(filename, source) {
 
   input.on('cancel', function () {
     if (autocomplete.hidden) {
-      apply()
+      const code = input.getValue()
+      apply(code)
     } else {
       // Autocomplete not selected
       autocomplete.hide()
@@ -163,42 +171,7 @@ module.exports = function start(filename, source) {
   })
 
   search.on('submit', function (pattern) {
-    let regex
-    let m = pattern.match(/^\/(.*)\/([gimuy]*)$/)
-    if (m) {
-      try {
-        regex = new RegExp(m[1], m[2])
-      } catch (e) {
-        // Wrong regexp.
-      }
-    } else {
-      m = pattern.match(/^\/(.*)$/)
-      if (m) {
-        try {
-          regex = new RegExp(m[1], 'gi')
-        } catch (e) {
-          // Wrong regexp.
-        }
-      }
-    }
-    highlight = regex
-
-    if (highlight) {
-      findGen = find(json, highlight)
-      findNext()
-    } else {
-      findGen = null
-      currentPath = null
-    }
-
-    search.hide()
-    search.setValue('')
-
-    box.height = '100%'
-    box.focus()
-
-    program.cursorPos(0, 0)
-    render()
+    applyPattern(pattern)
   })
 
   search.on('cancel', function () {
@@ -365,9 +338,7 @@ module.exports = function start(filename, source) {
     return [n, line]
   }
 
-  function apply() {
-    const code = input.getValue()
-
+  function apply(code) {
     if (code && code.length !== 0) {
       try {
         json = reduce(source, code)
@@ -432,7 +403,11 @@ module.exports = function start(filename, source) {
     if (code && code.length !== 0) {
       try {
         const pretender = reduce(source, code)
-        if (typeof pretender !== 'undefined' && typeof pretender !== 'function') {
+        if (
+          typeof pretender !== 'undefined'
+          && typeof pretender !== 'function'
+          && !(pretender instanceof RegExp)
+        ) {
           json = pretender
         }
       } catch (e) {
@@ -444,6 +419,45 @@ module.exports = function start(filename, source) {
     }
 
     findGen = find(json, highlight)
+    render()
+  }
+
+  function applyPattern(pattern) {
+    let regex
+    let m = pattern.match(/^\/(.*)\/([gimuy]*)$/)
+    if (m) {
+      try {
+        regex = new RegExp(m[1], m[2])
+      } catch (e) {
+        // Wrong regexp.
+      }
+    } else {
+      m = pattern.match(/^\/(.*)$/)
+      if (m) {
+        try {
+          regex = new RegExp(m[1], 'gi')
+        } catch (e) {
+          // Wrong regexp.
+        }
+      }
+    }
+    highlight = regex
+
+    if (highlight) {
+      findGen = find(json, highlight)
+      findNext()
+    } else {
+      findGen = null
+      currentPath = null
+    }
+
+    search.hide()
+    search.setValue('')
+
+    box.height = '100%'
+    box.focus()
+
+    program.cursorPos(0, 0)
     render()
   }
 
