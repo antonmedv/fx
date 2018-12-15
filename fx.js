@@ -171,13 +171,14 @@ module.exports = function start(filename, source) {
       } catch (e) {
         // Wrong regexp.
       }
-    }
-    m = pattern.match(/^\/(.*)$/)
-    if (m) {
-      try {
-        regex = new RegExp(m[1], 'gi')
-      } catch (e) {
-        // Wrong regexp.
+    } else {
+      m = pattern.match(/^\/(.*)$/)
+      if (m) {
+        try {
+          regex = new RegExp(m[1], 'gi')
+        } catch (e) {
+          // Wrong regexp.
+        }
       }
     }
     highlight = regex
