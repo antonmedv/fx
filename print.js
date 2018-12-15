@@ -8,6 +8,7 @@ function print(input, options = {}) {
   let row = 0
 
   function format(text, style, path) {
+    text = JSON.stringify(text)
     if (!highlight) {
       return style(text)
     }
@@ -32,20 +33,20 @@ function print(input, options = {}) {
     }
 
     if (v === null) {
-      return format('null', config.null, path)
+      return format(v, config.null, path)
     }
 
     if (typeof v === 'number' && Number.isFinite(v)) {
-      return format(v.toString(), config.number, path)
+      return format(v, config.number, path)
     }
 
     if (typeof v === 'boolean') {
-      return format(v.toString(), config.boolean, path)
+      return format(v, config.boolean, path)
 
     }
 
     if (typeof v === 'string') {
-      return format(JSON.stringify(v), config.string, path)
+      return format(v, config.string, path)
     }
 
     if (Array.isArray(v)) {
@@ -83,7 +84,7 @@ function print(input, options = {}) {
           output += eol()
           let i = 0
           for (let [key, value] of entries) {
-            const part = format(JSON.stringify(key), config.key, path + '.' + key) + config.colon(':') + ' ' + doPrint(value, path + '.' + key)
+            const part = format(key, config.key, path + '.' + key) + config.colon(':') + ' ' + doPrint(value, path + '.' + key)
             output += indent(part, config.space)
             output += i++ < len - 1 ? config.comma(',') : ''
             output += eol()
