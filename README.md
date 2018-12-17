@@ -1,4 +1,4 @@
-<p align="center"><img src="https://user-images.githubusercontent.com/141232/35405308-4b41f446-0238-11e8-86c1-21f407cc8460.png" height="100" alt="fx"></p>
+<p align="center"><img src="https://medv.io/assets/fx-logo.png" height="100" alt="fx logo"></p>
 <p align="center"><img src="https://medv.io/assets/fx.gif" width="562" alt="fx example"></p>
 
 _* Function eXecution_
@@ -6,6 +6,7 @@ _* Function eXecution_
 [![Build Status](https://travis-ci.org/antonmedv/fx.svg?branch=master)](https://travis-ci.org/antonmedv/fx)
 [![Npm Version](https://img.shields.io/npm/v/fx.svg)](https://www.npmjs.com/package/fx)
 [![Brew Version](https://img.shields.io/homebrew/v/fx.svg)](https://formulae.brew.sh/formula/fx)
+[![Snap Version](https://img.shields.io/badge/snap-10.0.0-blue.svg)](https://snapcraft.io/fx)
 
 Command-line JSON processing tool
 
