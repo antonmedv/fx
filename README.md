@@ -83,6 +83,10 @@ $ curl ... | fx .
 
 See full [documentation](https://github.com/antonmedv/fx/blob/master/docs.md).
 
+## Links
+
+* [Discover how to use fx effectively](https://medium.com/@antonmedv/discover-how-to-use-fx-effectively-668845d2a4ea)
+
 ## Related
 
 * [xx](https://github.com/antonmedv/xx) - fx-like JSON tool (*go*)
