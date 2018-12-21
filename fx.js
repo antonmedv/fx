@@ -222,7 +222,14 @@ module.exports = function start(filename, source) {
   box.key('e', function () {
     hideStatusBar()
     expanded.clear()
-    walk(json, path => expanded.size < 1000 && expanded.add(path))
+    for (let path of paths(json)) {
+      if (expanded.size < 1000) {
+        console.error(path)
+        expanded.add(path)
+      } else {
+        break
+      }
+    }
     render()
   })
 
@@ -547,24 +554,24 @@ module.exports = function start(filename, source) {
   render()
 }
 
-function walk(v, cb, path = '') {
+function* paths(v, path = '') {
   if (!v) {
     return
   }
 
   if (Array.isArray(v)) {
-    cb(path)
+    yield path
     let i = 0
     for (let item of v) {
-      walk(item, cb, path + '[' + (i++) + ']')
+      yield* paths(item, path + '[' + (i++) + ']')
     }
   }
 
   if (typeof v === 'object' && v.constructor === Object) {
-    cb(path)
+    yield path
     let i = 0
     for (let [key, value] of Object.entries(v)) {
-      walk(value, cb, path + '.' + key)
+      yield* paths(value, path + '.' + key)
     }
   }
 }
