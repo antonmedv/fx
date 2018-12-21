@@ -597,7 +597,6 @@ function* dfs(v, path = '') {
 
   if (typeof v === 'object' && v.constructor === Object) {
     yield path
-    let i = 0
     for (let [key, value] of Object.entries(v)) {
       yield* dfs(value, path + '.' + key)
     }
