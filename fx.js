@@ -222,9 +222,8 @@ module.exports = function start(filename, source) {
   box.key('e', function () {
     hideStatusBar()
     expanded.clear()
-    for (let path of paths(json)) {
+    for (let path of dfs(json)) {
       if (expanded.size < 1000) {
-        console.error(path)
         expanded.add(path)
       } else {
         break
@@ -554,7 +553,36 @@ module.exports = function start(filename, source) {
   render()
 }
 
-function* paths(v, path = '') {
+function* bfs(json) {
+  const queue = [[json, '']]
+
+  while(queue.length > 0) {
+    const [v, path] = queue.shift()
+
+    if (!v) {
+      continue
+    }
+
+    if (Array.isArray(v)) {
+      yield path
+      let i = 0
+      for (let item of v) {
+        const p = path + '[' + (i++) + ']'
+        queue.push([item, p])
+      }
+    }
+
+    if (typeof v === 'object' && v.constructor === Object) {
+      yield path
+      for (let [key, value] of Object.entries(v)) {
+        const p = path + '.' + key
+        queue.push([value, p])
+      }
+    }
+  }
+}
+
+function* dfs(v, path = '') {
   if (!v) {
     return
   }
@@ -563,7 +591,7 @@ function* paths(v, path = '') {
     yield path
     let i = 0
     for (let item of v) {
-      yield* paths(item, path + '[' + (i++) + ']')
+      yield* dfs(item, path + '[' + (i++) + ']')
     }
   }
 
@@ -571,7 +599,8 @@ function* paths(v, path = '') {
     yield path
     let i = 0
     for (let [key, value] of Object.entries(v)) {
-      yield* paths(value, path + '.' + key)
+      yield* dfs(value, path + '.' + key)
     }
   }
 }
+
