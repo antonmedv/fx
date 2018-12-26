@@ -122,6 +122,27 @@ curl 'https://api.github.com/repos/facebook/react/commits?per_page=100' \
 > export NODE_PATH=/usr/local/lib/node_modules
 > ```
 
+## Edit in place
+
+Add next code to your _.fxrc_ file:
+
+```js
+const fx = require('fs')
+
+global.save = json => {
+  fs.writeFileSync(process.argv[2], JSON.stringify(json, null, 2))
+  return json
+}
+```
+
+Usage:
+
+```bash
+fx data.json '{...this, count: this.count+1}' save .count
+```
+
+
+
 ## Formatting
 
 If you need something different then JSON (for example arguments for xargs) do not return anything from reducer.
