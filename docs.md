@@ -127,7 +127,7 @@ curl 'https://api.github.com/repos/facebook/react/commits?per_page=100' \
 Add next code to your _.fxrc_ file:
 
 ```js
-const fx = require('fs')
+const fs = require('fs')
 
 global.save = json => {
   fs.writeFileSync(process.argv[2], JSON.stringify(json, null, 2))
