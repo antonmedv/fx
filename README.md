@@ -29,9 +29,10 @@ $ brew install fx
 
 Or download standalone binary from [releases](https://github.com/antonmedv/fx/releases) page.
 
-<a href="https://www.patreon.com/antonmedv">
-	<img src="https://c5.patreon.com/external/logo/become_a_patron_button@2x.png" width="160">
-</a>
+<p>
+	<a href="https://www.patreon.com/antonmedv"><img src="https://c5.patreon.com/external/logo/become_a_patron_button@2x.png" width="160"></a>
+	<a href="https://www.wispay.io/t/ZQb" target="_blank"><img src="https://assets.wispay.io/wgt2_d_b.png" height="60"></a>
+</p>
 
 ## Usage
 
