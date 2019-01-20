@@ -17,7 +17,11 @@ Command-line JSON processing tool
 * Interactive mode 🎉
 * Themes support 🎨
 
-## Install
+## Requirements
+
+- Node ^8.0 or ^10.0
+
+## Installation
 
 ```
 $ npm install -g fx
@@ -58,7 +62,7 @@ $ curl ... | fx .message
 
 Pass any numbers of arguments as code.
 ```bash
-$ curl ... | fx 'json => json.message' 'json => json.filter(x => x.startsWith("a"))' 
+$ curl ... | fx 'json => json.message' 'json => json.filter(x => x.startsWith("a"))'
 ```
 
 Access all lodash (or ramda, etc) methods by using [.fxrc](https://github.com/antonmedv/fx/blob/master/docs.md#using-fxrc) file.
@@ -96,4 +100,4 @@ See full [documentation](https://github.com/antonmedv/fx/blob/master/docs.md).
 
 ## License
 
-[MIT](https://github.com/antonmedv/fx/blob/master/LICENSE)  
+The [`fx`](https://www.npmjs.com/package/fx) package is is open-sourced software licensed under the [MIT license](LICENSE).
