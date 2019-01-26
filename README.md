@@ -80,6 +80,11 @@ Pretty print JSON with dot.
 $ curl ... | fx .
 ```
 
+Using npx
+```
+$ npx fx data.json
+```
+
 ## Documentation
 
 See full [documentation](https://github.com/antonmedv/fx/blob/master/docs.md).
