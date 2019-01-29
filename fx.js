@@ -16,6 +16,8 @@ module.exports = function start(filename, source) {
   // Example: {0: '', 1: '.foo', 2: '.foo[0]'}
   let index = new Map()
 
+  let scrollSpeed = 1
+
   // Contains expanded paths. Example: ['', '.foo']
   // Empty string represents root path.
   const expanded = new Set()
@@ -265,7 +267,7 @@ module.exports = function start(filename, source) {
     program.showCursor()
     let rest = [...index.keys()]
 
-    const [n] = getLine(program.y)
+    const [n] = getLine(program.y - (scrollSpeed - 1))
     if (typeof n !== 'undefined') {
       rest = rest.filter(i => i < n)
     }
@@ -275,7 +277,7 @@ module.exports = function start(filename, source) {
 
       let y = box.getScreenNumber(next) - box.childBase
       if (y <= 0) {
-        box.scroll(-1)
+        box.scroll(-scrollSpeed)
         screen.render()
         y = 0
       }
@@ -290,7 +292,7 @@ module.exports = function start(filename, source) {
     program.showCursor()
     let rest = [...index.keys()]
 
-    const [n] = getLine(program.y)
+    const [n] = getLine(program.y + (scrollSpeed - 1))
     if (typeof n !== 'undefined') {
       rest = rest.filter(i => i > n)
     }
@@ -300,7 +302,7 @@ module.exports = function start(filename, source) {
 
       let y = box.getScreenNumber(next) - box.childBase
       if (y >= box.height) {
-        box.scroll(1)
+        box.scroll(scrollSpeed)
         screen.render()
         y = box.height - 1
       }
