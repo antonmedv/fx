@@ -20,7 +20,7 @@
     "test": "ava",
     "build": "pkg . --out-path dist -t node8-linux-x64,node8-macos-x64,node8-win-x64",
     "zip": "cd dist && find . -name 'fx-*' -exec zip '{}.zip' '{}' \\;",
-    "release": "npm run build && npm run zip && release-it --github.release --github.assets=dist/*.zip"
+    "release": "rm -rf ./dist && npm run build && npm run zip && release-it --github.release --github.assets=dist/*.zip"
   },
   "keywords": [
     "json",
@@ -40,7 +40,6 @@
     "@medv/blessed": "^2.0.0",
     "chalk": "^2.4.2",
     "indent-string": "^3.2.0",
-    "reopen-tty": "^1.1.2",
     "string-width": "^3.0.0"
   },
   "devDependencies": {

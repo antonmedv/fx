@@ -1,7 +1,8 @@
 'use strict'
+const fs = require('fs')
+const tty = require('tty')
 const blessed = require('@medv/blessed')
 const stringWidth = require('string-width')
-const reopenTTY = require('reopen-tty')
 const reduce = require('./reduce')
 const print = require('./print')
 const find = require('./find')
@@ -25,29 +26,23 @@ module.exports = function start(filename, source) {
   let findGen = null
   let currentPath = null
 
+  // Reopen tty
   let ttyReadStream
   let ttyWriteStream
-  reopenTTY.stdin(function (err, readStream) {
-    if (err) {
-      throw err
-    } else {
-      ttyReadStream = readStream
-    }
-  })
-
-  reopenTTY.stdout(function (err, writeStream) {
-    if (err) {
-      throw err
-    } else {
-      ttyWriteStream = writeStream
-    }
-  })
+  if (process.platform === 'win32') {
+    const cfs = process.binding('fs')
+    ttyReadStream = tty.ReadStream(cfs.open('conin$', fs.constants.O_RDWR | fs.constants.O_EXCL, 0o666))
+    ttyWriteStream = tty.WriteStream(cfs.open('conout$', fs.constants.O_RDWR | fs.constants.O_EXCL, 0o666))
+  } else {
+    const ttyFd = fs.openSync('/dev/tty', 'r+')
+    ttyReadStream = tty.ReadStream(ttyFd)
+    ttyWriteStream = tty.WriteStream(ttyFd)
+  }
 
   const program = blessed.program({
     input: ttyReadStream,
-    output: ttyWriteStream
+    output: ttyWriteStream,
   })
-
 
   const screen = blessed.screen({
     program: program,
