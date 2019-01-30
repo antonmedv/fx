@@ -97,22 +97,22 @@ See full [documentation](https://github.com/antonmedv/fx/blob/master/docs.md).
 
 ## Contributing
 
-Open the repo in Gitpod, the free online dev environment for GitHub.
-
 [![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/antonmedv/fx)
 
 Or clone locally and run:
 
-```sh
+```bash
 # install dependencies
 npm install
+
+# run fx
+node index.js package.json
 
 # run the build
 npm run build
 
 # try the built binary
 ./dist/fx-linux package.json
-
 ```
 
 ## License
