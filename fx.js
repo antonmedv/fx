@@ -1,12 +1,11 @@
 'use strict'
-const fs = require('fs')
-const tty = require('tty')
 const blessed = require('@medv/blessed')
 const stringWidth = require('string-width')
 const reduce = require('./reduce')
 const print = require('./print')
 const find = require('./find')
 const config = require('./config')
+const reopenTTY = require('reopen-tty');
 
 module.exports = function start(filename, source) {
   // Current rendered object on a screen.
@@ -26,11 +25,29 @@ module.exports = function start(filename, source) {
   let findGen = null
   let currentPath = null
 
-  const ttyFd = fs.openSync('/dev/tty', 'r+')
+  let ttyReadStream;
+  let ttyWriteStream;
+  reopenTTY.stdin(function(err, readStream) {
+    if (err) {
+      throw err;
+    } else {
+      ttyReadStream = readStream;
+    } 
+  });
+  
+  reopenTTY.stdout(function(err, writeStream) {
+    if (err) {
+      throw err;
+    } else {
+      ttyWriteStream = writeStream;
+    } 
+  });
+
   const program = blessed.program({
-    input: tty.ReadStream(ttyFd),
-    output: tty.WriteStream(ttyFd),
+    input: ttyReadStream,
+    output: ttyWriteStream
   })
+
 
   const screen = blessed.screen({
     program: program,
