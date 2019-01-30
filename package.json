@@ -19,7 +19,8 @@
   "scripts": {
     "test": "ava",
     "build": "pkg . --out-path dist -t node8-linux-x64,node8-macos-x64,node8-win-x64",
-    "release": "npm run build && release-it --github.release --github.assets=dist/*"
+    "zip": "cd dist && find . -name 'fx-*' -exec zip '{}.zip' '{}' \\;",
+    "release": "npm run build && npm run zip && release-it --github.release --github.assets=dist/*.zip"
   },
   "keywords": [
     "json",
