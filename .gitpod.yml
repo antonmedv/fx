@@ -1,0 +1,6 @@
+tasks:
+- init: >
+    npm install &&
+    npm run build
+  command: >
+    ./dist/fx-linux package.json

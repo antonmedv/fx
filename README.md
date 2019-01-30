@@ -59,7 +59,7 @@ $ curl ... | fx .message
 
 Pass any numbers of arguments as code.
 ```bash
-$ curl ... | fx 'json => json.message' 'json => json.filter(x => x.startsWith("a"))' 
+$ curl ... | fx 'json => json.message' 'json => json.filter(x => x.startsWith("a"))'
 ```
 
 Access all lodash (or ramda, etc) methods by using [.fxrc](https://github.com/antonmedv/fx/blob/master/docs.md#using-fxrc) file.
@@ -95,6 +95,26 @@ See full [documentation](https://github.com/antonmedv/fx/blob/master/docs.md).
 * [fx-theme-monokai](https://github.com/antonmedv/fx-theme-monokai) – monokai theme
 * [fx-theme-night](https://github.com/antonmedv/fx-theme-night) – night theme
 
+## Contributing
+
+Open the repo in Gitpod, the free online dev environment for GitHub.
+
+[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/antonmedv/fx)
+
+Or clone locally and run:
+
+```sh
+# install dependencies
+npm install
+
+# run the build
+npm run build
+
+# try the built binary
+./dist/fx-linux package.json
+
+```
+
 ## License
 
-[MIT](https://github.com/antonmedv/fx/blob/master/LICENSE)  
+[MIT](https://github.com/antonmedv/fx/blob/master/LICENSE)
