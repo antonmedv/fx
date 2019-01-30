@@ -48,6 +48,18 @@ function main(input) {
       stderr.write(usage)
       process.exit(2)
     }
+    if(args[0].startsWith('-')) {
+        if(args[0].endsWith('h')) {
+            stderr.write(usage)
+            process.exit(2)
+        }
+    }
+    if(args[0].startsWith('--')) {
+        if(args[0].endsWith('help')) {
+            stderr.write(usage)
+            process.exit(2)
+        }
+    }
 
     input = fs.readFileSync(args[0])
     filename = path.basename(args[0])
