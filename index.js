@@ -44,22 +44,11 @@ function main(input) {
   let filename = 'fx'
 
   if (input === '') {
-    if (args.length === 0) {
+    if (args.length === 0 || (args.length === 1 && (args[0] === '-h' || args[0] === '--help'))) {
       stderr.write(usage)
       process.exit(2)
     }
-    if(args[0].startsWith('-')) {
-      if(args[0].endsWith('h')) {
-        stderr.write(usage)
-        process.exit(2)
-      }
-    }
-    if(args[0].startsWith('--')) {
-      if(args[0].endsWith('help')) {
-        stderr.write(usage)
-        process.exit(2)
-      }
-    }
+
     input = fs.readFileSync(args[0])
     filename = path.basename(args[0])
     args = args.slice(1)
