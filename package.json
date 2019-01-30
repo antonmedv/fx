@@ -36,15 +36,15 @@
     "node": ">=8"
   },
   "dependencies": {
-    "@medv/blessed": "^1.1.1",
-    "chalk": "^2.4.1",
+    "@medv/blessed": "^2.0.0",
+    "chalk": "^2.4.2",
     "indent-string": "^3.2.0",
     "reopen-tty": "^1.1.2",
-    "string-width": "^2.1.1"
+    "string-width": "^3.0.0"
   },
   "devDependencies": {
-    "ava": "^0.25.0",
-    "pkg": "^4.3.4",
-    "release-it": "^8.2.0"
+    "ava": "^1.2.0",
+    "pkg": "^4.3.7",
+    "release-it": "^10.0.7"
   }
 }
