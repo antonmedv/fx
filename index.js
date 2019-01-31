@@ -49,6 +49,22 @@ function main(input) {
       process.exit(2)
     }
 
+    if (args[0] === '-v' || args[0] === '--version'){
+      const pck = fs.readFileSync('package.json')
+      const stats = fs.statSync('package.json')
+      
+      const json = JSON.parse(pck)
+      
+      const day = stats.mtime.getDay()
+      const month = stats.mtime.toLocaleString('en-us', { month: 'short' })
+      const year = stats.mtime.getFullYear()
+
+      const date = `${day} ${month} ${year}`
+      console.log(`${json['name']} ${json['version']} ${date}`)
+      
+      process.exit(0)
+    }
+
     input = fs.readFileSync(args[0])
     filename = path.basename(args[0])
     args = args.slice(1)
