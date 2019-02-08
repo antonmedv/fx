@@ -16,7 +16,11 @@ const reduce = require('./reduce')
 
 const usage = `
   Usage
-    $ fx [code ...]
+    $ fx [-h] [-v] [code ...]
+
+  Info
+  -h, --help        show this help and exit
+  -v, --version     show current installed version and exit
 
   Examples
     $ echo '{"key": "value"}' | fx 'x => x.key'
