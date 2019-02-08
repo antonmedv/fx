@@ -49,6 +49,15 @@ function main(input) {
       process.exit(2)
     }
 
+    if (args.length === 0 || (args.length === 1 && (args[0] === '-v' || args[0] === '--version'))) {
+      const package_file = fs.readFileSync('package.json')
+      const metadata = JSON.parse(package_file)
+      const version = metadata['version']
+      const versionToPrint = version + '\n'
+      stderr.write(versionToPrint)
+      process.exit(2)
+    }
+
     input = fs.readFileSync(args[0])
     filename = path.basename(args[0])
     args = args.slice(1)
