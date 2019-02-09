@@ -52,6 +52,9 @@ function main(input) {
       stderr.write(require('./package.json').version + '\n')
       process.exit(2)
     }
+    if (args.length === 1 && args[0] === '--life') {
+      return require('./bang')
+    }
 
     input = fs.readFileSync(args[0])
     filename = path.basename(args[0])

@@ -9,6 +9,7 @@
     "fx": "index.js"
   },
   "files": [
+    "bang.js",
     "config.js",
     "find.js",
     "fx.js",
