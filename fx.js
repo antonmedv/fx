@@ -460,7 +460,9 @@ module.exports = function start(filename, source) {
       json = source
     }
 
-    findGen = find(json, highlight)
+    if (highlight) {
+      findGen = find(json, highlight)
+    }
     render()
   }
 
@@ -485,6 +487,8 @@ module.exports = function start(filename, source) {
     }
     highlight = regex
 
+    search.hide()
+
     if (highlight) {
       findGen = find(json, highlight)
       findNext()
@@ -492,8 +496,6 @@ module.exports = function start(filename, source) {
       findGen = null
       currentPath = null
     }
-
-    search.hide()
     search.setValue('')
 
     box.height = '100%'
