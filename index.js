@@ -48,6 +48,10 @@ function main(input) {
       stderr.write(usage)
       process.exit(2)
     }
+    if (args.length === 1 && (args[0] === '-v' || args[0] === '--version')) {
+      stderr.write(require('./package.json').version + '\n')
+      process.exit(2)
+    }
 
     input = fs.readFileSync(args[0])
     filename = path.basename(args[0])
