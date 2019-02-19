@@ -119,7 +119,7 @@ curl 'https://api.github.com/repos/facebook/react/commits?per_page=100' \
 
 > To be able require global modules make sure you have correct `NODE_PATH` env variable.
 > ```bash
-> export NODE_PATH=/usr/local/lib/node_modules
+> export NODE_PATH=`npm root -g`
 > ```
 
 ## Edit in place
