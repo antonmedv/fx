@@ -4,13 +4,11 @@ const os = require('os')
 const fs = require('fs')
 const path = require('path')
 const {stdin, stdout, stderr} = process
-try {
-  require(path.join(os.homedir(), '.fxrc'))
-} catch (err) {
-  if (err.code !== 'MODULE_NOT_FOUND') {
-    throw err
-  }
-}
+const loadRc = require('./rc')
+
+loadRc(os.homedir())
+loadRc(process.cwd())
+
 const print = require('./print')
 const reduce = require('./reduce')
 
@@ -21,9 +19,9 @@ const usage = `
   Examples
     $ echo '{"key": "value"}' | fx 'x => x.key'
     value
-    
+
     $ echo '{"key": "value"}' | fx .key
-    value    
+    value
 
     $ echo '[1,2,3]' | fx 'this.map(x => x * 2)'
     [2, 4, 6]
@@ -33,10 +31,10 @@ const usage = `
 
     $ echo '{"count": 0}' | fx '{...this, count: 1}'
     {"count": 1}
-    
+
     $ echo '{"foo": 1, "bar": 2}' | fx ?
     ["foo", "bar"]
-  
+
 `
 
 function main(input) {
