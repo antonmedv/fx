@@ -122,6 +122,15 @@ curl 'https://api.github.com/repos/facebook/react/commits?per_page=100' \
 > export NODE_PATH=`npm root -g`
 > ```
 
+### Per-project .fxrc 
+
+If you've got modules that are specific to the data model of single project, you can load those on a per-project basis with a local `.fxrc` in the project root.
+
+```
+const path = require('path');
+Object.assign(global, require(path.join(process.cwd(), 'src/helpers/data')));
+```
+
 ## Edit in place
 
 Add next code to your _.fxrc_ file:
