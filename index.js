@@ -58,7 +58,9 @@ void function main() {
 
   stdin.on('readable', reader.read)
   stdin.on('end', () => {
-    handle(reader.value())
+    if (!reader.isStream()) {
+      handle(reader.value())
+    }
   })
 }()
 
@@ -135,14 +137,14 @@ function stream() {
   let len = 0
   let depth = 0
   let isString = false
-  let isStream = false
-  let head = ''
 
+  let count = 0
+  let head = ''
   const check = (i) => {
     if (depth <= 0) {
       const input = buff.substring(0, len + i + 1)
 
-      if (isStream) {
+      if (count > 0) {
         if (head !== '') {
           const json = JSON.parse(head)
           apply(json)
@@ -152,16 +154,19 @@ function stream() {
         const json = JSON.parse(input)
         apply(json)
       } else {
-        isStream = true
         head = input
       }
 
       buff = buff.substring(len + i + 1)
       len = buff.length
+      count++
     }
   }
 
   return {
+    isStream() {
+      return count > 1
+    },
     value() {
       return head + buff
     },
