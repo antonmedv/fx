@@ -14,7 +14,6 @@ try {
 
 const print = require('./print')
 const reduce = require('./reduce')
-const {stdin, stdout, stderr} = process
 
 const usage = `
   Usage
@@ -23,7 +22,7 @@ const usage = `
   Examples
     $ echo '{"key": "value"}' | fx 'x => x.key'
     value
-    
+
     $ echo '{"key": "value"}' | fx .key
     value    
 
@@ -35,46 +34,36 @@ const usage = `
 
     $ echo '{"count": 0}' | fx '{...this, count: 1}'
     {"count": 1}
-    
+
     $ echo '{"foo": 1, "bar": 2}' | fx ?
     ["foo", "bar"]
-  
+
 `
 
+const {stdin, stdout, stderr} = process
+const args = process.argv.slice(2)
 const skip = Symbol('skip')
+global.select = select
 
 
 void function main() {
-  const args = process.argv.slice(2)
-
   stdin.setEncoding('utf8')
+
   if (stdin.isTTY) {
-    handle('', args)
+    handle('')
     return
   }
 
-  let buff = ''
-  stdin.on('readable', () => {
-    let chunk, input
+  const reader = stream()
 
-    while ((chunk = stdin.read())) {
-      buff += chunk
-
-      // // Stream handle.
-      // if (buff.includes('\n')) {
-      //   [input, buff] = buff.split('\n')
-      //   apply(input, args)
-      // }
-    }
-  })
-
+  stdin.on('readable', reader.read)
   stdin.on('end', () => {
-    handle(buff, args)
+    handle(reader.value())
   })
 }()
 
 
-function handle(input, args) {
+function handle(input) {
   let filename = 'fx'
 
   if (input === '') {
@@ -93,7 +82,7 @@ function handle(input, args) {
 
     input = fs.readFileSync(args[0])
     filename = path.basename(args[0])
-    args = args.slice(1)
+    args.shift()
   }
 
   const json = JSON.parse(input)
@@ -103,11 +92,11 @@ function handle(input, args) {
     return
   }
 
-  apply(json, args)
+  apply(json)
 }
 
 
-function apply(json, args) {
+function apply(json) {
   let output
 
   try {
@@ -127,5 +116,83 @@ function apply(json, args) {
   } else {
     const [text] = print(output)
     console.log(text)
+  }
+}
+
+
+function select(cb) {
+  return json => {
+    if (!cb(json)) {
+      throw skip
+    }
+    return json
+  }
+}
+
+
+function stream() {
+  let buff = ''
+  let len = 0
+  let depth = 0
+  let isString = false
+  let isStream = false
+  let head = ''
+
+  const check = (i) => {
+    if (depth <= 0) {
+      const input = buff.substring(0, len + i + 1)
+
+      if (isStream) {
+        if (head !== '') {
+          const json = JSON.parse(head)
+          apply(json)
+          head = ''
+        }
+
+        const json = JSON.parse(input)
+        apply(json)
+      } else {
+        isStream = true
+        head = input
+      }
+
+      buff = buff.substring(len + i + 1)
+      len = buff.length
+    }
+  }
+
+  return {
+    value() {
+      return head + buff
+    },
+    read() {
+      let chunk
+
+      while ((chunk = stdin.read())) {
+        len = buff.length
+        buff += chunk
+
+        for (let i = 0; i < chunk.length; i++) {
+          if (isString) {
+            if (chunk[i] === '"') {
+              if ((i > 1 && chunk[i - 1] !== '\\') || buff[buff.length] !== '\\') {
+                isString = false
+                check(i)
+              }
+            }
+            continue
+          }
+
+          if (chunk[i] === '{' || chunk[i] === '[') {
+            depth++
+          } else if (chunk[i] === '}' || chunk[i] === ']') {
+            depth--
+            check(i)
+          } else if (chunk[i] === '"') {
+            isString = true
+          }
+        }
+      }
+    }
   }
 }

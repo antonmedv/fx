@@ -12,11 +12,11 @@ Command-line JSON processing tool
 
 ## Features
 
-* Formatting and highlighting
+* Easy to use
 * Standalone binary
 * Interactive mode 🎉
 * Themes support 🎨
-* Easily expandable
+* Streaming support 🌊
 
 ## Install
 
