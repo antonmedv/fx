@@ -78,6 +78,11 @@ Pretty print JSON with dot.
 $ curl ... | fx .
 ```
 
+And try this:
+```bash
+$ fx --life
+```
+
 ## Documentation
 
 See full [documentation](https://github.com/antonmedv/fx/blob/master/docs.md).
