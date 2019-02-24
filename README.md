@@ -89,7 +89,7 @@ See full [documentation](https://github.com/antonmedv/fx/blob/master/docs.md).
 ## Related
 
 * [xx](https://github.com/antonmedv/xx) - fx-like JSON tool (*go*)
-* [eat](https://github.com/antonmedv/eat) – convert anything into JSON
+* [eat](https://github.com/antonmedv/eat) – converts anything into JSON
 * [ymlx](https://github.com/matthewadams/ymlx) - fx-like YAML cli processor
 * [fx-theme-monokai](https://github.com/antonmedv/fx-theme-monokai) – monokai theme
 * [fx-theme-night](https://github.com/antonmedv/fx-theme-night) – night theme
