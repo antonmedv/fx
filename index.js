@@ -5,6 +5,7 @@ const fs = require('fs')
 const path = require('path')
 const {stdin, stdout, stderr} = process
 try {
+  // A ".fxrc" file should be required before print.js as it uses config.js file.
   require(path.join(os.homedir(), '.fxrc'))
 } catch (err) {
   if (err.code !== 'MODULE_NOT_FOUND') {
