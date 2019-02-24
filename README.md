@@ -16,6 +16,7 @@ Command-line JSON processing tool
 * Standalone binary
 * Interactive mode 🎉
 * Themes support 🎨
+* Easily expandable
 
 ## Install
 
@@ -29,10 +30,7 @@ $ brew install fx
 
 Or download standalone binary from [releases](https://github.com/antonmedv/fx/releases) page.
 
-<p>
-	<a href="https://www.patreon.com/antonmedv"><img src="https://c5.patreon.com/external/logo/become_a_patron_button@2x.png" width="160"></a>
-	<a href="https://www.wispay.io/t/ZQb" target="_blank"><img src="https://assets.wispay.io/wgt2_d_b.png" height="60"></a>
-</p>
+Did you like **fx**? [Buy me a beer 🍺](https://paypal.me/antonmedv) [₿](https://www.wispay.io/t/ZQb)
 
 ## Usage
 
@@ -91,29 +89,11 @@ See full [documentation](https://github.com/antonmedv/fx/blob/master/docs.md).
 ## Related
 
 * [xx](https://github.com/antonmedv/xx) - fx-like JSON tool (*go*)
+* [eat](https://github.com/antonmedv/eat) – convert anything into JSON
 * [ymlx](https://github.com/matthewadams/ymlx) - fx-like YAML cli processor
 * [fx-theme-monokai](https://github.com/antonmedv/fx-theme-monokai) – monokai theme
 * [fx-theme-night](https://github.com/antonmedv/fx-theme-night) – night theme
 
-## Contributing
-
-[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/antonmedv/fx)
-
-Or clone locally and run:
-
-```bash
-# install dependencies
-npm install
-
-# run fx
-node index.js package.json
-
-# run the build
-npm run build
-
-# try the built binary
-./dist/fx-linux package.json
-```
 
 ## License
 
