@@ -141,8 +141,6 @@ Usage:
 fx data.json '{...this, count: this.count+1}' save .count
 ```
 
-
-
 ## Formatting
 
 If you need something different then JSON (for example arguments for xargs) do not return anything from reducer.
@@ -172,6 +170,22 @@ By the way, fx has shortcut for `Object.keys(this)`. Previous example can be rew
 ```bash
 $ cat package.json | fx this.dependencies ?
 ``` 
+
+## Streaming mode
+
+`fx` supports line-delimited JSON and concatenated JSON streaming.
+
+```bash
+$ kubectl logs ... | fx .message
+``` 
+
+Sometimes it is necessary to omit some messages in JSON stream, or select only specified log messages.
+For this purpose, `fx` has special helper `select`, pass function into it to select only some JSON messages.
+
+```bash
+$ kubectl logs ... | fx 'select(x => x.message.length > 40)' .message
+```
+
 
 ## Interactive mode
 
