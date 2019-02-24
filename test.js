@@ -40,3 +40,8 @@ test('chain', t => {
   const r = fx({"items": ["foo", "bar"]}, "'this.items' 'yield* this' 'x => x[1]'")
   t.deepEqual(r, 'bar\n')
 })
+
+test('file argument', t => {
+  const r = execSync(`node index.js package.json .name`).toString('utf8')
+  t.deepEqual(r, 'fx\n')
+})

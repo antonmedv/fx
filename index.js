@@ -3,17 +3,18 @@
 const os = require('os')
 const fs = require('fs')
 const path = require('path')
-const {stdin, stdout, stderr} = process
+
 try {
-  // A ".fxrc" file should be required before print.js as it uses config.js file.
-  require(path.join(os.homedir(), '.fxrc'))
+  require(path.join(os.homedir(), '.fxrc')) // Should be required before config.js usage.
 } catch (err) {
   if (err.code !== 'MODULE_NOT_FOUND') {
     throw err
   }
 }
+
 const print = require('./print')
 const reduce = require('./reduce')
+const {stdin, stdout, stderr} = process
 
 const usage = `
   Usage
@@ -40,8 +41,40 @@ const usage = `
   
 `
 
-function main(input) {
-  let args = process.argv.slice(2)
+const skip = Symbol('skip')
+
+
+void function main() {
+  const args = process.argv.slice(2)
+
+  stdin.setEncoding('utf8')
+  if (stdin.isTTY) {
+    handle('', args)
+    return
+  }
+
+  let buff = ''
+  stdin.on('readable', () => {
+    let chunk, input
+
+    while ((chunk = stdin.read())) {
+      buff += chunk
+
+      // // Stream handle.
+      // if (buff.includes('\n')) {
+      //   [input, buff] = buff.split('\n')
+      //   apply(input, args)
+      // }
+    }
+  })
+
+  stdin.on('end', () => {
+    handle(buff, args)
+  })
+}()
+
+
+function handle(input, args) {
   let filename = 'fx'
 
   if (input === '') {
@@ -54,7 +87,8 @@ function main(input) {
       process.exit(2)
     }
     if (args.length === 1 && args[0] === '--life') {
-      return require('./bang')
+      require('./bang')
+      return
     }
 
     input = fs.readFileSync(args[0])
@@ -69,7 +103,22 @@ function main(input) {
     return
   }
 
-  const output = args.reduce(reduce, json)
+  apply(json, args)
+}
+
+
+function apply(json, args) {
+  let output
+
+  try {
+    output = args.reduce(reduce, json)
+  } catch (e) {
+    if (e !== skip) {
+      throw e
+    } else {
+      return
+    }
+  }
 
   if (typeof output === 'undefined') {
     stderr.write('undefined\n')
@@ -80,27 +129,3 @@ function main(input) {
     console.log(text)
   }
 }
-
-function run() {
-  stdin.setEncoding('utf8')
-
-  if (stdin.isTTY) {
-    main('')
-    return
-  }
-
-  let buff = ''
-  stdin.on('readable', () => {
-    let chunk
-
-    while ((chunk = stdin.read())) {
-      buff += chunk
-    }
-  })
-
-  stdin.on('end', () => {
-    main(buff)
-  })
-}
-
-run()
