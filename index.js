@@ -180,7 +180,7 @@ function stream() {
         for (let i = 0; i < chunk.length; i++) {
           if (isString) {
             if (chunk[i] === '"') {
-              if ((i > 1 && chunk[i - 1] !== '\\') || buff[buff.length] !== '\\') {
+              if ((i === 0 && buff[len - 1] !== '\\') || (i > 0 && chunk[i - 1] !== '\\')) {
                 isString = false
                 check(i)
               }
