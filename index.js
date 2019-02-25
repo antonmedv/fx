@@ -141,7 +141,7 @@ function stream() {
 
   return {
     isStream() {
-      return count > 1
+      return count > 0
     },
     value() {
       return buff
