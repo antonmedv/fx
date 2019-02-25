@@ -60,6 +60,8 @@ void function main() {
   stdin.on('end', () => {
     if (!reader.isStream()) {
       handle(reader.value())
+    } else if(reader.value().length > 0) {
+      apply(JSON.parse(reader.value()))
     }
   })
 }()
@@ -134,67 +136,26 @@ function select(cb) {
 
 function stream() {
   let buff = ''
-  let len = 0
-  let depth = 0
-  let isString = false
 
   let count = 0
-  let head = ''
-  const check = (i) => {
-    if (depth <= 0) {
-      const input = buff.substring(0, len + i + 1)
-
-      if (count > 0) {
-        if (head !== '') {
-          const json = JSON.parse(head)
-          apply(json)
-          head = ''
-        }
-
-        const json = JSON.parse(input)
-        apply(json)
-      } else {
-        head = input
-      }
-
-      buff = buff.substring(len + i + 1)
-      len = buff.length
-      count++
-    }
-  }
 
   return {
     isStream() {
       return count > 1
     },
     value() {
-      return head + buff
+      return buff
     },
     read() {
       let chunk
-
       while ((chunk = stdin.read())) {
-        len = buff.length
         buff += chunk
-
-        for (let i = 0; i < chunk.length; i++) {
-          if (isString) {
-            if (chunk[i] === '"') {
-              if ((i === 0 && buff[len - 1] !== '\\') || (i > 0 && chunk[i - 1] !== '\\')) {
-                isString = false
-                check(i)
-              }
-            }
-            continue
-          }
-
-          if (chunk[i] === '{' || chunk[i] === '[') {
-            depth++
-          } else if (chunk[i] === '}' || chunk[i] === ']') {
-            depth--
-            check(i)
-          } else if (chunk[i] === '"') {
-            isString = true
+        let parts = buff.split(os.EOL);
+        if (parts.length > 1) {
+          buff = parts.pop();
+          for (let part of parts) {
+            count++;
+            apply(JSON.parse(part));
           }
         }
       }
