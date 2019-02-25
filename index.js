@@ -14,6 +14,7 @@ try {
 
 const print = require('./print')
 const reduce = require('./reduce')
+const stream = require('./stream')
 
 const usage = `
   Usage
@@ -54,7 +55,7 @@ void function main() {
     return
   }
 
-  const reader = stream()
+  const reader = stream(stdin, apply)
 
   stdin.on('readable', reader.read)
   stdin.on('end', () => {
@@ -128,76 +129,5 @@ function select(cb) {
       throw skip
     }
     return json
-  }
-}
-
-
-function stream() {
-  let buff = ''
-  let len = 0
-  let depth = 0
-  let isString = false
-
-  let count = 0
-  let head = ''
-  const check = (i) => {
-    if (depth <= 0) {
-      const input = buff.substring(0, len + i + 1)
-
-      if (count > 0) {
-        if (head !== '') {
-          const json = JSON.parse(head)
-          apply(json)
-          head = ''
-        }
-
-        const json = JSON.parse(input)
-        apply(json)
-      } else {
-        head = input
-      }
-
-      buff = buff.substring(len + i + 1)
-      len = buff.length
-      count++
-    }
-  }
-
-  return {
-    isStream() {
-      return count > 1
-    },
-    value() {
-      return head + buff
-    },
-    read() {
-      let chunk
-
-      while ((chunk = stdin.read())) {
-        len = buff.length
-        buff += chunk
-
-        for (let i = 0; i < chunk.length; i++) {
-          if (isString) {
-            if (chunk[i] === '"') {
-              if ((i === 0 && buff[len - 1] !== '\\') || (i > 0 && chunk[i - 1] !== '\\')) {
-                isString = false
-                check(i)
-              }
-            }
-            continue
-          }
-
-          if (chunk[i] === '{' || chunk[i] === '[') {
-            depth++
-          } else if (chunk[i] === '}' || chunk[i] === ']') {
-            depth--
-            check(i)
-          } else if (chunk[i] === '"') {
-            isString = true
-          }
-        }
-      }
-    }
   }
 }

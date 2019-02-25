@@ -1,6 +1,7 @@
 'use strict'
 const test = require('ava')
 const {execSync} = require('child_process')
+const stream = require('./stream')
 
 function fx(json, code = '') {
   return execSync(`echo '${JSON.stringify(json)}' | node index.js ${code}`).toString('utf8')
@@ -44,4 +45,31 @@ test('chain', t => {
 test('file argument', t => {
   const r = execSync(`node index.js package.json .name`).toString('utf8')
   t.deepEqual(r, 'fx\n')
+})
+
+test('stream', t => {
+  const input = `
+  {"index": 0} {"index": 1}
+  {"index": 2, "quote": "\\""}
+  {"index": 3} "Hello" "world"
+  {"index": 6, "key": "one \\"two\\" three"}
+  `
+  t.plan(7 * (input.length - 1))
+
+  for (let i = 0; i < input.length; i++) {
+    const parts = [input.substring(0, i), input.substring(i)]
+
+    const reader = stream(
+      {
+        read() {
+          return parts.shift()
+        }
+      },
+      json => {
+        t.pass()
+      }
+    )
+
+    reader.read()
+  }
 })

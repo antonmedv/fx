@@ -15,7 +15,8 @@
     "fx.js",
     "index.js",
     "print.js",
-    "reduce.js"
+    "reduce.js",
+    "stream.js"
   ],
   "scripts": {
     "test": "ava",
