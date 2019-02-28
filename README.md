@@ -17,6 +17,7 @@ Command-line JSON processing tool
 * Interactive mode 🎉
 * Themes support 🎨
 * Streaming support 🌊
+* Bash completion
 
 ## Install
 
@@ -30,7 +31,7 @@ $ brew install fx
 
 Or download standalone binary from [releases](https://github.com/antonmedv/fx/releases) page.
 
-Did you like **fx**? [Buy me a beer 🍺](https://paypal.me/antonmedv) or [₿](https://www.wispay.io/t/ZQb)
+Did you like **fx**? [Buy me a beer 🍺](https://paypal.me/antonmedv) or [send come ₿](https://www.wispay.io/t/ZQb)
 
 ## Usage
 
@@ -76,6 +77,18 @@ $ echo '{"count": 0}' | fx '{...this, count: 1}'
 Pretty print JSON with dot.
 ```bash
 $ curl ... | fx .
+```
+
+Stream JSON into fx.
+```bash
+$ kubectl logs ... -f | fx .message
+```
+
+Apply fx to a few JSON files.
+```bash
+$ cat *.json | fx .length
+3
+4
 ```
 
 And try this:
