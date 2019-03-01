@@ -6,6 +6,7 @@ _* Function eXecution_
 [![Build Status](https://travis-ci.org/antonmedv/fx.svg?branch=master)](https://travis-ci.org/antonmedv/fx)
 [![Npm Version](https://img.shields.io/npm/v/fx.svg)](https://www.npmjs.com/package/fx)
 [![Brew Version](https://img.shields.io/homebrew/v/fx.svg)](https://formulae.brew.sh/formula/fx)
+![Nyancat Approved](https://img.shields.io/badge/nyancat-approved-ff69b4.svg)
 
 Command-line JSON processing tool
 
