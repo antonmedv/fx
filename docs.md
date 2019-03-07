@@ -160,15 +160,17 @@ echo '[1,2,3]' | fx 'this.forEach(x => console.log(x))' 2>/dev/null | xargs echo
 Convert object to array:
 ```bash
 $ cat package.json | fx 'Object.keys(this.dependencies)'
-[
-  "@medv/prettyjson"
-]
 ```
 
-By the way, fx has shortcut for `Object.keys(this)`. Previous example can be rewritten as:
+Or by two functions:
+```bash
+$ cat package.json | fx .dependencies Object.keys
+```
+
+By the way, fx has shortcut for `Object.keys`. Previous example can be rewritten as:
 
 ```bash
-$ cat package.json | fx this.dependencies ?
+$ cat package.json | fx .dependencies ?
 ``` 
 
 ## Streaming mode
