@@ -35,7 +35,7 @@ Did you like **fx**? [Buy me a beer 🍺](https://paypal.me/antonmedv) or [send 
 
 ## Usage
 
-Start [interactive mode](https://github.com/antonmedv/fx/blob/master/docs.md#interactive-mode) without passing any arguments.
+Start [interactive mode](https://github.com/antonmedv/fx/blob/master/DOCS.md#interactive-mode) without passing any arguments.
 ```
 $ curl ... | fx
 ```
@@ -61,7 +61,7 @@ Pass any numbers of arguments as code.
 $ curl ... | fx 'json => json.message' 'json => json.filter(x => x.startsWith("a"))'
 ```
 
-Access all lodash (or ramda, etc) methods by using [.fxrc](https://github.com/antonmedv/fx/blob/master/docs.md#using-fxrc) file.
+Access all lodash (or ramda, etc) methods by using [.fxrc](https://github.com/antonmedv/fx/blob/master/DOCS.md#using-fxrc) file.
 ```bash
 $ curl ... | fx '_.groupBy("commit.committer.name")' '_.mapValues(_.size)'
 ```
@@ -98,7 +98,7 @@ $ fx --life
 
 ## Documentation
 
-See full [documentation](https://github.com/antonmedv/fx/blob/master/docs.md).
+See full [documentation](https://github.com/antonmedv/fx/blob/master/DOCS.md).
 
 ## Links
 
