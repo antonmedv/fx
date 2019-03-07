@@ -1,22 +1,22 @@
 # Documentation
 
 * [Getting started](#getting-started)
-* [Anonymous function](#anonymous-function)
-* [Binding](#binding)
-* [Dot](#dot)
-* [Chain](#chain)
-* [Generator](#generator)
-* [Update](#update)
-* [Using packages](#using-packages)
+* [Usage](#usage)
+  + [Anonymous function](#anonymous-function)
+  + [Binding](#binding)
+  + [Dot](#dot)
+  + [Chaining](#chaining)
+  + [Generator](#generator)
+  + [Updating](#updating)
+  + [Using packages](#using-packages)
 * [Using .fxrc](#using-fxrc)
-* [Edit in place](#edit-in-place)
+  + [Edit in place](#edit-in-place)
 * [Formatting](#formatting)
 * [Other examples](#other-examples)
 * [Streaming mode](#streaming-mode)
 * [Interactive mode](#interactive-mode)
-  + [Search](#search)
+  + [Searching](#searching)
   + [Selecting text](#selecting-text)
-
 
 ## Getting started
 
@@ -34,7 +34,9 @@ $ fx my.json
 
 If any argument was passed, `fx` will apply it and prints to stdout.
 
-## Anonymous function
+## Usage
+
+### Anonymous function
 
 Use an anonymous function as reducer which gets JSON and processes it:
 ```bash
@@ -42,7 +44,7 @@ $ echo '{"foo": [{"bar": "value"}]}' | fx 'x => x.foo[0].bar'
 value
 ```
 
-## Binding
+### Binding
 
 If you don't pass anonymous function `param => ...`, code will be automatically transformed into anonymous function.
 And you can get access to JSON by `this` keyword:
@@ -51,7 +53,7 @@ $ echo '{"foo": [{"bar": "value"}]}' | fx 'this.foo[0].bar'
 value
 ```
 
-## Dot
+### Dot
 
 It is possible to omit `this` keyword:
 ```bash
@@ -67,7 +69,7 @@ $ echo '{"foo": "bar"}' | fx .
 }
 ```
 
-## Chain
+### Chaining
 
 You can pass any number of anonymous functions for reducing JSON:
 ```bash
@@ -75,7 +77,7 @@ $ echo '{"foo": [{"bar": "value"}]}' | fx 'x => x.foo' 'this[0]' 'this.bar'
 value
 ```
 
-## Generator
+### Generator
 
 If passed code contains `yield` keyword, [generator expression](https://github.com/sebmarkbage/ecmascript-generator-expression)
 will be used:
@@ -101,7 +103,7 @@ $ echo '["a", "b"]' | fx 'yield* this; yield "c";'
 ]
 ```
 
-## Update
+### Updating
 
 You can update existing JSON using spread operator:
 
@@ -112,7 +114,7 @@ $ echo '{"count": 0}' | fx '{...this, count: 1}'
 }
 ```
 
-## Using packages
+### Using packages
 
 Use any npm package by installing it globally:
 ```bash
@@ -142,7 +144,7 @@ curl 'https://api.github.com/repos/facebook/react/commits?per_page=100' \
 > export NODE_PATH=`npm root -g`
 > ```
 
-## Edit in place
+### Edit in place
 
 Add next code to your _.fxrc_ file:
 
@@ -235,7 +237,7 @@ These commands are available when editing the filter:
 | `Ctrl`+`w`                    | Delete last part        |
 | `up`/`down`                   | Select autocomplete     |
 
-### Search
+### Searching
 
 Press `/` and type regexp pattern to search in current JSON. Search work with currently applied filter.
 
