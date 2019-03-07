@@ -1,5 +1,25 @@
 # Documentation
 
+* [Getting started](#getting-started)
+* [Anonymous function](#anonymous-function)
+* [Binding](#binding)
+* [Dot](#dot)
+* [Chain](#chain)
+* [Generator](#generator)
+* [Update](#update)
+* [Using packages](#using-packages)
+* [Using .fxrc](#using-fxrc)
+* [Edit in place](#edit-in-place)
+* [Formatting](#formatting)
+* [Other examples](#other-examples)
+* [Streaming mode](#streaming-mode)
+* [Interactive mode](#interactive-mode)
+  + [Search](#search)
+  + [Selecting text](#selecting-text)
+
+
+## Getting started
+
 `fx` can work in two modes: cli and interactive. To start interactive mode pipe into `fx` any JSON:
 
 ```bash
