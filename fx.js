@@ -21,6 +21,9 @@ module.exports = function start(filename, source) {
   const expanded = new Set()
   expanded.add('')
 
+  // Current filter code.
+  let currentCode = null
+
   // Current search regexp and generator.
   let highlight = null
   let findGen = null
@@ -160,7 +163,13 @@ module.exports = function start(filename, source) {
   })
 
   input.on('update', function (code) {
-    update(code)
+    if (currentCode === code) {
+      return
+    }
+    currentCode = code
+    if (index.size < 10000) { // Don't live update in we have a big JSON file.
+      update(code)
+    }
     complete(code)
   })
 
@@ -409,7 +418,9 @@ module.exports = function start(filename, source) {
 
     if (match) {
       if (typeof json === 'object' && json.constructor === Object) {
-        const keys = Object.keys(json).filter(key => key.startsWith(match[1]))
+        const keys = Object.keys(json)
+          .filter(key => key.startsWith(match[1]))
+          .slice(0, 1000) // With lots of items, list takes forever to render.
 
         // Hide if there is nothing to show or
         // don't show if there is complete match.
@@ -616,4 +627,3 @@ function* dfs(v, path = '') {
     }
   }
 }
-
