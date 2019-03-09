@@ -105,7 +105,7 @@ See full [documentation](https://github.com/antonmedv/fx/blob/master/DOCS.md).
 
 ## Related
 
-* [xx](https://github.com/antonmedv/xx) – fx-like JSON tool (*go*)
+* [gofx](https://github.com/antonmedv/gofx) – fx-like JSON tool (*go*)
 * [eat](https://github.com/antonmedv/eat) – converts anything into JSON
 * [ymlx](https://github.com/matthewadams/ymlx) – fx-like YAML cli processor
 * [fx-completion](https://github.com/antonmedv/fx-completion) – bash completion for fx
