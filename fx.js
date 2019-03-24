@@ -348,11 +348,12 @@ module.exports = function start(filename, source) {
     const [n, line] = getLine(program.y)
     program.showCursor()
     program.cursorPos(program.y, line.search(/\S/))
-    const path = index.get(n)
-    if (expanded.has(path)) {
-      expanded.delete(path)
-      render()
+    let path = index.get(n)
+    if (typeof path === 'string' && !expanded.has(path)) {
+      path = path.replace(/\.[^.]+$/, '')
     }
+    expanded.delete(path)
+    render()
   })
 
   box.on('click', function (mouse) {
