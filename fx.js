@@ -350,7 +350,7 @@ module.exports = function start(filename, source) {
     program.cursorPos(program.y, line.search(/\S/))
     let path = index.get(n)
     if (typeof path === 'string' && !expanded.has(path)) {
-      path = path.replace(/\.[^.]+$/, '')
+      path = path.replace(/(\.[^\[\].]+|\[\d+\])$/, '')
       for (let y = program.y; y >= 0; --y) {
         const [n, line] = getLine(y)
         program.cursorPos(y, line.search(/\S/))
