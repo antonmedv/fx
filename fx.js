@@ -351,6 +351,11 @@ module.exports = function start(filename, source) {
     let path = index.get(n)
     if (typeof path === 'string' && !expanded.has(path)) {
       path = path.replace(/\.[^.]+$/, '')
+      for (let y = program.y; y >= 0; --y) {
+        const [n, line] = getLine(y)
+        program.cursorPos(y, line.search(/\S/))
+        if (index.get(n) === path) break
+      }
     }
     expanded.delete(path)
     render()
