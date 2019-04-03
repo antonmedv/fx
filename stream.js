@@ -1,5 +1,16 @@
 'use strict'
 
+function apply(cb, input) {
+  let json
+  try {
+    json = JSON.parse(input)
+  } catch (e) {
+    process.stderr.write(e.toString() + '\n')
+    return
+  }
+  cb(json)
+}
+
 function stream(from, cb) {
   let buff = ''
   let lastChar = ''
@@ -15,13 +26,11 @@ function stream(from, cb) {
 
       if (count > 0) {
         if (head !== '') {
-          const json = JSON.parse(head)
-          cb(json)
+          apply(cb, head)
           head = ''
         }
 
-        const json = JSON.parse(input)
-        cb(json)
+        apply(cb, input)
       } else {
         head = input
       }
