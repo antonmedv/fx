@@ -47,11 +47,11 @@
     "@medv/blessed": "^2.0.0",
     "chalk": "^2.4.2",
     "indent-string": "^3.2.0",
-    "string-width": "^3.0.0"
+    "string-width": "^4.1.0"
   },
   "devDependencies": {
-    "ava": "^1.2.1",
+    "ava": "^1.4.1",
     "pkg": "^4.3.7",
-    "release-it": "^10.1.0"
+    "release-it": "^10.4.0"
   }
 }
