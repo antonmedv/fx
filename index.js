@@ -4,6 +4,16 @@ const os = require('os')
 const fs = require('fs')
 const path = require('path')
 
+const skip = Symbol('skip')
+global.select = function select(cb) {
+  return json => {
+    if (!cb(json)) {
+      throw skip
+    }
+    return json
+  }
+}
+
 try {
   require(path.join(os.homedir(), '.fxrc')) // Should be required before config.js usage.
 } catch (err) {
@@ -43,8 +53,6 @@ const usage = `
 
 const {stdin, stdout, stderr} = process
 const args = process.argv.slice(2)
-const skip = Symbol('skip')
-global.select = select
 
 
 void function main() {
@@ -119,15 +127,5 @@ function apply(json) {
   } else {
     const [text] = print(output)
     console.log(text)
-  }
-}
-
-
-function select(cb) {
-  return json => {
-    if (!cb(json)) {
-      throw skip
-    }
-    return json
   }
 }
