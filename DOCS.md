@@ -17,6 +17,7 @@
 * [Interactive mode](#interactive-mode)
   + [Searching](#searching)
   + [Selecting text](#selecting-text)
+* [Memory Usage](#memory-usage)
 
 ## Getting started
 
@@ -259,3 +260,17 @@ You may found what you can't just select text in fx. This is due the fact that a
 | `Option`+`Mouse` | iTerm2, Hyper |
 | `Fn`+`Mouse`     | Terminal.app  |
 | `Shift`+`Mouse`  | Linux         |
+
+## Memory Usage
+
+You may find what sometimes, on a really big JSON files, fx prints an error with message like this:
+
+```
+FATAL ERROR: JavaScript heap out of memory 
+```
+
+There is a limit for the memory usage in V8 of around 2GB. You can increase the limit by putting next lines to you _.profile_:
+
+```bash
+export NODE_OPTIONS='--max-old-space-size=8192'
+``` 
