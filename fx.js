@@ -348,17 +348,36 @@ module.exports = function start(filename, source) {
     const [n, line] = getLine(program.y)
     program.showCursor()
     program.cursorPos(program.y, line.search(/\S/))
-    let path = index.get(n)
-    if (typeof path === 'string' && !expanded.has(path)) {
-      path = path.replace(/(\.[^\[\].]+|\[\d+\])$/, '')
-      for (let y = program.y; y >= 0; --y) {
-        const [n, line] = getLine(y)
-        program.cursorPos(y, line.search(/\S/))
-        if (index.get(n) === path) break
+
+    // Find path at current cursor position.
+    const path = index.get(n)
+
+    if (expanded.has(path)) {
+      // Collapse current path.
+      expanded.delete(path)
+      render()
+    } else {
+      // If there is no expanded paths on current line,
+      // collapse parent path of current location.
+      if (typeof path === 'string') {
+        // Trip last part (".foo", "[0]") to get parent path.
+        const parentPath = path.replace(/(\.[^\[\].]+|\[\d+\])$/, '')
+        if (expanded.has(parentPath)) {
+          expanded.delete(parentPath)
+          render()
+
+          // Find line number of parent path, and if we able to find it,
+          // move cursor to this position of just collapsed parent path.
+          for (let y = program.y; y >= 0; --y) {
+            const [n, line] = getLine(y)
+            if (index.get(n) === parentPath) {
+              program.cursorPos(y, line.search(/\S/))
+              break
+            }
+          }
+        }
       }
     }
-    expanded.delete(path)
-    render()
   })
 
   box.on('click', function (mouse) {
