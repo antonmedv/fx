@@ -284,16 +284,16 @@ module.exports = function start(filename, source) {
   box.key(['up', 'k'], function () {
     hideStatusBar()
     program.showCursor()
-    let rest = [...index.keys()]
-
     const [n] = getLine(program.y)
-    if (typeof n !== 'undefined') {
-      rest = rest.filter(i => i < n)
+
+    let next
+    for (let [i,] of index) {
+      if (i < n && (typeof next === 'undefined' || i > next)) {
+        next = i
+      }
     }
 
-    if (rest.length > 0) {
-      const next = Math.max(...rest)
-
+    if (typeof next !== 'undefined') {
       let y = box.getScreenNumber(next) - box.childBase
       if (y <= 0) {
         box.scroll(-1)
@@ -309,16 +309,16 @@ module.exports = function start(filename, source) {
   box.key(['down', 'j'], function () {
     hideStatusBar()
     program.showCursor()
-    let rest = [...index.keys()]
-
     const [n] = getLine(program.y)
-    if (typeof n !== 'undefined') {
-      rest = rest.filter(i => i > n)
+
+    let next
+    for (let [i,] of index) {
+      if (i > n && (typeof next === 'undefined' || i < next)) {
+        next = i
+      }
     }
 
-    if (rest.length > 0) {
-      const next = Math.min(...rest)
-
+    if (typeof next !== 'undefined') {
       let y = box.getScreenNumber(next) - box.childBase
       if (y >= box.height) {
         box.scroll(1)
