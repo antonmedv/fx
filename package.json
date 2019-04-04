@@ -24,11 +24,7 @@
     "zip": "cd dist && find . -name 'fx-*' -exec zip '{}.zip' '{}' \\;",
     "afterBump": "rm -rf ./dist && npm run build && npm run zip",
     "release": "release-it --github.release --github.assets=dist/*.zip",
-    "brew:release": "brew bump-formula-pr --url=https://registry.npmjs.org/fx/-/fx-`fx package.json .version`.tgz --no-audit fx",
-    "docker:build": "docker build -t antonmedv/fx:latest .",
-    "docker:tag": "docker tag antonmedv/fx:latest antonmedv/fx:`fx package.json .version`",
-    "docker:push": "docker push antonmedv/fx:latest && docker push antonmedv/fx:`fx package.json .version`",
-    "docker:release": "npm run docker:build && npm run docker:tag && npm run docker:push"
+    "brew:release": "brew bump-formula-pr --url=https://registry.npmjs.org/fx/-/fx-`fx package.json .version`.tgz --no-audit fx"
   },
   "keywords": [
     "json",
