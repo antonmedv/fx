@@ -21,13 +21,13 @@
 
 ## Getting started
 
-`fx` can work in two modes: cli and interactive. To start interactive mode pipe into `fx` any JSON:
+`fx` can work in two modes: cli and interactive. To start interactive mode pipe any JSON into `fx`:
 
 ```bash
 $ curl ... | fx
 ```
 
-Or you can pass file argument as first parameter:
+Or you can pass a filename as the first parameter:
 
 ```bash
 $ fx my.json
@@ -62,7 +62,7 @@ $ echo '{"foo": [{"bar": "value"}]}' | fx .foo[0].bar
 value
 ```
 
-If single dot is passed, JSON will be processed without modification:
+If a single dot is passed, the input JSON will be formatted but otherwise unaltered:
 ```bash
 $ echo '{"foo": "bar"}' | fx .
 {
@@ -80,7 +80,7 @@ value
 
 ### Generator
 
-If passed code contains `yield` keyword, [generator expression](https://github.com/sebmarkbage/ecmascript-generator-expression)
+If the passed code contains the `yield` keyword, [generator expression](https://github.com/sebmarkbage/ecmascript-generator-expression)
 will be used:
 ```bash
 $ curl ... | fx 'for (let user of this) if (user.login.startsWith("a")) yield user'
@@ -106,7 +106,7 @@ $ echo '["a", "b"]' | fx 'yield* this; yield "c";'
 
 ### Updating
 
-You can update existing JSON using spread operator:
+You can update existing JSON using the spread operator:
 
 ```bash
 $ echo '{"count": 0}' | fx '{...this, count: 1}'
@@ -166,7 +166,7 @@ fx data.json '{...this, count: this.count+1}' save .count
 
 ## Formatting
 
-If you need something different then JSON (for example arguments for xargs) do not return anything from reducer.
+If you need output other than JSON (for example arguments for xargs), do not return anything from the reducer.
 `undefined` value is printed into stderr by default.
 ```bash
 echo '[]' | fx 'void 0'
@@ -263,13 +263,13 @@ You may found what you can't just select text in fx. This is due the fact that a
 
 ## Memory Usage
 
-You may find what sometimes, on a really big JSON files, fx prints an error with message like this:
+You may find that sometimes, on really big JSON files, fx prints an error message like this:
 
 ```
 FATAL ERROR: JavaScript heap out of memory 
 ```
 
-There is a limit for the memory usage in V8 of around 2GB. You can increase the limit by putting next lines to you _.profile_:
+V8 limits memory usage to around 2 GB by default. You can increase the limit by putting this line in your _.profile_:
 
 ```bash
 export NODE_OPTIONS='--max-old-space-size=8192'
