@@ -251,6 +251,7 @@ module.exports = function start(filename, source) {
       }
     }
     render()
+		displayCurrentPath()
   })
 
   box.key('S-e', function () {
@@ -274,6 +275,7 @@ module.exports = function start(filename, source) {
         program.cursorPos(y, line.search(/\S/))
       }
     }
+		displayCurrentPath()
   })
 
   box.key('n', function () {
@@ -304,6 +306,7 @@ module.exports = function start(filename, source) {
       const line = box.getScreenLine(y + box.childBase)
       program.cursorPos(y, line.search(/\S/))
     }
+		displayCurrentPath()
   })
 
   box.key(['down', 'j'], function () {
@@ -329,6 +332,7 @@ module.exports = function start(filename, source) {
       const line = box.getScreenLine(y + box.childBase)
       program.cursorPos(y, line.search(/\S/))
     }
+		displayCurrentPath()
   })
 
   box.key(['right', 'l'], function () {
@@ -341,6 +345,7 @@ module.exports = function start(filename, source) {
       expanded.add(path)
       render()
     }
+		displayCurrentPath()
   })
 
   // Expand everything under cursor.
@@ -359,6 +364,7 @@ module.exports = function start(filename, source) {
       }
     }
     render()
+		displayCurrentPath()
   })
 
   box.key(['left', 'h'], function () {
@@ -396,6 +402,7 @@ module.exports = function start(filename, source) {
         }
       }
     }
+		displayCurrentPath()
   })
 
   // Collapse all under cursor.
@@ -412,6 +419,7 @@ module.exports = function start(filename, source) {
       }
     }
     render()
+		displayCurrentPath()
   })
 
   box.on('click', function (mouse) {
@@ -633,6 +641,12 @@ module.exports = function start(filename, source) {
     box.setContent(content)
     screen.render()
   }
+
+	function displayCurrentPath() {
+		const [n] = getLine(program.y)
+		const path = index.get(n)
+		showStatusBar(path)
+	}
 
   render()
 }
