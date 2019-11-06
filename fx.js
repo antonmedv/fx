@@ -589,6 +589,23 @@ module.exports = function start(filename, source) {
           screen.render()
         }
       }
+
+      // Set cursor to current path.
+      // We need timeout here to give our terminal some time.
+      // Without timeout first cursorPos call does not working,
+      // it looks like an ugly hack and it is an ugly hack.
+      setTimeout(() => {
+        for (let [k, v] of index) {
+          if (v === currentPath) {
+            let y = box.getScreenNumber(k) - box.childBase
+            if (y <= 0) {
+              y = 0
+            }
+            const line = box.getScreenLine(y + box.childBase)
+            program.cursorPos(y, line.search(/\S/))
+          }
+        }
+      }, 100)
     }
   }
 
