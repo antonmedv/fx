@@ -221,13 +221,18 @@ Next commands available in interactive mode:
 |             Key               |         Command         |
 |-------------------------------|-------------------------|
 | `q` or `Esc` or `Ctrl`+`c`    | Exit                    |
-| `e`/`E`                       | Expand/Collapse all     |
-| `g`/`G`                       | Goto top/bottom         |
-| `up`/`down` or `k/j`          | Move cursor up/down     |
-| `left`/`right` or `h/l`       | Expand/Collapse         |
+| `up` or `k`                   | Move cursor up          |
+| `down` or `j`                 | Move cursor down        |
+| `left` or `h`                 | Collapse                |
+| `right` or `l`                | Expand                  |
+| `Shift`+`right` or `L`        | Expand all under cursor | 
+| `e`                           | Expand all              |
+| `E`                           | Collapse all            |
+| `g`                           | Scroll to top           |
+| `G`                           | Scroll to bottom        |
 | `.`                           | Edit filter             |
 | `/`                           | Search                  |
-| `n`                           | Goto next found pattern |
+| `n`                           | Find next               |
 
 These commands are available when editing the filter:
 

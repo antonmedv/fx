@@ -30,6 +30,21 @@ const usage = `
   Usage
     $ fx [code ...]
 
+  Shortcuts
+    q or Esc or Ctrl+c    Exit                   
+    up or k               Move cursor up         
+    down or j             Move cursor down       
+    left or h             Collapse               
+    right or l            Expand                 
+    Shift+right or L      Expand all under cursor
+    e                     Expand all             
+    E                     Collapse all           
+    g                     Scroll to top          
+    G                     Scroll to bottom       
+    .                     Edit filter            
+    /                     Search                 
+    n                     Find next                  
+
   Examples
     $ echo '{"key": "value"}' | fx 'x => x.key'
     value

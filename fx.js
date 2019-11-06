@@ -350,7 +350,7 @@ module.exports = function start(filename, source) {
     program.showCursor()
     program.cursorPos(program.y, line.search(/\S/))
     const path = index.get(n)
-    const subJson = reduce(json, path)
+    const subJson = reduce(json, 'this' + path)
     for (let p of dfs(subJson, path)) {
       if (expanded.size < 1000) {
         expanded.add(p)
@@ -396,22 +396,6 @@ module.exports = function start(filename, source) {
         }
       }
     }
-  })
-
-  // Collapse all under cursor.
-  box.key(['S-left', 'S-h'], function () {
-    hideStatusBar()
-    const [n, line] = getLine(program.y)
-    program.showCursor()
-    program.cursorPos(program.y, line.search(/\S/))
-    const path = index.get(n)
-    const subJson = reduce(json, path)
-    for (let p of dfs(subJson, path)) {
-      if (expanded.has(p)) {
-        expanded.delete(p)
-      }
-    }
-    render()
   })
 
   box.on('click', function (mouse) {
