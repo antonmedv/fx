@@ -22,9 +22,13 @@
     "test": "ava",
     "build": "pkg . --out-path dist -t node8-linux-x64,node8-macos-x64,node8-win-x64",
     "zip": "cd dist && find . -name 'fx-*' -exec zip '{}.zip' '{}' \\;",
-    "afterBump": "rm -rf ./dist && npm run build && npm run zip",
     "release": "release-it --github.release --github.assets=dist/*.zip",
     "brew:release": "brew bump-formula-pr --url=https://registry.npmjs.org/fx/-/fx-`fx package.json .version`.tgz --no-audit fx"
+  },
+  "release-it": {
+    "hooks": {
+      "after:bump": "rm -rf ./dist && npm run build && npm run zip"
+    }
   },
   "keywords": [
     "json",
