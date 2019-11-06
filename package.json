@@ -1,6 +1,6 @@
 {
   "name": "fx",
-  "version": "14.0.1",
+  "version": "14.1.0",
   "description": "Command-line JSON viewer",
   "repository": "antonmedv/fx",
   "author": "Anton Medvedev <anton@medv.io>",
