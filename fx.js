@@ -281,6 +281,29 @@ module.exports = function start(filename, source) {
     findNext()
   })
 
+  // Scrolls to and sets cursor at first line of object
+  box.key('g', function () {
+    hideStatusBar()
+    program.showCursor()
+    box.scrollTo(0)
+    screen.render()
+
+    const line = box.getScreenLine(0)
+    program.cursorPos(0)
+  })
+
+  // Scrolls to and sets cursor on last line of object
+  box.key('S-g', function () {
+    const lastLine = box.getScrollHeight() - 1
+
+    hideStatusBar()
+    program.showCursor()
+    box.scrollTo(lastLine)
+    screen.render()
+
+    program.cursorPos(lastLine)
+  })
+
   box.key(['up', 'k'], function () {
     hideStatusBar()
     program.showCursor()
@@ -306,6 +329,49 @@ module.exports = function start(filename, source) {
     }
   })
 
+  // Half page up
+  box.key(['C-u','u'], function () {
+    hideStatusBar()
+    program.showCursor()
+    const page = Math.round(box.height / 2)
+
+    box.scroll(-page || -1)
+    screen.render()
+
+    let y = program.y
+    if (box.getScroll() == 0) {
+      y -= page
+    } else {
+      y = box.height - 1
+    }
+
+    if (y < 0) {
+      y = 0
+    }
+
+    const line = box.getScreenLine(y + box.childBase)
+    program.cursorPos(y, line.search(/\S/))
+  })
+
+  // Full page up (backwards)
+  box.key(['C-b','b','pageup'], function () {
+    hideStatusBar()
+    program.showCursor()
+    box.scroll(-box.height || -1)
+    screen.render()
+
+    let y = box.height - 1
+    if (box.getScroll() < box.height) {
+      y -= box.height
+    }
+    if (y < 0) {
+      y = 0
+    }
+
+    const line = box.getScreenLine(y + box.childBase)
+    program.cursorPos(y, line.search(/\S/))
+  })
+
   box.key(['down', 'j'], function () {
     hideStatusBar()
     program.showCursor()
@@ -329,6 +395,57 @@ module.exports = function start(filename, source) {
       const line = box.getScreenLine(y + box.childBase)
       program.cursorPos(y, line.search(/\S/))
     }
+  })
+
+  // Half page down
+  box.key(['C-d','d'], function () {
+    hideStatusBar()
+    program.showCursor()
+    const page = Math.round(box.height / 2)
+    const lastLine = box.getScrollHeight()
+
+    let y = program.y
+    if(box.childBase + page <= lastLine - page) {
+      box.scroll(page)
+      screen.render()
+      y = 0
+    } else if (box.height < lastLine) {
+      box.scroll(page)
+      screen.render()
+      if (y + page > box.height) {
+        y = box.height - 1
+      } else {
+        y += page
+      }
+    } else {
+      y = lastLine - 1
+    }
+
+    const line = box.getScreenLine(y + box.childBase)
+    program.cursorPos(y, line.search(/\S/))
+  })
+
+  // Full page down (forwards)
+  box.key(['C-f','f','pagedown'], function () {
+    hideStatusBar()
+    program.showCursor()
+    const lastLine = box.getScrollHeight()
+
+    let y = program.y
+    if(box.childBase + box.height < lastLine - box.height) {
+      box.scroll(box.height)
+      screen.render()
+      y = 0
+    } else if (box.height < lastLine) {
+      box.scroll(box.height)
+      screen.render()
+      y = box.height - 1
+    } else {
+      y = lastLine - 1
+    }
+
+    const line = box.getScreenLine(y + box.childBase)
+    program.cursorPos(y, line.search(/\S/))
   })
 
   box.key(['right', 'l'], function () {
