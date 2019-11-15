@@ -281,6 +281,32 @@ module.exports = function start(filename, source) {
     findNext()
   })
 
+  // High, Middle, Low cursor movement
+  box.key('S-h', function () {
+    hideStatusBar()
+    program.showCursor()
+    const line = box.getScreenLine(box.childBase)
+    program.cursorPos(0, line.search(/\S/))
+  })
+
+  box.key('S-m', function () {
+    hideStatusBar()
+    program.showCursor()
+    const lastLine = box.height < box.getScrollHeight() ? box.height : box.getScrollHeight()
+    const offset = lastLine / 2
+    const line = box.getScreenLine(box.childBase + offset)
+    program.cursorPos(offset, line.search(/\S/))
+  })
+
+  box.key('S-l', function () {
+    hideStatusBar()
+    program.showCursor()
+    const lastLine = box.height < box.getScrollHeight() ? box.height : box.getScrollHeight()
+    const line = box.getScreenLine(box.childBase + lastLine - 1)
+    program.cursorPos(lastLine - 1, line.search(/\S/))
+  })
+
+
   // Scrolls to and sets cursor at first line of object
   box.key('g', function () {
     hideStatusBar()
@@ -461,7 +487,7 @@ module.exports = function start(filename, source) {
   })
 
   // Expand everything under cursor.
-  box.key(['S-right', 'S-l'], function () {
+  box.key(['S-right','S-o'], function () {
     hideStatusBar()
     const [n, line] = getLine(program.y)
     program.showCursor()
