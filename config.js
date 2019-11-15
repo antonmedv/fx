@@ -2,25 +2,26 @@
 const chalk = require('chalk')
 const noop = x => x
 const list = {
-  fg: 'black',
-  bg: 'cyan',
+  fg: 'cyan',
+  bg: 'blue',
   selected: {
-    bg: 'magenta'
+    fg: 'brightcyan',
+    bg: 'brightblue'
   }
 }
 
 module.exports = {
-  space:            global.FX_STYLE_SPACE             || 2,
+  space:            global.FX_STYLE_SPACE             || 4,
   null:             global.FX_STYLE_NULL              || chalk.grey.bold,
-  number:           global.FX_STYLE_NUMBER            || chalk.cyan.bold,
-  boolean:          global.FX_STYLE_BOOLEAN           || chalk.yellow.bold,
-  string:           global.FX_STYLE_STRING            || chalk.green.bold,
-  key:              global.FX_STYLE_KEY               || chalk.blue.bold,
-  bracket:          global.FX_STYLE_BRACKET           || noop,
-  comma:            global.FX_STYLE_COMMA             || noop,
+  number:           global.FX_STYLE_NUMBER            || chalk.magenta,
+  boolean:          global.FX_STYLE_BOOLEAN           || chalk.blue.bold,
+  string:           global.FX_STYLE_STRING            || chalk.green,
+  key:              global.FX_STYLE_KEY               || chalk.cyan,
+  bracket:          global.FX_STYLE_BRACKET           || chalk.grey,
+  comma:            global.FX_STYLE_COMMA             || chalk.grey,
   colon:            global.FX_STYLE_COLON             || noop,
   list:             global.FX_STYLE_LIST              || list,
-  highlight:        global.FX_STYLE_HIGHLIGHT         || chalk.black.bgYellow,
-  highlightCurrent: global.FX_STYLE_HIGHLIGHT_CURRENT || chalk.inverse,
+  highlight:        global.FX_STYLE_HIGHLIGHT         || chalk.yellow.underline,
+  highlightCurrent: global.FX_STYLE_HIGHLIGHT_CURRENT || chalk.yellow.bold.underline,
   statusBar:        global.FX_STYLE_STATUS_BAR        || chalk.inverse,
 }
