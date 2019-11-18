@@ -474,6 +474,55 @@ module.exports = function start(filename, source) {
     program.cursorPos(y, line.search(/\S/))
   })
 
+  const isExpanded = y => expanded.has(index.get(y + box.childBase))
+
+  // Next expanded object/array
+  box.key('}', function() {
+    hideStatusBar()
+    const [n] = getLine(program.y)
+    if(n < box.getScrollHeight() - 1) {
+      let y = program.y
+
+      program.showCursor()
+      do {
+        y += 1
+        if(y >= box.height) {
+          box.scroll(box.height || 1)
+          // don't jump cursor to top when scrolling to patial last page
+          y = n < box.getScrollHeight() - box.height ? 0 : n % box.height
+        }
+      } while(!isExpanded(y) && y + box.childBase < box.getScrollHeight() - 1)
+
+      render()
+      const line = box.getScreenLine(y + box.childBase)
+      program.cursorPos(y, line && line.search(/\S/))
+    }
+  })
+
+  // Previous expanded object/array
+  box.key('{', function() {
+    hideStatusBar()
+    const [n] = getLine(program.y)
+    if(box.childBase > 0 || program.y > 0) {
+      let y = program.y
+
+      program.showCursor()
+      do {
+        y -= 1
+        if(y < 0) {
+          box.scroll(-box.height || -1)
+          // don't jump cursor to bottom when scrolling to patial first page
+          y = n < box.height ? n - 1 : box.height
+        }
+      } while(!isExpanded(y) && n > 1)
+
+      render()
+      const line = box.getScreenLine(y + box.childBase)
+      program.cursorPos(y, line && line.search(/\S/))
+    }
+  })
+    
+
   box.key(['right', 'l'], function () {
     hideStatusBar()
     const [n, line] = getLine(program.y)
