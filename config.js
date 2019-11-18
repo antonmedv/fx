@@ -20,7 +20,13 @@ module.exports = {
   comma:            global.FX_STYLE_COMMA             || noop,
   colon:            global.FX_STYLE_COLON             || noop,
   list:             global.FX_STYLE_LIST              || list,
+<<<<<<< Updated upstream
   highlight:        global.FX_STYLE_HIGHLIGHT         || chalk.black.bgYellow,
   highlightCurrent: global.FX_STYLE_HIGHLIGHT_CURRENT || chalk.inverse,
   statusBar:        global.FX_STYLE_STATUS_BAR        || chalk.inverse,
+=======
+  highlight:        global.FX_STYLE_HIGHLIGHT         || chalk.yellow.underline,
+  highlightCurrent: global.FX_STYLE_HIGHLIGHT_CURRENT || chalk.yellow.bold.underline,
+  statusBar:        global.FX_STYLE_STATUS_BAR        || chalk.yellow.bold,
+>>>>>>> Stashed changes
 }
