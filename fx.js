@@ -8,9 +8,9 @@ const print = require('./print')
 const find = require('./find')
 const config = require('./config')
 
-module.exports = function start(filename, source) {
+module.exports = function start(filename, source, prev = {}) {
   // Current rendered object on a screen.
-  let json = source
+  let json = prev.json || source
 
   // Contains map from row number to expand path.
   // Example: {0: '', 1: '.foo', 2: '.foo[0]'}
@@ -18,7 +18,7 @@ module.exports = function start(filename, source) {
 
   // Contains expanded paths. Example: ['', '.foo']
   // Empty string represents root path.
-  const expanded = new Set()
+  const expanded = prev.expanded || new Set()
   expanded.add('')
 
   // Current filter code.
@@ -29,9 +29,9 @@ module.exports = function start(filename, source) {
   let findGen = null
   let currentPath = null
 
+  let ttyReadStream, ttyWriteStream
+
   // Reopen tty
-  let ttyReadStream
-  let ttyWriteStream
   if (process.platform === 'win32') {
     const cfs = process.binding('fs')
     ttyReadStream = tty.ReadStream(cfs.open('conin$', fs.constants.O_RDWR | fs.constants.O_EXCL, 0o666))
@@ -67,6 +67,10 @@ module.exports = function start(filename, source) {
     alwaysScroll: true,
     scrollable: true,
   })
+
+  if (prev.childBase) {
+    box.childBase = prev.childBase
+  }
 
   const input = blessed.textbox({
     parent: screen,
@@ -114,9 +118,28 @@ module.exports = function start(filename, source) {
     setTimeout(() => process.exit(0), 10) // mouse events which will be printed in stdout.
   })
 
-  screen.on('resize', function () {
-    render()
-  })
+  // Resize event not working.
+  // Only solution I know to deal with it.
+  const resizeInterval = setInterval(function () {
+    // Call getWindowSize requires printing to stdout,
+    // so we better not don't this while expecting users input
+    if (screen.grabKeys) {
+      return
+    }
+
+    program.getWindowSize((_, e) => {
+      if (!e) {
+        return
+      }
+      if (program.cols !== e.width || program.rows !== e.height) {
+        clearInterval(resizeInterval)
+        screen.destroy()
+        program.destroy()
+        start(filename, source, {json, expanded, childBase: box.childBase})
+      }
+    })
+  }, 2e2)
+
 
   input.on('submit', function () {
     if (autocomplete.hidden) {
