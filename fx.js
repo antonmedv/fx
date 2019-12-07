@@ -68,10 +68,6 @@ module.exports = function start(filename, source, prev = {}) {
     scrollable: true,
   })
 
-  if (prev.childBase) {
-    box.childBase = prev.childBase
-  }
-
   const input = blessed.textbox({
     parent: screen,
     bottom: 0,
@@ -113,33 +109,16 @@ module.exports = function start(filename, source, prev = {}) {
   statusBar.hide()
   autocomplete.hide()
 
+  process.stdout.on('resize', () => {
+    screen.destroy()
+    program.destroy()
+    start(filename, source, {json, expanded})
+  })
+
   screen.key(['escape', 'q', 'C-c'], function () {
     program.disableMouse()                // If exit program immediately, stdin may still receive
     setTimeout(() => process.exit(0), 10) // mouse events which will be printed in stdout.
   })
-
-  // Resize event not working.
-  // Only solution I know to deal with it.
-  const resizeInterval = setInterval(function () {
-    // Call getWindowSize requires printing to stdout,
-    // so we better not don't this while expecting users input
-    if (screen.grabKeys) {
-      return
-    }
-
-    program.getWindowSize((_, e) => {
-      if (!e) {
-        return
-      }
-      if (program.cols !== e.width || program.rows !== e.height) {
-        clearInterval(resizeInterval)
-        screen.destroy()
-        program.destroy()
-        start(filename, source, {json, expanded, childBase: box.childBase})
-      }
-    })
-  }, 2e2)
-
 
   input.on('submit', function () {
     if (autocomplete.hidden) {
