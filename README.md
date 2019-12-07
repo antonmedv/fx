@@ -14,50 +14,40 @@ Command-line JSON processing tool
 * Easy to use
 * Standalone binary
 * Interactive mode 🎉
-* Themes support 🎨
 * Streaming support 🌊
-* Bash completion
 
 ## Install
 
-```
+```bash
 $ npm install -g fx
 ```
 Or via Homebrew
-```
+```bash
 $ brew install fx
 ```
 
 Or download standalone binary from [releases](https://github.com/antonmedv/fx/releases) page.
 
-Did you like **fx**? [Buy me a beer 🍺](https://paypal.me/antonmedv) or [send come ₿](https://www.wispay.io/t/ZQb)
-
 ## Usage
 
 Start [interactive mode](https://github.com/antonmedv/fx/blob/master/DOCS.md#interactive-mode) without passing any arguments.
-```
+```bash
 $ curl ... | fx
 ```
 
 Or by passing filename as first argument.
-```
+```bash
 $ fx data.json
 ```
 
-Pipe into `fx` any JSON and anonymous function for reducing it.
+Pass a few JSON files.
 ```bash
-$ curl ... | fx 'json => json.message'
+cat foo.json bar.json baz.json | fx .message
 ```
 
-Or same as above but short.
+Use full power of JavaScript.
 ```bash
-$ curl ... | fx this.message
-$ curl ... | fx .message
-```
-
-Pass any numbers of arguments as code.
-```bash
-$ curl ... | fx 'json => json.message' 'json => json.filter(x => x.startsWith("a"))'
+$ curl ... | fx '.filter(x => x.startsWith("a"))'
 ```
 
 Access all lodash (or ramda, etc) methods by using [.fxrc](https://github.com/antonmedv/fx/blob/master/DOCS.md#using-fxrc) file.
@@ -73,21 +63,14 @@ $ echo '{"count": 0}' | fx '{...this, count: 1}'
 }
 ```
 
-Pretty print JSON with dot.
+Print formatted JSON to stdout.
 ```bash
 $ curl ... | fx .
 ```
 
-Stream JSON into fx.
+Pipe JSON logs stream into fx.
 ```bash
 $ kubectl logs ... -f | fx .message
-```
-
-Apply fx to a few JSON files.
-```bash
-$ cat *.json | fx .length
-3
-4
 ```
 
 And try this:

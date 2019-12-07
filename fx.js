@@ -116,8 +116,7 @@ module.exports = function start(filename, source, prev = {}) {
   })
 
   screen.key(['escape', 'q', 'C-c'], function () {
-    program.disableMouse()                // If exit program immediately, stdin may still receive
-    setTimeout(() => process.exit(0), 10) // mouse events which will be printed in stdout.
+    exit()
   })
 
   input.on('submit', function () {
@@ -424,6 +423,17 @@ module.exports = function start(filename, source, prev = {}) {
     hideStatusBar()
   })
 
+  box.key('p', function () {
+    screen.destroy()
+    program.disableMouse()
+    program.destroy()
+    setTimeout(() => {
+      const [text] = print(json)
+      console.log(text)
+      process.exit(0)
+    }, 10)
+  })
+
   function getLine(y) {
     const dy = box.childBase + y
     const n = box.getNumber(dy)
@@ -635,6 +645,13 @@ module.exports = function start(filename, source, prev = {}) {
 
     box.setContent(content)
     screen.render()
+  }
+
+  function exit() {
+    // If exit program immediately, stdin may still receive
+    // mouse events which will be printed in stdout.
+    program.disableMouse()
+    setTimeout(() => process.exit(0), 10)
   }
 
   render()
