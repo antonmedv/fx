@@ -16,6 +16,7 @@
     "index.js",
     "print.js",
     "reduce.js",
+    "std.js",
     "stream.js"
   ],
   "scripts": {
