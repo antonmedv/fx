@@ -3,16 +3,7 @@
 const os = require('os')
 const fs = require('fs')
 const path = require('path')
-
-const skip = Symbol('skip')
-global.select = function select(cb) {
-  return json => {
-    if (!cb(json)) {
-      throw skip
-    }
-    return json
-  }
-}
+const std = require('./std')
 
 try {
   require(path.join(os.homedir(), '.fxrc')) // Should be required before config.js usage.
@@ -93,6 +84,7 @@ function handle(input) {
 
     input = fs.readFileSync(args[0])
     filename = path.basename(args[0])
+    global.FX_FILENAME = filename
     args.shift()
   }
 
@@ -113,7 +105,7 @@ function apply(json) {
   try {
     output = args.reduce(reduce, json)
   } catch (e) {
-    if (e !== skip) {
+    if (e !== std.skip) {
       throw e
     } else {
       return

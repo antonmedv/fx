@@ -110,9 +110,7 @@ module.exports = function start(filename, source, prev = {}) {
   autocomplete.hide()
 
   process.stdout.on('resize', () => {
-    screen.destroy()
-    program.destroy()
-    start(filename, source, {json, expanded})
+    printJson({expanded})
   })
 
   screen.key(['escape', 'q', 'C-c'], function () {
@@ -424,15 +422,23 @@ module.exports = function start(filename, source, prev = {}) {
   })
 
   box.key('p', function () {
+    printJson({expanded})
+  })
+
+  box.key('S-p', function () {
+    printJson()
+  })
+
+  function printJson(options = {}) {
     screen.destroy()
     program.disableMouse()
     program.destroy()
     setTimeout(() => {
-      const [text] = print(json)
+      const [text] = print(json, options)
       console.log(text)
       process.exit(0)
     }, 10)
-  })
+  }
 
   function getLine(y) {
     const dy = box.childBase + y

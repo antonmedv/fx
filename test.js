@@ -32,13 +32,8 @@ test('this bind', t => {
   t.deepEqual(JSON.parse(r), [5, 10, 15, 20, 25])
 })
 
-test('generator', t => {
-  const r = fx([1, 2, 3, 4, 5], "'for (let i of this) if (i % 2 == 0) yield i'")
-  t.deepEqual(JSON.parse(r), [2, 4])
-})
-
 test('chain', t => {
-  const r = fx({"items": ["foo", "bar"]}, "'this.items' 'yield* this' 'x => x[1]'")
+  const r = fx({"items": ["foo", "bar"]}, "'this.items' '.' 'x => x[1]'")
   t.deepEqual(r, 'bar\n')
 })
 

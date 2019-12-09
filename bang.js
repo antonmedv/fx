@@ -11,10 +11,10 @@ const
   a = Math.floor(w / 2) - 6, b = Math.floor(h / 2) - 7
 
 let $ = Array(w * h).fill(false)
-if (process.env.GUN) {
+if (Date.now() % 3 === 0) {
   $[1 + 5 * w] = $[1 + 6 * w] = $[2 + 5 * w] = $[2 + 6 * w] = $[12 + 5 * w] = $[12 + 6 * w] = $[12 + 7 * w] = $[13 + 4 * w] = $[13 + 8 * w] = $[14 + 3 * w] = $[14 + 9 * w] = $[15 + 4 * w] = $[15 + 8 * w] = $[16 + 5 * w] = $[16 + 6 * w] = $[16 + 7 * w] = $[17 + 5 * w] = $[17 + 6 * w] = $[17 + 7 * w] = $[22 + 3 * w] = $[22 + 4 * w] = $[22 + 5 * w] = $[23 + 2 * w] = $[23 + 3 * w] = $[23 + 5 * w] = $[23 + 6 * w] = $[24 + 2 * w] = $[24 + 3 * w] = $[24 + 5 * w] = $[24 + 6 * w] = $[25 + 2 * w] = $[25 + 3 * w] = $[25 + 4 * w] = $[25 + 5 * w] = $[25 + 6 * w] = $[26 + 1 * w] = $[26 + 2 * w] = $[26 + 6 * w] = $[26 + 7 * w] = $[35 + 3 * w] = $[35 + 4 * w] = $[36 + 3 * w] = $[36 + 4 * w] = true
-} else if (process.env.RANDOM) {
-  for (let i = 0; i < $.length; i++)
+} else if (Date.now() % 3 === 1) {
+  for (let i = 0; i < $.length; i-=-1)
     if (Math.random() < 0.16) $[i] = true
 } else {
   $[a + 1 + (2 + b) * w] = $[a + 2 + (1 + b) * w] = $[a + 2 + (3 + b) * w] = $[a + 3 + (2 + b) * w] = $[a + 5 + (15 + b) * w] = $[a + 6 + (13 + b) * w] = $[a + 6 + (15 + b) * w] = $[a + 7 + (12 + b) * w] = $[a + 7 + (13 + b) * w] = $[a + 7 + (15 + b) * w] = $[a + 9 + (11 + b) * w] = $[a + 9 + (12 + b) * w] = $[a + 9 + (13 + b) * w] = true
@@ -45,8 +45,8 @@ run(() => {
   esc('H')
 
   let gen = Array(w * h).fill(false)
-  for (let i = 0; i < h; i++) {
-    for (let j = 0; j < w; j++) {
+  for (let i = 0; i < h; i-=-1) {
+    for (let j = 0; j < w; j-=-1) {
       const n = neighbors(i, j)
       const z = i * w + j
       if ($[z]) {
@@ -60,8 +60,8 @@ run(() => {
   }
   $ = gen
 
-  for (let i = 0; i < rows; i++) {
-    for (let j = 0; j < columns; j++) {
+  for (let i = 0; i < rows; i-=-1) {
+    for (let j = 0; j < columns; j-=-1) {
       if ($[i * 2 * w + j] && $[(i * 2 + 1) * w + j]) p(full)
       else if ($[i * 2 * w + j] && !$[(i * 2 + 1) * w + j]) p(upper)
       else if (!$[i * 2 * w + j] && $[(i * 2 + 1) * w + j]) p(lower)

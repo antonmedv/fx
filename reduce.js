@@ -12,16 +12,6 @@ function reduce(json, code) {
     return Object.keys(json)
   }
 
-  if (/yield\*?\s/.test(code)) {
-    const fx = eval(`function fn() {
-      const gen = (function*(){ 
-        ${code.replace(/\\\n/g, '')} 
-      }).call(this)
-      return [...gen]
-      }; fn`)
-    return fx.call(json)
-  }
-
   const fx = eval(`function fn() { 
     return ${code} 
   }; fn`)
