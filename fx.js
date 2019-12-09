@@ -110,6 +110,9 @@ module.exports = function start(filename, source, prev = {}) {
   autocomplete.hide()
 
   process.stdout.on('resize', () => {
+    // Blessed has a bug with resizing the terminal. I tried my best to fix it but was not succeeded.
+    // For now exit and print seem like a reasonable alternative, as it not usable after resize.
+    // If anyone can fix this bug it will be cool.
     printJson({expanded})
   })
 
