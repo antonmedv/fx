@@ -26,7 +26,7 @@ function print(input, options = {}) {
     // Code for highlighting parts become cumbersome.
     // Maybe we should refactor this part.
     const highlightStyle = (currentPath === path) ? config.highlightCurrent : config.highlight
-    const formatStyle = (v, style) => format(JSON.stringify(v), style, highlightStyle, highlight)
+    const formatStyle = (v, style) => format(v, style, highlightStyle, highlight)
     const formatText = (v, style, path) => {
       const highlightStyle = (currentPath === path) ? config.highlightCurrent : config.highlight
       return format(v, style, highlightStyle, highlight, JSON.stringify)
@@ -42,15 +42,19 @@ function print(input, options = {}) {
     }
 
     if (v === null) {
-      return formatStyle(v, config.null)
+      return formatStyle(JSON.stringify(v), config.null)
     }
 
     if (typeof v === 'number' && Number.isFinite(v)) {
-      return formatStyle(v, config.number)
+      return formatStyle(JSON.stringify(v), config.number)
+    }
+
+    if (typeof v === 'object' && v.isLosslessNumber) {
+      return formatStyle(v.toString(), config.number)
     }
 
     if (typeof v === 'boolean') {
-      return formatStyle(v, config.boolean)
+      return formatStyle(JSON.stringify(v), config.boolean)
 
     }
 

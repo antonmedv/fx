@@ -3,6 +3,7 @@
 const os = require('os')
 const fs = require('fs')
 const path = require('path')
+const JSON = require('lossless-json')
 const std = require('./std')
 
 try {
@@ -82,7 +83,7 @@ function handle(input) {
       return
     }
 
-    input = fs.readFileSync(args[0])
+    input = fs.readFileSync(args[0]).toString('utf8')
     filename = path.basename(args[0])
     global.FX_FILENAME = filename
     args.shift()

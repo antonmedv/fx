@@ -14,17 +14,17 @@ test('pass', t => {
 
 test('anon func', t => {
   const r = fx({"key": "value"}, "'function (x) { return x.key }'")
-  t.deepEqual(r, 'value\n')
+  t.is(r, 'value\n')
 })
 
 test('arrow func', t => {
   const r = fx({"key": "value"}, "'x => x.key'")
-  t.deepEqual(r, 'value\n')
+  t.is(r, 'value\n')
 })
 
 test('arrow func ()', t => {
   const r = fx({"key": "value"}, "'(x) => x.key'")
-  t.deepEqual(r, 'value\n')
+  t.is(r, 'value\n')
 })
 
 test('this bind', t => {
@@ -34,12 +34,12 @@ test('this bind', t => {
 
 test('chain', t => {
   const r = fx({"items": ["foo", "bar"]}, "'this.items' '.' 'x => x[1]'")
-  t.deepEqual(r, 'bar\n')
+  t.is(r, 'bar\n')
 })
 
 test('file argument', t => {
   const r = execSync(`node index.js package.json .name`).toString('utf8')
-  t.deepEqual(r, 'fx\n')
+  t.is(r, 'fx\n')
 })
 
 test('stream', t => {
@@ -67,4 +67,9 @@ test('stream', t => {
 
     reader.read()
   }
+})
+
+test('lossless number', t => {
+  const r = execSync(`echo '{"long": 123456789012345678901}' | node index.js .long`).toString('utf8')
+  t.is(r, '123456789012345678901\n')
 })
