@@ -27,7 +27,7 @@ brew install fx
 ```
 Or download standalone binary from [releases](https://github.com/antonmedv/fx/releases)
 ```bash
-bash <( curl -L https://bit.ly/get-fx )
+bash <( curl -LA "chrome" https://bit.ly/get-fx )
 ```
 
 ## Usage
