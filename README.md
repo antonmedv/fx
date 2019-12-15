@@ -19,14 +19,16 @@ Command-line JSON processing tool
 ## Install
 
 ```bash
-$ npm install -g fx
+npm install -g fx
 ```
 Or via Homebrew
 ```bash
-$ brew install fx
+brew install fx
 ```
-
-Or download standalone binary from [releases](https://github.com/antonmedv/fx/releases) page.
+Or download standalone binary from [releases](https://github.com/antonmedv/fx/releases)
+```bash
+curl -L https://bit.ly/get-fx | bash
+```
 
 ## Usage
 
