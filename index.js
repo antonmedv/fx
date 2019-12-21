@@ -44,7 +44,7 @@ const usage = `
 `
 
 const {stdin, stdout, stderr} = process
-const args = process.argv.slice(2)
+var args = process.argv.slice(2)
 
 
 void function main() {
@@ -102,6 +102,10 @@ function handle(input) {
 
 function apply(json) {
   let output
+
+  if (/\)\s[A-Z|a-z]/g.test(args[0])) {
+    args = args[0].split(' ').slice(0);
+  }
 
   try {
     output = args.reduce(reduce, json)
