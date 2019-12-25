@@ -46,7 +46,7 @@
     "node": ">=8"
   },
   "dependencies": {
-    "@medv/blessed": "^2.0.0",
+    "@medv/blessed": "^2.0.1",
     "chalk": "^3.0.0",
     "indent-string": "^4.0.0",
     "lossless-json": "^1.0.3",
@@ -54,7 +54,7 @@
   },
   "devDependencies": {
     "ava": "^2.4.0",
-    "pkg": "^4.4.1",
+    "pkg": "^4.4.2",
     "release-it": "^12.4.3"
   }
 }
