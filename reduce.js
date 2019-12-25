@@ -1,6 +1,10 @@
 'use strict'
 
 function reduce(json, code) {
+  if (process.env.FX_APPLY) {
+    return global[process.env.FX_APPLY](code)(json)
+  }
+
   if ('.' === code) {
     return json
   }

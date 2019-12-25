@@ -10,6 +10,7 @@
   + [Edit-in-place](#edit-in-place)
   + [Using packages](#using-packages)
 * [Using .fxrc](#using-fxrc)
+  + [Query language](#query-language)
 * [Formatting](#formatting)
 * [Other examples](#other-examples)
 * [Streaming mode](#streaming-mode)
@@ -129,6 +130,32 @@ curl 'https://api.github.com/repos/facebook/react/commits?per_page=100' \
 > ```bash
 > export NODE_PATH=`npm root -g`
 > ```
+
+### Query language
+
+If you want to use query language, for example [jsonata](http://jsonata.org/) you can use helper function like this:
+
+```js
+global.jsonata = expr => require('jsonata')(expr).evaluate
+``` 
+
+And use it like this:
+
+```bash
+curl ... | fx 'jsonata("$sum(Order.Product.(Price * Quantity))")'
+```
+
+Instead you can create next alias in _.bashrc_ file:
+
+```bash
+alias jsonata='FX_APPLY=jsonata fx'
+```
+
+And now all code arguments to `jsonata` will be passed through `jsonata` helper. And now you can use it like this:
+
+```bash
+curl ... | jsonata '$sum(Order.Product.(Price * Quantity))'
+```
 
 ## Formatting
 
