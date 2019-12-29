@@ -3,6 +3,7 @@
   "version": "17.0.0",
   "description": "Command-line JSON viewer",
   "repository": "antonmedv/fx",
+  "homepage": "https://fx.wtf",
   "author": "Anton Medvedev <anton@medv.io>",
   "license": "MIT",
   "bin": {
