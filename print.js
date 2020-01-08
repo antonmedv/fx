@@ -1,6 +1,13 @@
 'use strict'
-const indent = require('indent-string')
+const indentString = require('indent-string')
 const config = require('./config')
+
+function indent(string, count) {
+  if (count === '\t') {
+    return indentString(string, 1, { indent: '\t' })
+  }
+  return indentString(string, count)
+}
 
 function format(value, style, highlightStyle, regexp, transform = x => x) {
   if (!regexp) {
