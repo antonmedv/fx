@@ -13,6 +13,12 @@ function reduce(json, code) {
     return Object.keys(json)
   }
 
+  if (/^@/.test(code)) {
+    return eval(`function fn() { 
+      return Object.values(this).map(x => x${code.substring(1)}) 
+    }; fn`).call(json)
+  }
+
   if (/^\.\[/.test(code)) {
     return eval(`function fn() { 
       return this${code.substring(1)} 
