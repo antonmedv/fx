@@ -6,6 +6,8 @@ const path = require('path')
 const JSON = require('lossless-json')
 const std = require('./std')
 
+JSON.config({circularRefs: false})
+
 try {
   require(path.join(os.homedir(), '.fxrc')) // Should be required before config.js usage.
 } catch (err) {
