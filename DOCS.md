@@ -212,7 +212,7 @@ undefined
 ```
 
 ```bash
-echo '[1,2,3]' | fx 'this.forEach(x => console.log(x))' 2>/dev/null | xargs echo
+echo '[1,2,3]' | fx 'this.forEach(x => console.log(+x))' 2>/dev/null | xargs echo
 1 2 3
 ```
 
