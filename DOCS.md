@@ -273,6 +273,11 @@ Next commands available in interactive mode:
 | `q` or `Esc` or `Ctrl`+`c`    | Exit                                         |
 | `up` or `k`                   | Move cursor up                               |
 | `down` or `j`                 | Move cursor down                             |
+| `Ctrl`+`b`                    | Move page up                                 |
+| `Ctrl`+`f` or                 | Move page down                               |
+| `Ctrl`+`Alt`+`Shift`+`d`      | Move page down                               |
+| `Ctrl`+`u`                    | Move line up                                 |
+| `Ctrl`+`d`                    | Move line down                               |
 | `left` or `h`                 | Collapse                                     |
 | `right` or `l`                | Expand                                       |
 | `Shift`+`right` or `L`        | Expand all under cursor                      | 
