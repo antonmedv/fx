@@ -3,10 +3,8 @@
 const os = require('os')
 const fs = require('fs')
 const path = require('path')
-const JSON = require('lossless-json')
+const JSON = require('./json')
 const std = require('./std')
-
-JSON.config({circularRefs: false})
 
 try {
   require(path.join(os.homedir(), '.fxrc')) // Should be required before config.js usage.
@@ -91,7 +89,13 @@ function handle(input) {
     args.shift()
   }
 
-  const json = JSON.parse(input)
+  let json
+  try {
+    json = JSON.parse(input)
+  } catch (e) {
+    printError(e, input)
+    process.exit(1)
+  }
 
   if (args.length === 0 && stdout.isTTY) {
     require('./fx')(filename, json)
@@ -100,7 +104,6 @@ function handle(input) {
 
   apply(json)
 }
-
 
 function apply(json) {
   let output = json
@@ -138,4 +141,34 @@ function snippet(i, code) {
   }
   const chalk = require('chalk')
   return `\n  ${pre} ${chalk.red.underline(code)} ${post}\n`
+}
+
+function printError(e, input) {
+  if (e.char) {
+    let lineNumber = 1, start = e.char - 70, end = e.char + 50
+    if (start < 0) start = 0
+    if (end > input.length) end = input.length
+
+    for (let i = 0; i < input.length && i < start; i++) {
+      if (input[i] === '\n') lineNumber++
+    }
+
+    let lines = input
+      .substring(start, end)
+      .split('\n')
+
+    if (lines.length > 1) {
+      lines = lines.slice(1)
+      lineNumber++
+    }
+
+    const chalk = require('chalk')
+    process.stderr.write(`\n`)
+    for (let line of lines) {
+      process.stderr.write(`  ${chalk.yellow(lineNumber)}  ${line}\n`)
+      lineNumber++
+    }
+    process.stderr.write(`\n`)
+  }
+  process.stderr.write(e.toString() + '\n')
 }

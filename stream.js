@@ -1,5 +1,5 @@
 'use strict'
-const JSON = require('lossless-json')
+const JSON = require('./json')
 
 function apply(cb, input) {
   let json

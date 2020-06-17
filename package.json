@@ -48,14 +48,14 @@
   },
   "dependencies": {
     "@medv/blessed": "^2.0.1",
-    "chalk": "^3.0.0",
+    "chalk": "^4.1.0",
     "indent-string": "^4.0.0",
-    "lossless-json": "^1.0.3",
+    "lossless-json": "^1.0.4",
     "string-width": "^4.2.0"
   },
   "devDependencies": {
-    "ava": "^2.4.0",
-    "pkg": "^4.4.2",
-    "release-it": "^12.4.3"
+    "ava": "^3.9.0",
+    "pkg": "^4.4.8",
+    "release-it": "^13.6.3"
   }
 }
