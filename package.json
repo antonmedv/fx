@@ -1,6 +1,6 @@
 {
   "name": "fx",
-  "version": "19.0.0",
+  "version": "19.0.1",
   "description": "Command-line JSON viewer",
   "repository": "antonmedv/fx",
   "homepage": "https://fx.wtf",
