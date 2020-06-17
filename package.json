@@ -10,15 +10,7 @@
     "fx": "index.js"
   },
   "files": [
-    "bang.js",
-    "config.js",
-    "find.js",
-    "fx.js",
-    "index.js",
-    "print.js",
-    "reduce.js",
-    "std.js",
-    "stream.js"
+    "*.js"
   ],
   "scripts": {
     "test": "ava",
