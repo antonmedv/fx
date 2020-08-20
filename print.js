@@ -68,7 +68,7 @@ function print(input, options = {}) {
 
       if (len > 0) {
         if (expanded && !expanded.has(path)) {
-          output += '\u2026'
+          output += len.toString()
         } else {
           output += eol()
           let i = 0
@@ -92,7 +92,7 @@ function print(input, options = {}) {
 
       if (len > 0) {
         if (expanded && !expanded.has(path)) {
-          output += '\u2026'
+          output += len.toString()
         } else {
           output += eol()
           let i = 0
