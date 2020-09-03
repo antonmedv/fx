@@ -46,8 +46,8 @@
     "string-width": "^4.2.0"
   },
   "devDependencies": {
-    "ava": "^3.9.0",
-    "pkg": "^4.4.8",
-    "release-it": "^13.6.3"
+    "ava": "^3.12.1",
+    "pkg": "^4.4.9",
+    "release-it": "^14.0.1"
   }
 }

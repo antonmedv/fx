@@ -1,5 +1,4 @@
 'use strict'
-const fs = require('fs')
 
 const skip = Symbol('skip')
 
@@ -25,7 +24,7 @@ function save(json) {
   if (!global.FX_FILENAME) {
     throw "No filename provided.\nTo edit-in-place, specify JSON file as first argument."
   }
-  fs.writeFileSync(global.FX_FILENAME, JSON.stringify(json, null, 2))
+  require('fs').writeFileSync(global.FX_FILENAME, JSON.stringify(json, null, 2))
   return json
 }
 

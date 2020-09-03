@@ -13,10 +13,16 @@ function reduce(json, code) {
     return Object.keys(json)
   }
 
-  if (/^@/.test(code)) {
-    return eval(`function fn() { 
-      return Object.values(this).map(x => x${code.substring(1)}) 
-    }; fn`).call(json)
+  if (/^(\.\w*)+\[]/.test(code)) {
+    function fold(s) {
+      if (s.length === 1) {
+        return 'x => x' + s[0]
+      }
+      let obj = s.shift()
+      obj = obj === '.' ? 'x' : 'x' + obj
+      return `x => Object.values(${obj}).flatMap(${fold(s)})`
+    }
+    code = fold(code.split('[]'))
   }
 
   if (/^\.\[/.test(code)) {

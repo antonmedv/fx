@@ -27,7 +27,7 @@ brew install fx
 ```
 Or download standalone binary from [releases](https://github.com/antonmedv/fx/releases)
 ```bash
-bash <( curl -L https://fx.wtf )
+bash <( curl https://fx.wtf )
 ```
 
 ## Usage
@@ -63,6 +63,11 @@ $ echo '{"count": 0}' | fx '{...this, count: 1}'
 {
   "count": 1
 }
+```
+
+Extract values from maps.
+```bash
+$ fx commits.json | fx .[].author.name
 ```
 
 Print formatted JSON to stdout.

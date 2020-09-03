@@ -81,40 +81,35 @@ One of the frequent operations is mapping some function on an array. For example
   {
     "author": {
       "name": "antonmedv"
-    }, 
-    ...
+    }
   },
-  {...},
   {...},
   ...
 ]
 ```
 
-And we want to collect names of each object in array. We can do this by mapping anonymous function:
+And we want to collect names of each object in the array. We can do this by mapping anonymous function:
 
 ```bash
 $ cat ... | fx '.map(x => x.author.name)'
 ```
 
-Or we can do the same by using `@` prefix:
+Or we can do the same by using jq-like syntax:
 
 ```bash
-$ cat ... | fx @.author.name
+$ cat ... | fx .[].author.name
 [
   "antonmedv",
   ...
 ]
 ```
 
-Expression followed by `@` symbol will be mapped to each element of array.
-
-> Note what `@` can be applied to map object values.
+> Note what `[]` can be applied to map object values.
 > ```bash
-> $ echo '{"foo": 1, "bar": 2}' | fx @+1
-> [2, 3]
+> $ echo '{"foo": 1, "bar": 2}' | fx .[]
+> [1, 2]
 > ```
-> 
-> Also note what symbol `@` alone is equivalent of `Object.values` function.
+
 
 ### Chaining
 
