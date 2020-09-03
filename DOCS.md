@@ -259,7 +259,7 @@ $ kubectl logs ... | fx 'select(x => x.status == 500)' .message
 $ kubectl logs ... | fx 'filter(x => x.status < 499)' .message
 ```
 
-> Note, what if use override `filter`/`select` in _.fxrc_ you still able to access them with prefix:
+> If `filter`/`select` overridden in _.fxrc_ you still able to access them with prefix:
 > `std.select(cb)` or `std.filter(cd)`
 
 ## Interactive mode
