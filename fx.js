@@ -7,6 +7,7 @@ const reduce = require('./reduce')
 const print = require('./print')
 const find = require('./find')
 const config = require('./config')
+const LosslessJSON = require('lossless-json')
 
 module.exports = function start(filename, source, prev = {}) {
   // Current rendered object on a screen.
@@ -432,13 +433,28 @@ module.exports = function start(filename, source, prev = {}) {
     printJson()
   })
 
+  box.key(['x', 'C-e'], function () {
+    printJson({extract_subjson: true})
+  })
+
   function printJson(options = {}) {
+    var out
+    if (options.extract_subjson) {
+      const [n] = getLine(program.y)
+      const path = index.get(n)
+      const subJson = reduce(json, 'this' + path)
+      out = LosslessJSON.stringify({
+        path:  path,
+        value: subJson,
+      }, null, config.space)
+    } else {
+      [out] = print(json, options)
+    }
     screen.destroy()
     program.disableMouse()
     program.destroy()
     setTimeout(() => {
-      const [text] = print(json, options)
-      console.log(text)
+      console.log(out)
       process.exit(0)
     }, 10)
   }

@@ -20,14 +20,14 @@ const stream = require('./stream')
 
 const usage = `
   Usage
-    $ fx [code ...]               
+    $ fx [code ...]
 
   Examples
     $ echo '{"key": "value"}' | fx 'x => x.key'
     value
 
     $ echo '{"key": "value"}' | fx .key
-    value    
+    value
 
     $ echo '[1,2,3]' | fx 'this.map(x => x * 2)'
     [2, 4, 6]
@@ -44,32 +44,19 @@ const usage = `
 `
 
 const {stdin, stdout, stderr} = process
-const args = process.argv.slice(2)
-
+var args = process.argv.slice(2)
+var interactive = false
 
 void function main() {
-  stdin.setEncoding('utf8')
-
-  if (stdin.isTTY) {
-    handle('')
-    return
+  if (args.indexOf('-I') >= 0) {
+    args = args.filter(a => a != '-I')
+    interactive = true
   }
 
-  const reader = stream(stdin, apply)
-
-  stdin.on('readable', reader.read)
-  stdin.on('end', () => {
-    if (!reader.isStream()) {
-      handle(reader.value())
-    }
-  })
-}()
-
-
-function handle(input) {
+  let input = '';
   let filename = 'fx'
 
-  if (input === '') {
+  if (stdin.isTTY) {
     if (args.length === 0 || (args.length === 1 && (args[0] === '-h' || args[0] === '--help'))) {
       stderr.write(usage)
       process.exit(2)
@@ -87,30 +74,33 @@ function handle(input) {
     filename = path.basename(args[0])
     global.FX_FILENAME = filename
     args.shift()
+  } else {
+    input = fs.readFileSync(process.stdin.fd, 'utf-8')
+    interactive |= args.length == 0
   }
 
   let json
   try {
     json = JSON.parse(input)
+    json = reduce_args(json)
   } catch (e) {
     printError(e, input)
     process.exit(1)
   }
 
-  if (args.length === 0 && stdout.isTTY) {
+  if (interactive) {
     require('./fx')(filename, json)
-    return
+  } else {
+    handle_piped(json)
   }
+}()
 
-  apply(json)
-}
-
-function apply(json) {
-  let output = json
+function reduce_args(json) {
+  let reduced = json
 
   for (let [i, code] of args.entries()) {
     try {
-      output = reduce(output, code)
+      reduced = reduce(reduced, code)
     } catch (e) {
       if (e === std.skip) {
         return
@@ -120,6 +110,10 @@ function apply(json) {
     }
   }
 
+  return reduced
+}
+
+function handle_piped(output) {
   if (typeof output === 'undefined') {
     stderr.write('undefined\n')
   } else if (typeof output === 'string') {

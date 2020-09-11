@@ -35,6 +35,12 @@ Or you can pass a filename as the first parameter:
 $ fx my.json
 ```
 
+You can also force interactive mode with `-I` flag:
+
+```bash
+$ curl ... | fx .foo.bar -I
+```
+
 If any argument was passed, `fx` will apply it and prints to stdout.
 
 ## Usage
@@ -280,6 +286,7 @@ Next commands available in interactive mode:
 | `n`                           | Find next                                    |
 | `p`                           | Exit and print JSON to stdout                |
 | `P`                           | Exit and print fully expanded JSON to stdout |
+| `x` or `Ctrl`+`e`             | Exit and print selected sub-JSON to stdout   |
 
 These commands are available when editing the filter:
 
