@@ -41,6 +41,12 @@ You can also force interactive mode with `-I` flag:
 $ curl ... | fx .foo.bar -I
 ```
 
+Or force uninteractive mode with `+I` flag:
+
+```bash
+$ curl ... | fx +I
+```
+
 If any argument was passed, `fx` will apply it and prints to stdout.
 
 ## Usage

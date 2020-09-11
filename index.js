@@ -47,11 +47,17 @@ const {stdin, stdout, stderr} = process
 var args = process.argv.slice(2)
 var interactive = false
 
-void function main() {
-  if (args.indexOf('-I') >= 0) {
-    args = args.filter(a => a != '-I')
-    interactive = true
+function flag(f) {
+  if (args.indexOf(f) >= 0) {
+    args = args.filter(a => a != f)
+    return true
+  } else {
+    return false
   }
+}
+
+void function main() {
+  interactive |= flag('-I')
 
   let input = '';
   let filename = 'fx'
@@ -78,6 +84,8 @@ void function main() {
     input = fs.readFileSync(process.stdin.fd, 'utf-8')
     interactive |= args.length == 0
   }
+
+  interactive &= !flag('+I')
 
   let json
   try {
