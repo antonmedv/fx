@@ -81,7 +81,7 @@ void function main() {
     global.FX_FILENAME = filename
     args.shift()
   } else {
-    input = fs.readFileSync(process.stdin.fd, 'utf-8')
+    input = fs.readFileSync("/dev/stdin", 'utf-8')
     interactive |= args.length == 0
   }
 
