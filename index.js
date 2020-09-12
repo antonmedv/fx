@@ -45,22 +45,18 @@ const usage = `
 
 const {stdin, stdout, stderr} = process
 var args = process.argv.slice(2)
-var interactive = false
-
-function flag(f) {
-  if (args.indexOf(f) >= 0) {
-    args = args.filter(a => a != f)
-    return true
-  } else {
-    return false
-  }
-}
 
 void function main() {
-  interactive |= flag('-I')
+  var interactive = false
 
-  let input = '';
+  let input = ''
   let filename = 'fx'
+
+  function load_file(fn) {
+    input = fs.readFileSync(fn).toString('utf8')
+    filename = path.basename(fn)
+    global.FX_FILENAME = fn
+  }
 
   if (stdin.isTTY) {
     if (args.length === 0 || (args.length === 1 && (args[0] === '-h' || args[0] === '--help'))) {
@@ -75,17 +71,16 @@ void function main() {
       require('./bang')
       return
     }
-
-    input = fs.readFileSync(args[0]).toString('utf8')
-    filename = path.basename(args[0])
-    global.FX_FILENAME = filename
+    load_file(args[0])
+    args.shift()
+  } else if (args.length > 0 &&
+             fs.existsSync(args[0]) && fs.statSync(args[0]).isFile()) {
+    load_file(args[0])
     args.shift()
   } else {
     input = fs.readFileSync("/dev/stdin", 'utf-8')
     interactive |= args.length == 0
   }
-
-  interactive &= !flag('+I')
 
   let json
   try {

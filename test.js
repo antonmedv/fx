@@ -3,8 +3,8 @@ const test = require('ava')
 const {execSync} = require('child_process')
 const stream = require('./stream')
 
-function fx(json, code = '') {
-  return execSync(`echo '${JSON.stringify(json)}' | node index.js ${code} +I`).toString('utf8')
+function fx(json, code = '.') {
+  return execSync(`echo '${JSON.stringify(json)}' | node index.js ${code}`).toString('utf8')
 }
 
 test('pass', t => {
