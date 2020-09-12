@@ -48,14 +48,29 @@ var args = process.argv.slice(2)
 
 void function main() {
   var interactive = false
-
-  let input = ''
   let filename = 'fx'
 
   function load_file(fn) {
-    input = fs.readFileSync(fn).toString('utf8')
+    const input = fs.readFileSync(fn).toString('utf8')
     filename = path.basename(fn)
     global.FX_FILENAME = fn
+    return input
+  }
+
+  function handle(input) {
+    let json
+    try {
+      json = reduce_args(JSON.parse(input))
+    } catch (e) {
+      printError(e, input)
+      process.exit(1)
+    }
+
+    if (interactive) {
+      require('./fx')(filename, json)
+    } else {
+      handle_piped(json)
+    }
   }
 
   if (stdin.isTTY) {
@@ -71,31 +86,26 @@ void function main() {
       require('./bang')
       return
     }
-    load_file(args[0])
+    const input = load_file(args[0])
     args.shift()
+    handle(input)
   } else if (args.length > 0 &&
              fs.existsSync(args[0]) && fs.statSync(args[0]).isFile()) {
-    load_file(args[0])
+    const input = load_file(args[0])
     args.shift()
+    handle(input)
   } else {
-    input = fs.readFileSync("/dev/stdin", 'utf-8')
     interactive |= args.length == 0
+    stdin.setEncoding('utf8')
+    const reader = stream(stdin, (json) => handle_piped(reduce_args(json)))
+    stdin.on('readable', reader.read)
+    stdin.on('end', () => {
+      if (!reader.isStream()) {
+        handle(reader.value())
+      }
+    })
   }
 
-  let json
-  try {
-    json = JSON.parse(input)
-    json = reduce_args(json)
-  } catch (e) {
-    printError(e, input)
-    process.exit(1)
-  }
-
-  if (interactive) {
-    require('./fx')(filename, json)
-  } else {
-    handle_piped(json)
-  }
 }()
 
 function reduce_args(json) {
