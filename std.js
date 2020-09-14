@@ -1,5 +1,5 @@
 'use strict'
-
+const JSON = require('./json')
 const skip = Symbol('skip')
 
 function select(cb) {
