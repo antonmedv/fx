@@ -3,7 +3,10 @@
 const os = require('os')
 const fs = require('fs')
 const path = require('path')
-const JSON = require('./json')
+
+const JSON = require('lossless-json')
+JSON.config({circularRefs: false})
+
 const std = require('./std')
 
 try {

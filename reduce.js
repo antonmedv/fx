@@ -1,4 +1,5 @@
 'use strict'
+const JSON = require('lossless-json') // override JSON for user's code
 
 function reduce(json, code) {
   if (process.env.FX_APPLY) {
