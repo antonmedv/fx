@@ -92,7 +92,7 @@ See full [documentation](https://github.com/antonmedv/fx/blob/master/DOCS.md).
 ## Links
 
 * [Discover how to use fx effectively](http://bit.ly/discover-how-to-use-fx-effectively)
-* [Video tutorial](http://bit.ly/youtube-fx-tutuorial)
+* [Video tutorial](http://bit.ly/youtube-fx-tutorial)
 
 ## Related
 
