@@ -91,7 +91,8 @@ See full [documentation](https://github.com/antonmedv/fx/blob/master/DOCS.md).
 
 ## Links
 
-* [Discover how to use fx effectively](https://medium.com/@antonmedv/discover-how-to-use-fx-effectively-668845d2a4ea)
+* [Discover how to use fx effectively](http://bit.ly/discover-how-to-use-fx-effectively)
+* [Video tutorial](http://bit.ly/youtube-fx-tutuorial)
 
 ## Related
 
