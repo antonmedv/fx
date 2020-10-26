@@ -271,6 +271,7 @@ Next commands available in interactive mode:
 | `left` or `h`                 | Collapse                                     |
 | `right` or `l`                | Expand                                       |
 | `Shift`+`right` or `L`        | Expand all under cursor                      | 
+| `Shift`+`left` or `K`         | Collapse all under cursor                    | 
 | `e`                           | Expand all                                   |
 | `E`                           | Collapse all                                 |
 | `g`                           | Scroll to top                                |
