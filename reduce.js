@@ -32,6 +32,8 @@ function reduce(json, code) {
     }; fn`).call(json)
   }
 
+  code = createExpression(code)
+
   if (/^\./.test(code)) {
     return eval(`function fn() { 
       return this${code} 
@@ -46,6 +48,10 @@ function reduce(json, code) {
     return fn(json)
   }
   return fn
+}
+
+function createExpression(code) {
+  return code.split('.').reduce((items, cur) => items + (cur.match(/-/) ? `['${cur}']` : '.' + cur));
 }
 
 module.exports = reduce

@@ -2,6 +2,7 @@
 const test = require('ava')
 const {execSync} = require('child_process')
 const stream = require('./stream')
+const reduce = require('./reduce')
 
 function fx(json, code = '') {
   return execSync(`echo '${JSON.stringify(json)}' | node index.js ${code}`).toString('utf8')
@@ -82,4 +83,9 @@ test('value iterator', t => {
 test('value iterator simple', t => {
   const r = fx([{val:1},{val:2}], '.[].val')
   t.deepEqual(JSON.parse(r), [1, 2])
+})
+
+test('reduce should replace keys with dash', t => {
+  const r = reduce({'release-it': 2}, 'this.release-it')
+  t.is(r, 2)
 })
