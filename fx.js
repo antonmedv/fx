@@ -363,6 +363,29 @@ module.exports = function start(filename, source, prev = {}) {
     render()
   })
 
+  box.key(['S-left', 'S-k'], function () {
+    hideStatusBar()
+    const [n, line] = getLine(program.y)
+    program.showCursor()
+    program.cursorPos(program.y, line.search(/\S/))
+    const path = index.get(n)
+    if (!path) {
+      // collapse on top level (should render like after run)
+      expanded.clear()
+      expanded.add('')
+    } else {
+      const subJson = reduce(json, 'this' + path)
+      for (let p of dfs(subJson, path)) {
+        if (expanded.size < 1000) {
+          expanded.delete(p)
+        } else {
+          break
+        }
+      }
+    }
+    render()
+  })
+
   box.key(['left', 'h'], function () {
     hideStatusBar()
     const [n, line] = getLine(program.y)
