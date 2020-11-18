@@ -79,7 +79,7 @@ function handle(input) {
     }
     if (args.length === 1 && (args[0] === '-v' || args[0] === '--version')) {
       stderr.write(require('./package.json').version + '\n')
-      process.exit(2)
+      process.exit(0)
     }
     if (args.length === 1 && args[0] === '--life') {
       require('./bang')
