@@ -26,9 +26,6 @@ Or via Homebrew
 brew install fx
 ```
 Or download standalone binary from [releases](https://github.com/antonmedv/fx/releases)
-```bash
-bash <( curl https://fx.wtf )
-```
 
 ## Usage
 
