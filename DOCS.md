@@ -281,6 +281,7 @@ Next commands available in interactive mode:
 | `n`                           | Find next                                    |
 | `p`                           | Exit and print JSON to stdout                |
 | `P`                           | Exit and print fully expanded JSON to stdout |
+| `x` or `Ctrl`+`e`             | Exit and print selected sub-JSON to stdout   |
 
 These commands are available when editing the filter:
 

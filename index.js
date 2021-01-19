@@ -23,14 +23,14 @@ const stream = require('./stream')
 
 const usage = `
   Usage
-    $ fx [code ...]               
+    $ fx [code ...]
 
   Examples
     $ echo '{"key": "value"}' | fx 'x => x.key'
     value
 
     $ echo '{"key": "value"}' | fx .key
-    value    
+    value
 
     $ echo '[1,2,3]' | fx 'this.map(x => x * 2)'
     [2, 4, 6]
@@ -47,32 +47,36 @@ const usage = `
 `
 
 const {stdin, stdout, stderr} = process
-const args = process.argv.slice(2)
-
+var args = process.argv.slice(2)
 
 void function main() {
-  stdin.setEncoding('utf8')
-
-  if (stdin.isTTY) {
-    handle('')
-    return
-  }
-
-  const reader = stream(stdin, apply)
-
-  stdin.on('readable', reader.read)
-  stdin.on('end', () => {
-    if (!reader.isStream()) {
-      handle(reader.value())
-    }
-  })
-}()
-
-
-function handle(input) {
+  var interactive = false
   let filename = 'fx'
 
-  if (input === '') {
+  function load_file(fn) {
+    const input = fs.readFileSync(fn).toString('utf8')
+    filename = path.basename(fn)
+    global.FX_FILENAME = fn
+    return input
+  }
+
+  function handle(input) {
+    let json
+    try {
+      json = reduce_args(JSON.parse(input))
+    } catch (e) {
+      printError(e, input)
+      process.exit(1)
+    }
+
+    if (interactive) {
+      require('./fx')(filename, json)
+    } else {
+      handle_piped(json)
+    }
+  }
+
+  if (stdin.isTTY) {
     if (args.length === 0 || (args.length === 1 && (args[0] === '-h' || args[0] === '--help'))) {
       stderr.write(usage)
       process.exit(2)
@@ -85,35 +89,34 @@ function handle(input) {
       require('./bang')
       return
     }
-
-    input = fs.readFileSync(args[0]).toString('utf8')
-    filename = path.basename(args[0])
-    global.FX_FILENAME = filename
+    const input = load_file(args[0])
     args.shift()
+    handle(input)
+  } else if (args.length > 0 &&
+             fs.existsSync(args[0]) && fs.statSync(args[0]).isFile()) {
+    const input = load_file(args[0])
+    args.shift()
+    handle(input)
+  } else {
+    interactive |= args.length == 0
+    stdin.setEncoding('utf8')
+    const reader = stream(stdin, (json) => handle_piped(reduce_args(json)))
+    stdin.on('readable', reader.read)
+    stdin.on('end', () => {
+      if (!reader.isStream()) {
+        handle(reader.value())
+      }
+    })
   }
 
-  let json
-  try {
-    json = JSON.parse(input)
-  } catch (e) {
-    printError(e, input)
-    process.exit(1)
-  }
+}()
 
-  if (args.length === 0 && stdout.isTTY) {
-    require('./fx')(filename, json)
-    return
-  }
-
-  apply(json)
-}
-
-function apply(json) {
-  let output = json
+function reduce_args(json) {
+  let reduced = json
 
   for (let [i, code] of args.entries()) {
     try {
-      output = reduce(output, code)
+      reduced = reduce(reduced, code)
     } catch (e) {
       if (e === std.skip) {
         return
@@ -123,6 +126,10 @@ function apply(json) {
     }
   }
 
+  return reduced
+}
+
+function handle_piped(output) {
   if (typeof output === 'undefined') {
     stderr.write('undefined\n')
   } else if (typeof output === 'string') {

@@ -3,7 +3,7 @@ const test = require('ava')
 const {execSync} = require('child_process')
 const stream = require('./stream')
 
-function fx(json, code = '') {
+function fx(json, code = '.') {
   return execSync(`echo '${JSON.stringify(json)}' | node index.js ${code}`).toString('utf8')
 }
 
@@ -83,3 +83,14 @@ test('value iterator simple', t => {
   const r = fx([{val:1},{val:2}], '.[].val')
   t.deepEqual(JSON.parse(r), [1, 2])
 })
+
+test('streaming from stdin', t => {
+  const r = execSync(`
+  {
+    echo '{"a":1}';
+    echo '{"a":2}';
+    echo '{"a":3}';
+  } | node index.js .a`).toString('utf8')
+  t.is(r, '1\n2\n3\n')
+})
+
