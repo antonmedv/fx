@@ -17,7 +17,6 @@ try {
   }
 }
 
-const print = require('./print')
 const reduce = require('./reduce')
 const stream = require('./stream')
 
@@ -86,6 +85,21 @@ function handle(input) {
       return
     }
 
+    if (args.length > 1 && /^--indent=/.test(args[0])) {
+      let indent = args[0].slice('--indent='.length)
+      if (/^[1-9][0-9]+$/.test(indent)) {
+        indent = parseInt(indent, 10)
+      } else if (indent === '\\t') {
+        indent = '\t'
+      }
+      if (typeof indent !== 'number' && indent !== '\t') {
+        stderr.write(usage)
+        process.exit(2)
+      }
+      global.FX_STYLE_SPACE = indent;
+      args.shift()
+    }
+
     input = fs.readFileSync(args[0]).toString('utf8')
     filename = path.basename(args[0])
     global.FX_FILENAME = filename
@@ -128,6 +142,7 @@ function apply(json) {
   } else if (typeof output === 'string') {
     console.log(output)
   } else {
+    const print = require('./print')
     const [text] = print(output)
     console.log(text)
   }
