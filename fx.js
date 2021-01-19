@@ -53,13 +53,15 @@ module.exports = function start(filename, source, prev = {}) {
     fullUnicode: true,
   })
 
+  const box_height = config.useRuler ? '100%-2' : '100%'
+
   const box = blessed.box({
     parent: screen,
     tags: false,
     left: 0,
     top: 0,
     width: '100%',
-    height: '100%',
+    height: box_height,
     mouse: true,
     keys: true,
     vi: true,
@@ -91,6 +93,30 @@ module.exports = function start(filename, source, prev = {}) {
     left: 0,
     height: 1,
     width: '100%',
+  })
+
+  const ruler = config.useRuler && blessed.box({
+    parent: screen,
+    fg: config.ruler.fg,
+    bg: config.ruler.bg,
+    tags: false,
+    align: 'right',
+    bottom: 1,
+    right: 0,
+    height: 1,
+    width: 16,
+  })
+
+  const pathBar = config.useRuler && blessed.box({
+    parent: screen,
+    fg: config.ruler.path,
+    bg: config.ruler.bg,
+    tags: false,
+    align: 'left',
+    bottom: 1,
+    left: 0,
+    height: 1,
+    width: '100%-16',
   })
 
   const autocomplete = blessed.list({
@@ -157,7 +183,7 @@ module.exports = function start(filename, source, prev = {}) {
     } else {
       // Autocomplete not selected
       autocomplete.hide()
-      screen.render()
+      render()
 
       // Keep editing code
       input.readInput()
@@ -178,14 +204,14 @@ module.exports = function start(filename, source, prev = {}) {
   input.key('up', function () {
     if (!autocomplete.hidden) {
       autocomplete.up()
-      screen.render()
+      render()
     }
   })
 
   input.key('down', function () {
     if (!autocomplete.hidden) {
       autocomplete.down()
-      screen.render()
+      render()
     }
   })
 
@@ -214,7 +240,7 @@ module.exports = function start(filename, source, prev = {}) {
     search.hide()
     search.setValue('')
 
-    box.height = '100%'
+    box.height = box_height
     box.focus()
 
     program.cursorPos(0, 0)
@@ -223,23 +249,23 @@ module.exports = function start(filename, source, prev = {}) {
 
   box.key('.', function () {
     hideStatusBar()
-    box.height = '100%-1'
+    box.height = config.useRuler ? box_height : '100%-1'
     input.show()
     if (input.getValue() === '') {
       input.setValue('.')
       complete('.')
     }
     input.readInput()
-    screen.render()
+    render()
   })
 
   box.key('/', function () {
     hideStatusBar()
-    box.height = '100%-1'
+    box.height = config.useRuler ? box_height : '100%-1'
     search.show()
     search.setValue('/')
     search.readInput()
-    screen.render()
+    render()
   })
 
   box.key('e', function () {
@@ -283,6 +309,55 @@ module.exports = function start(filename, source, prev = {}) {
     findNext()
   })
 
+  // High, Middle, Low cursor movement
+  box.key('S-h', function () {
+    hideStatusBar()
+    program.showCursor()
+    const line = box.getScreenLine(box.childBase)
+    program.cursorPos(0, line.search(/\S/))
+  })
+
+  box.key('S-m', function () {
+    hideStatusBar()
+    program.showCursor()
+    const lastLine = box.height < box.getScrollHeight() ? box.height : box.getScrollHeight()
+    const offset = lastLine / 2
+    const line = box.getScreenLine(box.childBase + offset)
+    program.cursorPos(offset, line.search(/\S/))
+  })
+
+  box.key('S-l', function () {
+    hideStatusBar()
+    program.showCursor()
+    const lastLine = box.height < box.getScrollHeight() ? box.height : box.getScrollHeight()
+    const line = box.getScreenLine(box.childBase + lastLine - 1)
+    program.cursorPos(lastLine - 1, line.search(/\S/))
+  })
+
+
+  // Scrolls to and sets cursor at first line of object
+  box.key('g', function () {
+    hideStatusBar()
+    program.showCursor()
+    box.scrollTo(0)
+
+    const line = box.getScreenLine(0)
+    program.cursorPos(0)
+    render()
+  })
+
+  // Scrolls to and sets cursor on last line of object
+  box.key('S-g', function () {
+    const lastLine = box.getScrollHeight() - 1
+
+    hideStatusBar()
+    program.showCursor()
+    box.scrollTo(lastLine)
+
+    program.cursorPos(box.height < box.getScrollHeight() ? box.height - 1 : lastLine)
+    render()
+  })
+
   box.key(['up', 'k'], function () {
     hideStatusBar()
     program.showCursor()
@@ -299,13 +374,56 @@ module.exports = function start(filename, source, prev = {}) {
       let y = box.getScreenNumber(next) - box.childBase
       if (y <= 0) {
         box.scroll(-1)
-        screen.render()
         y = 0
       }
 
       const line = box.getScreenLine(y + box.childBase)
       program.cursorPos(y, line.search(/\S/))
     }
+    render()
+  })
+
+  // Half page up
+  box.key(['C-u','u'], function () {
+    hideStatusBar()
+    program.showCursor()
+    const page = Math.round(box.height / 2)
+
+    box.scroll(-page || -1)
+
+    let y = program.y
+    if (box.getScroll() == 0) {
+      y -= page
+    } else {
+      y = box.height - 1
+    }
+
+    if (y < 0) {
+      y = 0
+    }
+
+    const line = box.getScreenLine(y + box.childBase)
+    program.cursorPos(y, line.search(/\S/))
+    render()
+  })
+
+  // Full page up (backwards)
+  box.key(['C-b','b','pageup'], function () {
+    hideStatusBar()
+    program.showCursor()
+    box.scroll(-box.height || -1)
+
+    let y = box.height - 1
+    if (box.getScroll() < box.height) {
+      y -= box.height
+    }
+    if (y < 0) {
+      y = 0
+    }
+
+    const line = box.getScreenLine(y + box.childBase)
+    program.cursorPos(y, line.search(/\S/))
+    render()
   })
 
   box.key(['down', 'j'], function () {
@@ -324,12 +442,112 @@ module.exports = function start(filename, source, prev = {}) {
       let y = box.getScreenNumber(next) - box.childBase
       if (y >= box.height) {
         box.scroll(1)
-        screen.render()
         y = box.height - 1
       }
 
       const line = box.getScreenLine(y + box.childBase)
       program.cursorPos(y, line.search(/\S/))
+    }
+    render()
+  })
+
+  // Half page down
+  box.key(['C-d','d'], function () {
+    hideStatusBar()
+    program.showCursor()
+    const page = Math.floor(box.height / 2)
+    const lastLine = box.getScrollHeight()
+
+    let y = program.y
+    if(box.childBase + page < lastLine - page) {
+      box.scroll(page)
+      y = 0
+    } else if (box.height < lastLine) {
+      box.scroll(page)
+      if (y + page > box.height) {
+        y = box.height - 1
+      } else {
+        y += page
+        if(y >= box.height) {
+          y = box.height - 1
+        }
+      }
+    } else {
+      y = lastLine - 1
+    }
+
+    const line = box.getScreenLine(y + box.childBase)
+    program.cursorPos(y, line && line.search(/\S/))
+    render()
+  })
+
+  // Full page down (forwards)
+  box.key(['C-f','f','pagedown'], function () {
+    hideStatusBar()
+    program.showCursor()
+    const lastLine = box.getScrollHeight()
+
+    let y = program.y
+    if(box.childBase + box.height < lastLine - box.height) {
+      box.scroll(box.height)
+      y = 0
+    } else if (box.height < lastLine) {
+      box.scroll(box.height)
+      y = box.height - 1
+    } else {
+      y = lastLine - 1
+    }
+
+    const line = box.getScreenLine(y + box.childBase)
+    program.cursorPos(y, line.search(/\S/))
+    render()
+  })
+
+  const isExpanded = y => expanded.has(index.get(y + box.childBase))
+
+  // Next expanded object/array
+  box.key('}', function() {
+    hideStatusBar()
+    const [n] = getLine(program.y)
+    if(n < box.getScrollHeight() - 1) {
+      let y = program.y
+
+      program.showCursor()
+      do {
+        y += 1
+        if(y >= box.height) {
+          box.scroll(box.height || 1)
+          // don't jump cursor to top when scrolling to patial last page
+          y = n < box.getScrollHeight() - box.height ? 0 : n % box.height
+        }
+      } while(!isExpanded(y) && y + box.childBase < box.getScrollHeight() - 1)
+
+      const line = box.getScreenLine(y + box.childBase)
+      program.cursorPos(y, line && line.search(/\S/))
+      render()
+    }
+  })
+
+  // Previous expanded object/array
+  box.key('{', function() {
+    hideStatusBar()
+    const [n] = getLine(program.y)
+    if(box.childBase > 0 || program.y > 0) {
+      let y = program.y
+
+      program.showCursor()
+      do {
+        y -= 1
+        if(y < 0) {
+          box.scroll(-box.height || -1)
+          // don't jump cursor to bottom when scrolling to patial first page
+          y = n < box.height ? n - 1 : box.height
+        }
+      } while(!isExpanded(y) && n > 1)
+
+      const line = box.getScreenLine(y + box.childBase)
+      program.cursorPos(y, line && line.search(/\S/))
+      render()
     }
   })
 
@@ -346,7 +564,7 @@ module.exports = function start(filename, source, prev = {}) {
   })
 
   // Expand everything under cursor.
-  box.key(['S-right', 'S-l'], function () {
+  box.key(['S-right','S-o'], function () {
     hideStatusBar()
     const [n, line] = getLine(program.y)
     program.showCursor()
@@ -484,7 +702,7 @@ module.exports = function start(filename, source, prev = {}) {
         // pass
       }
     } else {
-      box.height = '100%'
+      box.height = box_height
       input.hide()
       json = source
     }
@@ -596,7 +814,7 @@ module.exports = function start(filename, source, prev = {}) {
     }
     search.setValue('')
 
-    box.height = '100%'
+    box.height = box_height
     box.focus()
 
     program.cursorPos(0, 0)
@@ -630,7 +848,7 @@ module.exports = function start(filename, source, prev = {}) {
           }
 
           box.scrollTo(y)
-          screen.render()
+          render()
         }
       }
 
@@ -647,23 +865,43 @@ module.exports = function start(filename, source, prev = {}) {
             }
             const line = box.getScreenLine(y + box.childBase)
             program.cursorPos(y, line.search(/\S/))
+            render()
           }
         }
       }, 100)
     }
   }
 
+  function updateRuler() {
+    const y = box.childBase + program.y
+    const [n] = getLine(program.y)
+    const path = index.get(n) || ''
+    const scrollPercent = ((y / (box.getScrollHeight() - 1)) * 100).toFixed(0)
+    const compressPath = p => {
+      if(pathBar.strWidth(path) < pathBar.width) {
+        return p
+      } else {
+        return '…' + p.substring(path.length - pathBar.width + 1)
+      }
+    }
+    pathBar.show()
+    pathBar.setContent(`${compressPath(path)}`)
+    ruler.show()
+    ruler.setContent(`${box.childBase + program.y}\t${scrollPercent}%`)
+    screen.render()
+  }
+
   function showStatusBar(status) {
     statusBar.show()
     statusBar.setContent(config.statusBar(` ${status} `))
-    screen.render()
+    render()
   }
 
   function hideStatusBar() {
     if (!statusBar.hidden) {
       statusBar.hide()
       statusBar.setContent('')
-      screen.render()
+      render()
     }
   }
 
@@ -676,6 +914,7 @@ module.exports = function start(filename, source, prev = {}) {
     }
 
     box.setContent(content)
+    config.useRuler && updateRuler() 
     screen.render()
   }
 

@@ -9,6 +9,12 @@ const list = {
   }
 }
 
+const ruler = {
+  fg: 'yellow',
+  bg: 'black',
+  path: 'cyan',
+}
+
 module.exports = {
   space:            global.FX_STYLE_SPACE             || 2,
   null:             global.FX_STYLE_NULL              || chalk.grey.bold,
@@ -23,4 +29,6 @@ module.exports = {
   highlight:        global.FX_STYLE_HIGHLIGHT         || chalk.black.bgYellow,
   highlightCurrent: global.FX_STYLE_HIGHLIGHT_CURRENT || chalk.inverse,
   statusBar:        global.FX_STYLE_STATUS_BAR        || chalk.inverse,
+  ruler:            global.FX_STYLE_RULER             || ruler,
+  useRuler:         global.FX_FEATURE_RULER           || false,
 }
