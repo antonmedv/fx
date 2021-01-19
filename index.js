@@ -10,7 +10,10 @@ JSON.config({circularRefs: false})
 const std = require('./std')
 
 try {
-  require(path.join(os.homedir(), '.fxrc')) // Should be required before config.js usage.
+  let fxrcPath = fs.existsSync(path.join(process.cwd(), '.fxrc'))
+    ? path.join(process.cwd(), '.fxrc')
+    : path.join(os.homedir(), '.fxrc');
+  require(fxrcPath) // Should be required before config.js usage.
 } catch (err) {
   if (err.code !== 'MODULE_NOT_FOUND') {
     throw err
@@ -23,14 +26,14 @@ const stream = require('./stream')
 
 const usage = `
   Usage
-    $ fx [code ...]               
+    $ fx [code ...]
 
   Examples
     $ echo '{"key": "value"}' | fx 'x => x.key'
     value
 
     $ echo '{"key": "value"}' | fx .key
-    value    
+    value
 
     $ echo '[1,2,3]' | fx 'this.map(x => x * 2)'
     [2, 4, 6]
