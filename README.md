@@ -46,7 +46,7 @@ cat foo.json bar.json baz.json | fx .message
 
 Use full power of JavaScript.
 ```bash
-$ curl ... | fx '.filter(x => x.startsWith("a"))'
+$ curl ... | fx 'filter(x => x.startsWith("a"))'
 ```
 
 Access all lodash (or ramda, etc) methods by using [.fxrc](https://github.com/antonmedv/fx/blob/master/DOCS.md#using-fxrc) file.
