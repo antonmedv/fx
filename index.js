@@ -20,31 +20,7 @@ try {
 const print = require('./print')
 const reduce = require('./reduce')
 const stream = require('./stream')
-
-const usage = `
-  Usage
-    $ fx [code ...]               
-
-  Examples
-    $ echo '{"key": "value"}' | fx 'x => x.key'
-    value
-
-    $ echo '{"key": "value"}' | fx .key
-    value    
-
-    $ echo '[1,2,3]' | fx 'this.map(x => x * 2)'
-    [2, 4, 6]
-
-    $ echo '{"items": ["one", "two"]}' | fx 'this.items' 'this[1]'
-    two
-
-    $ echo '{"count": 0}' | fx '{...this, count: 1}'
-    {"count": 1}
-
-    $ echo '{"foo": 1, "bar": 2}' | fx ?
-    ["foo", "bar"]
-
-`
+const help = require('./doc/help')
 
 const {stdin, stdout, stderr} = process
 const args = process.argv.slice(2)
@@ -74,7 +50,7 @@ function handle(input) {
 
   if (input === '') {
     if (args.length === 0 || (args.length === 1 && (args[0] === '-h' || args[0] === '--help'))) {
-      stderr.write(usage)
+      stderr.write(help())
       process.exit(2)
     }
     if (args.length === 1 && (args[0] === '-v' || args[0] === '--version')) {
