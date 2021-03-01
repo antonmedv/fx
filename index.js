@@ -50,11 +50,11 @@ function handle(input) {
 
   if (input === '') {
     if (args.length === 0 || (args.length === 1 && (args[0] === '-h' || args[0] === '--help'))) {
-      stderr.write(help())
+      stdout.write(help())
       process.exit(2)
     }
     if (args.length === 1 && (args[0] === '-v' || args[0] === '--version')) {
-      stderr.write(require('./package.json').version + '\n')
+      stdout.write(require('./package.json').version + '\n')
       process.exit(0)
     }
     if (args.length === 1 && args[0] === '--life') {
