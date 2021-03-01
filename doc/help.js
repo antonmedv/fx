@@ -60,7 +60,10 @@ EXAMPLES
 
 OPTIONS
     --version
+        Show the software version.
+       
     --help
+        Print this help.
 
 ENVIRONMENT
     You may find that sometimes, on really big JSON files, fx prints an error
