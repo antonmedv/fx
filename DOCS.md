@@ -290,6 +290,7 @@ These commands are available when editing the filter:
 | `Ctrl`+`u`                    | Clear filter            |
 | `Ctrl`+`w`                    | Delete last part        |
 | `up`/`down`                   | Select autocomplete     |
+| `Ctrl+p`/`Ctrl+n`             | Select autocomplete     |
 
 ### Searching
 
