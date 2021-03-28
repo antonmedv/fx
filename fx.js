@@ -189,6 +189,20 @@ module.exports = function start(filename, source, prev = {}) {
     }
   })
 
+  input.key('C-p', function () {
+    if (!autocomplete.hidden) {
+      autocomplete.up()
+      screen.render()
+    }
+  })
+
+  input.key('C-n', function () {
+    if (!autocomplete.hidden) {
+      autocomplete.down()
+      screen.render()
+    }
+  })
+
   input.key('C-u', function () {
     input.setValue('')
     update('')
