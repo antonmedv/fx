@@ -9,11 +9,20 @@ JSON.config({circularRefs: false})
 
 const std = require('./std')
 
-try {
-  require(path.join(os.homedir(), '.fxrc')) // Should be required before config.js usage.
-} catch (err) {
-  if (err.code !== 'MODULE_NOT_FOUND') {
-    throw err
+function loadConfig() {
+  const configPaths = [path.join(os.homedir(), '.fxrc')];
+  if (process.env.XDG_CONFIG_HOME) {
+    configPaths.unshift(path.join(path.resolve(process.env.XDG_CONFIG_HOME, "fx", "fxrc.js")));
+  }
+  for (let p of configPaths) {
+    try {
+      require(p) // Should be required before config.js usage.
+      return
+    } catch (err) {
+      if (err.code !== 'MODULE_NOT_FOUND') {
+        throw err
+      }
+    }
   }
 }
 
@@ -23,14 +32,14 @@ const stream = require('./stream')
 
 const usage = `
   Usage
-    $ fx [code ...]               
+    $ fx [code ...]
 
   Examples
     $ echo '{"key": "value"}' | fx 'x => x.key'
     value
 
     $ echo '{"key": "value"}' | fx .key
-    value    
+    value
 
     $ echo '[1,2,3]' | fx 'this.map(x => x * 2)'
     [2, 4, 6]
@@ -51,6 +60,7 @@ const args = process.argv.slice(2)
 
 
 void function main() {
+  loadConfig()
   stdin.setEncoding('utf8')
 
   if (stdin.isTTY) {
