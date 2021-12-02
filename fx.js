@@ -29,23 +29,18 @@ module.exports = function start(filename, source, prev = {}) {
   let findGen = null
   let currentPath = null
 
-  let ttyReadStream, ttyWriteStream
+  let program
 
   // Reopen tty
   if (process.platform === 'win32') {
-    const cfs = process.binding('fs')
-    ttyReadStream = tty.ReadStream(cfs.open('conin$', fs.constants.O_RDWR | fs.constants.O_EXCL, 0o666))
-    ttyWriteStream = tty.WriteStream(cfs.open('conout$', fs.constants.O_RDWR | fs.constants.O_EXCL, 0o666))
+    program = blessed.program()
   } else {
     const ttyFd = fs.openSync('/dev/tty', 'r+')
-    ttyReadStream = tty.ReadStream(ttyFd)
-    ttyWriteStream = tty.WriteStream(ttyFd)
+    program = blessed.program({
+      input: tty.ReadStream(ttyFd),
+      output: tty.WriteStream(ttyFd),
+    })
   }
-
-  const program = blessed.program({
-    input: ttyReadStream,
-    output: ttyWriteStream,
-  })
 
   const screen = blessed.screen({
     program: program,
