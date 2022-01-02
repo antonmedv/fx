@@ -1,7 +1,7 @@
 'use strict'
 const JSON = require('lossless-json') // override JSON for user's code
 
-function reduce(json, code) {
+module.exports = function (json, code) {
   if (process.env.FX_APPLY) {
     return global[process.env.FX_APPLY](code)(json)
   }
@@ -47,5 +47,3 @@ function reduce(json, code) {
   }
   return fn
 }
-
-module.exports = reduce
