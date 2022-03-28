@@ -7,6 +7,68 @@ import (
 	"strings"
 )
 
+func prettyPrint(v interface{}, level int) string {
+	ident := strings.Repeat("  ", level)
+	subident := strings.Repeat("  ", level-1)
+	switch v.(type) {
+	case nil:
+		return colors.null.Render("null")
+
+	case bool:
+		if v.(bool) {
+			return colors.boolean.Render("true")
+		} else {
+			return colors.boolean.Render("false")
+		}
+
+	case json.Number:
+		return colors.number.Render(v.(json.Number).String())
+
+	case string:
+		return colors.string.Render(fmt.Sprintf("%q", v))
+
+	case *dict:
+		keys := v.(*dict).keys
+		if len(keys) == 0 {
+			return colors.bracket.Render("{}")
+		}
+		output := colors.bracket.Render("{\n")
+		for i, k := range keys {
+			key := colors.key.Render(fmt.Sprintf("%q", k))
+			value, _ := v.(*dict).get(k)
+			delim := ": "
+			line := ident + key + delim + prettyPrint(value, level+1)
+			if i < len(keys)-1 {
+				line += ",\n"
+			} else {
+				line += "\n"
+			}
+			output += line
+		}
+		return output + subident + colors.bracket.Render("}")
+
+	case array:
+		slice := v.(array)
+		if len(slice) == 0 {
+			return colors.bracket.Render("[]")
+		}
+		output := colors.bracket.Render("[\n")
+		for i, value := range v.(array) {
+			line := ident + prettyPrint(value, level+1)
+			if i < len(slice)-1 {
+				line += ",\n"
+			} else {
+				line += "\n"
+			}
+			output += line
+		}
+		return output + subident + colors.bracket.Render("]")
+
+	default:
+		return "unknown type"
+	}
+}
+
 func (m *model) print(v interface{}, level, lineNumber, keyEndPos int, path string, dontHighlightCursor bool) []string {
 	ident := strings.Repeat("  ", level)
 	subident := strings.Repeat("  ", level-1)
@@ -50,7 +112,6 @@ func (m *model) print(v interface{}, level, lineNumber, keyEndPos int, path stri
 
 	case *dict:
 		m.pathToLineNumber.set(path, lineNumber)
-		m.canBeExpanded[path] = true
 		m.lineNumberToPath[lineNumber] = path
 		bracketStyle := cursorOr(colors.bracket).Render
 		if len(v.(*dict).keys) == 0 {
@@ -102,7 +163,6 @@ func (m *model) print(v interface{}, level, lineNumber, keyEndPos int, path stri
 
 	case array:
 		m.pathToLineNumber.set(path, lineNumber)
-		m.canBeExpanded[path] = true
 		m.lineNumberToPath[lineNumber] = path
 		bracketStyle := cursorOr(colors.bracket).Render
 		if len(v.(array)) == 0 {
