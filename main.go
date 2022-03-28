@@ -39,6 +39,7 @@ var colors = struct {
 
 func main() {
 	filePath := ""
+	args := []string{}
 	var dec *json.Decoder
 	if term.IsTerminal(int(os.Stdin.Fd())) {
 		if len(os.Args) >= 2 {
@@ -48,9 +49,11 @@ func main() {
 				panic(err)
 			}
 			dec = json.NewDecoder(f)
+			args = os.Args[2:]
 		}
 	} else {
 		dec = json.NewDecoder(os.Stdin)
+		args = os.Args[1:]
 	}
 	dec.UseNumber()
 	jsonObject, err := parse(dec)
@@ -58,24 +61,37 @@ func main() {
 		panic(err)
 	}
 
+	if len(args) > 0 {
+		if args[0] == "--print-code" {
+			fmt.Print(generateCode(args[1:]))
+			return
+		}
+		reduce(jsonObject, args)
+		return
+	}
+
 	expand := map[string]bool{
 		"": true,
 	}
-
 	if array, ok := jsonObject.(array); ok {
 		for i := range array {
 			expand[accessor("", i)] = true
 		}
 	}
-
 	parents := map[string]string{}
+	children := map[string][]string{}
+	canBeExpanded := map[string]bool{}
 	dfs(jsonObject, func(it iterator) {
 		parents[it.path] = it.parent
-	})
+		children[it.parent] = append(children[it.parent], it.path)
+		switch it.object.(type) {
+		case *dict, array:
+			canBeExpanded[it.path] = true
 
+		}
+	})
 	input := textinput.New()
 	input.Prompt = ""
-
 	m := &model{
 		fileName:        path.Base(filePath),
 		json:            jsonObject,
@@ -84,7 +100,9 @@ func main() {
 		mouseWheelDelta: 3,
 		keyMap:          DefaultKeyMap(),
 		expandedPaths:   expand,
+		canBeExpanded:   canBeExpanded,
 		parents:         parents,
+		children:        children,
 		wrap:            true,
 		searchInput:     input,
 	}
@@ -112,12 +130,13 @@ type model struct {
 	keyMap   KeyMap
 	showHelp bool
 
-	expandedPaths    map[string]bool   // a set with expanded paths
-	canBeExpanded    map[string]bool   // a set for path => can be expanded (i.e. dict or array)
-	pathToLineNumber *dict             // dict with path => line number
-	lineNumberToPath map[int]string    // map of line number => path
-	parents          map[string]string // map of subpath => parent path
-	cursor           int               // cursor in range of m.pathToLineNumber.keys slice
+	expandedPaths    map[string]bool     // a set with expanded paths
+	canBeExpanded    map[string]bool     // a set for path => can be expanded (i.e. dict or array)
+	pathToLineNumber *dict               // dict with path => line number
+	lineNumberToPath map[int]string      // map of line number => path
+	parents          map[string]string   // map of subpath => parent path
+	children         map[string][]string // map of path => child paths
+	cursor           int                 // cursor in range of m.pathToLineNumber.keys slice
 	showCursor       bool
 
 	wrap                    bool
@@ -234,6 +253,18 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.SetOffset(at)
 			}
 
+		case key.Matches(msg, m.keyMap.NextSibling):
+			m.showCursor = true
+			// TODO: write code for collecting siblings,
+			// and write code to getting sibling and jumping to it.
+			m.render()
+			at := m.cursorLineNumber()
+			if m.offset <= at { // cursor is lower
+				m.LineDown(max(0, at-(m.offset+m.height-1))) // minus one is due to cursorLineNumber() starts from 0
+			} else {
+				m.SetOffset(at)
+			}
+
 		case key.Matches(msg, m.keyMap.Up):
 			m.showCursor = true
 			if m.cursor > 0 {
@@ -255,14 +286,27 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.expandedPaths[m.cursorPath()] = true
 			m.render()
 
-		case key.Matches(msg, m.keyMap.Collapse):
+		case key.Matches(msg, m.keyMap.ExpandRecursively):
+			m.showCursor = true
+			m.expandRecursively(m.cursorPath())
+			m.render()
+
+		case key.Matches(msg, m.keyMap.Collapse, m.keyMap.CollapseRecursively):
 			m.showCursor = true
 			if m.expandedPaths[m.cursorPath()] {
-				m.expandedPaths[m.cursorPath()] = false
+				if key.Matches(msg, m.keyMap.CollapseRecursively) {
+					m.collapseRecursively(m.cursorPath())
+				} else {
+					m.expandedPaths[m.cursorPath()] = false
+				}
 			} else {
 				parentPath, ok := m.parents[m.cursorPath()]
 				if ok {
-					m.expandedPaths[parentPath] = false
+					if key.Matches(msg, m.keyMap.CollapseRecursively) {
+						m.collapseRecursively(m.cursorPath())
+					} else {
+						m.expandedPaths[m.cursorPath()] = false
+					}
 					index, _ := m.pathToLineNumber.index(parentPath)
 					m.cursor = index
 				}
@@ -382,7 +426,6 @@ func (m *model) render() {
 	}
 
 	m.pathToLineNumber = newDict()
-	m.canBeExpanded = map[string]bool{}
 	m.lineNumberToPath = map[int]string{}
 	m.lines = m.print(m.json, 1, 0, 0, "", false)
 
@@ -406,4 +449,24 @@ func (m *model) cursorLineNumber() int {
 		return m.pathToLineNumber.values[m.pathToLineNumber.keys[m.cursor]].(int)
 	}
 	return -1
+}
+
+func (m *model) expandRecursively(path string) {
+	if m.canBeExpanded[path] {
+		m.expandedPaths[path] = true
+		for _, childPath := range m.children[path] {
+			if childPath != "" {
+				m.expandRecursively(childPath)
+			}
+		}
+	}
+}
+
+func (m *model) collapseRecursively(path string) {
+	m.expandedPaths[path] = false
+	for _, childPath := range m.children[path] {
+		if childPath != "" {
+			m.collapseRecursively(childPath)
+		}
+	}
 }

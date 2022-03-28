@@ -3,24 +3,28 @@ package main
 import "github.com/charmbracelet/bubbles/key"
 
 type KeyMap struct {
-	Quit         key.Binding
-	Help         key.Binding
-	PageDown     key.Binding
-	PageUp       key.Binding
-	HalfPageUp   key.Binding
-	HalfPageDown key.Binding
-	Down         key.Binding
-	Up           key.Binding
-	Expand       key.Binding
-	Collapse     key.Binding
-	GotoTop      key.Binding
-	GotoBottom   key.Binding
-	ToggleWrap   key.Binding
-	ExpandAll    key.Binding
-	CollapseAll  key.Binding
-	Search       key.Binding
-	Next         key.Binding
-	Prev         key.Binding
+	Quit                key.Binding
+	Help                key.Binding
+	PageDown            key.Binding
+	PageUp              key.Binding
+	HalfPageUp          key.Binding
+	HalfPageDown        key.Binding
+	Down                key.Binding
+	Up                  key.Binding
+	Expand              key.Binding
+	Collapse            key.Binding
+	NextSibling         key.Binding
+	PrevSibling         key.Binding
+	ExpandRecursively   key.Binding
+	CollapseRecursively key.Binding
+	GotoTop             key.Binding
+	GotoBottom          key.Binding
+	ToggleWrap          key.Binding
+	ExpandAll           key.Binding
+	CollapseAll         key.Binding
+	Search              key.Binding
+	Next                key.Binding
+	Prev                key.Binding
 }
 
 func DefaultKeyMap() KeyMap {
@@ -64,6 +68,22 @@ func DefaultKeyMap() KeyMap {
 		Collapse: key.NewBinding(
 			key.WithKeys("left", "h"),
 			key.WithHelp("", "collapse"),
+		),
+		NextSibling: key.NewBinding(
+			key.WithKeys("J"),
+			key.WithHelp("", "next sibling"),
+		),
+		PrevSibling: key.NewBinding(
+			key.WithKeys("K"),
+			key.WithHelp("", "previous sibling"),
+		),
+		ExpandRecursively: key.NewBinding(
+			key.WithKeys("L"),
+			key.WithHelp("", "expand recursively"),
+		),
+		CollapseRecursively: key.NewBinding(
+			key.WithKeys("H"),
+			key.WithHelp("", "collapse recursively"),
 		),
 		GotoTop: key.NewBinding(
 			key.WithKeys("g"),

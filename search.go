@@ -86,16 +86,16 @@ func (m *model) jumpToSearchResult(at int) {
 		m.SetOffset(lineNumber.(int))
 		m.render()
 	} else {
-		m.recursiveExpand(desiredPath)
+		m.expandToPath(desiredPath)
 		m.render()
 		m.jumpToSearchResult(at)
 	}
 }
 
-func (m *model) recursiveExpand(path string) {
+func (m *model) expandToPath(path string) {
 	m.expandedPaths[path] = true
 	if path != "" {
-		m.recursiveExpand(m.parents[path])
+		m.expandToPath(m.parents[path])
 	}
 }
 
