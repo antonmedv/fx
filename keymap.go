@@ -9,19 +9,19 @@ type KeyMap struct {
 	PageUp              key.Binding
 	HalfPageUp          key.Binding
 	HalfPageDown        key.Binding
+	GotoTop             key.Binding
+	GotoBottom          key.Binding
 	Down                key.Binding
 	Up                  key.Binding
 	Expand              key.Binding
 	Collapse            key.Binding
-	NextSibling         key.Binding
-	PrevSibling         key.Binding
 	ExpandRecursively   key.Binding
 	CollapseRecursively key.Binding
-	GotoTop             key.Binding
-	GotoBottom          key.Binding
-	ToggleWrap          key.Binding
 	ExpandAll           key.Binding
 	CollapseAll         key.Binding
+	NextSibling         key.Binding
+	PrevSibling         key.Binding
+	ToggleWrap          key.Binding
 	Search              key.Binding
 	Next                key.Binding
 	Prev                key.Binding
@@ -53,6 +53,14 @@ func DefaultKeyMap() KeyMap {
 			key.WithKeys("d", "ctrl+d"),
 			key.WithHelp("", "half page down"),
 		),
+		GotoTop: key.NewBinding(
+			key.WithKeys("g"),
+			key.WithHelp("", "goto top"),
+		),
+		GotoBottom: key.NewBinding(
+			key.WithKeys("G"),
+			key.WithHelp("", "goto bottom"),
+		),
 		Down: key.NewBinding(
 			key.WithKeys("down", "j"),
 			key.WithHelp("", "down"),
@@ -69,14 +77,6 @@ func DefaultKeyMap() KeyMap {
 			key.WithKeys("left", "h"),
 			key.WithHelp("", "collapse"),
 		),
-		NextSibling: key.NewBinding(
-			key.WithKeys("J"),
-			key.WithHelp("", "next sibling"),
-		),
-		PrevSibling: key.NewBinding(
-			key.WithKeys("K"),
-			key.WithHelp("", "previous sibling"),
-		),
 		ExpandRecursively: key.NewBinding(
 			key.WithKeys("L"),
 			key.WithHelp("", "expand recursively"),
@@ -85,18 +85,6 @@ func DefaultKeyMap() KeyMap {
 			key.WithKeys("H"),
 			key.WithHelp("", "collapse recursively"),
 		),
-		GotoTop: key.NewBinding(
-			key.WithKeys("g"),
-			key.WithHelp("", "goto top"),
-		),
-		GotoBottom: key.NewBinding(
-			key.WithKeys("G"),
-			key.WithHelp("", "goto bottom"),
-		),
-		ToggleWrap: key.NewBinding(
-			key.WithKeys("z"),
-			key.WithHelp("", "toggle strings wrap"),
-		),
 		ExpandAll: key.NewBinding(
 			key.WithKeys("e"),
 			key.WithHelp("", "expand all"),
@@ -104,6 +92,18 @@ func DefaultKeyMap() KeyMap {
 		CollapseAll: key.NewBinding(
 			key.WithKeys("E"),
 			key.WithHelp("", "collapse all"),
+		),
+		NextSibling: key.NewBinding(
+			key.WithKeys("J"),
+			key.WithHelp("", "next sibling"),
+		),
+		PrevSibling: key.NewBinding(
+			key.WithKeys("K"),
+			key.WithHelp("", "previous sibling"),
+		),
+		ToggleWrap: key.NewBinding(
+			key.WithKeys("z"),
+			key.WithHelp("", "toggle strings wrap"),
 		),
 		Search: key.NewBinding(
 			key.WithKeys("/"),

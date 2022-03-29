@@ -108,3 +108,21 @@ func (m *model) GotoTop() {
 func (m *model) GotoBottom() {
 	m.SetOffset(m.maxYOffset())
 }
+
+func (m *model) scrollDownToCursor() {
+	at := m.cursorLineNumber()
+	if m.offset <= at { // cursor is lower
+		m.LineDown(max(0, at-(m.offset+m.height-1))) // minus one is due to cursorLineNumber() starts from 0
+	} else {
+		m.SetOffset(at)
+	}
+}
+
+func (m *model) scrollUpToCursor() {
+	at := m.cursorLineNumber()
+	if at < m.offset+m.height { // cursor is above
+		m.LineUp(max(0, m.offset-at))
+	} else {
+		m.SetOffset(at)
+	}
+}
