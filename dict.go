@@ -7,11 +7,15 @@ type dict struct {
 }
 
 func newDict() *dict {
-	d := dict{}
-	d.keys = []string{}
-	d.indexes = map[string]int{}
-	d.values = map[string]interface{}{}
-	return &d
+	return newDictOfCapacity(0)
+}
+
+func newDictOfCapacity(capacity int) *dict {
+	return &dict{
+		keys:    make([]string, 0, capacity),
+		indexes: make(map[string]int, capacity),
+		values:  make(map[string]interface{}, capacity),
+	}
 }
 
 func (d *dict) get(key string) (interface{}, bool) {

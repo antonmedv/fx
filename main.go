@@ -13,9 +13,11 @@ import (
 	"strings"
 )
 
+type number = json.Number
+
 var colors = struct {
 	cursor    lipgloss.Style
-	bracket   lipgloss.Style
+	syntax    lipgloss.Style
 	key       lipgloss.Style
 	null      lipgloss.Style
 	boolean   lipgloss.Style
@@ -26,7 +28,7 @@ var colors = struct {
 	search    lipgloss.Style
 }{
 	cursor:    lipgloss.NewStyle().Reverse(true),
-	bracket:   lipgloss.NewStyle(),
+	syntax:    lipgloss.NewStyle(),
 	key:       lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("4")),
 	null:      lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("8")),
 	boolean:   lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("3")),
@@ -39,7 +41,7 @@ var colors = struct {
 
 func main() {
 	filePath := ""
-	args := []string{}
+	var args []string
 	var dec *json.Decoder
 	if term.IsTerminal(int(os.Stdin.Fd())) {
 		if len(os.Args) >= 2 {
@@ -85,9 +87,10 @@ func main() {
 		parents[it.path] = it.parent
 		children[it.parent] = append(children[it.parent], it.path)
 		switch it.object.(type) {
-		case *dict, array:
-			canBeExpanded[it.path] = true
-
+		case *dict:
+			canBeExpanded[it.path] = len(it.object.(*dict).keys) > 0
+		case array:
+			canBeExpanded[it.path] = len(it.object.(array)) > 0
 		}
 	})
 	input := textinput.New()
@@ -103,15 +106,18 @@ func main() {
 		canBeExpanded:   canBeExpanded,
 		parents:         parents,
 		children:        children,
+		nextSiblings:    map[string]string{},
+		prevSiblings:    map[string]string{},
 		wrap:            true,
 		searchInput:     input,
 	}
+	m.collectSiblings(m.json, "")
 
 	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
 	if err := p.Start(); err != nil {
 		panic(err)
 	}
-	os.Exit(m.exitCode)
+	//os.Exit(m.exitCode)
 }
 
 type model struct {
@@ -119,6 +125,7 @@ type model struct {
 	width, height int
 	windowHeight  int
 	footerHeight  int
+	wrap          bool
 
 	fileName string
 	json     interface{}
@@ -130,21 +137,22 @@ type model struct {
 	keyMap   KeyMap
 	showHelp bool
 
-	expandedPaths    map[string]bool     // a set with expanded paths
-	canBeExpanded    map[string]bool     // a set for path => can be expanded (i.e. dict or array)
-	pathToLineNumber *dict               // dict with path => line number
-	lineNumberToPath map[int]string      // map of line number => path
-	parents          map[string]string   // map of subpath => parent path
-	children         map[string][]string // map of path => child paths
-	cursor           int                 // cursor in range of m.pathToLineNumber.keys slice
-	showCursor       bool
+	expandedPaths              map[string]bool     // a set with expanded paths
+	canBeExpanded              map[string]bool     // a set for path => can be expanded (i.e. dict or array)
+	pathToLineNumber           *dict               // dict with path => line number
+	lineNumberToPath           map[int]string      // map of line number => path
+	parents                    map[string]string   // map of subpath => parent path
+	children                   map[string][]string // map of path => child paths
+	nextSiblings, prevSiblings map[string]string   // map of path => sibling path
+	cursor                     int                 // cursor in range of m.pathToLineNumber.keys slice
+	showCursor                 bool
 
-	wrap                    bool
 	searchInput             textinput.Model
 	searchRegexCompileError string
-	searchResults           *dict // path => searchResult
 	showSearchResults       bool
-	resultsCursor           int // [0, searchResults length)
+	searchResults           []*searchResult
+	searchResultsCursor     int
+	searchResultsIndex      map[string]searchResultGroup
 }
 
 func (m *model) Init() tea.Cmd {
@@ -174,7 +182,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.Type {
 			case tea.KeyEsc:
 				m.searchInput.Blur()
-				m.searchResults = newDict()
+				//m.searchResults = newDict()
 				m.render()
 
 			case tea.KeyEnter:
@@ -233,91 +241,82 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.render()
 
 		case key.Matches(msg, m.keyMap.Down):
-			m.showCursor = true
-			if m.cursor < len(m.pathToLineNumber.keys)-1 { // scroll till last element in m.pathToLineNumber
-				m.cursor++
-			} else {
-				// at the bottom of viewport maybe some hidden brackets, lets scroll to see them
-				if !m.AtBottom() {
-					m.LineDown(1)
-				}
-			}
-			if m.cursor >= len(m.pathToLineNumber.keys) {
-				m.cursor = len(m.pathToLineNumber.keys) - 1
-			}
+			m.down()
 			m.render()
-			at := m.cursorLineNumber()
-			if m.offset <= at { // cursor is lower
-				m.LineDown(max(0, at-(m.offset+m.height-1))) // minus one is due to cursorLineNumber() starts from 0
-			} else {
-				m.SetOffset(at)
-			}
-
-		case key.Matches(msg, m.keyMap.NextSibling):
-			m.showCursor = true
-			// TODO: write code for collecting siblings,
-			// and write code to getting sibling and jumping to it.
-			m.render()
-			at := m.cursorLineNumber()
-			if m.offset <= at { // cursor is lower
-				m.LineDown(max(0, at-(m.offset+m.height-1))) // minus one is due to cursorLineNumber() starts from 0
-			} else {
-				m.SetOffset(at)
-			}
+			m.scrollDownToCursor()
 
 		case key.Matches(msg, m.keyMap.Up):
-			m.showCursor = true
-			if m.cursor > 0 {
-				m.cursor--
-			}
-			if m.cursor >= len(m.pathToLineNumber.keys) {
-				m.cursor = len(m.pathToLineNumber.keys) - 1
+			m.up()
+			m.render()
+			m.scrollUpToCursor()
+
+		case key.Matches(msg, m.keyMap.NextSibling):
+			nextSiblingPath, ok := m.nextSiblings[m.cursorPath()]
+			if ok {
+				index, _ := m.pathToLineNumber.indexes[nextSiblingPath]
+				m.showCursor = true
+				m.cursor = index
+			} else {
+				m.down()
 			}
 			m.render()
-			at := m.cursorLineNumber()
-			if at < m.offset+m.height { // cursor is above
-				m.LineUp(max(0, m.offset-at))
+			m.scrollDownToCursor()
+
+		case key.Matches(msg, m.keyMap.PrevSibling):
+			prevSiblingPath, ok := m.prevSiblings[m.cursorPath()]
+			if ok {
+				index, _ := m.pathToLineNumber.indexes[prevSiblingPath]
+				m.showCursor = true
+				m.cursor = index
 			} else {
-				m.SetOffset(at)
+				m.up()
 			}
+			m.render()
+			m.scrollUpToCursor()
 
 		case key.Matches(msg, m.keyMap.Expand):
 			m.showCursor = true
-			m.expandedPaths[m.cursorPath()] = true
+			if m.canBeExpanded[m.cursorPath()] {
+				m.expandedPaths[m.cursorPath()] = true
+			}
 			m.render()
 
 		case key.Matches(msg, m.keyMap.ExpandRecursively):
 			m.showCursor = true
-			m.expandRecursively(m.cursorPath())
+			if m.canBeExpanded[m.cursorPath()] {
+				m.expandRecursively(m.cursorPath())
+			}
 			m.render()
 
-		case key.Matches(msg, m.keyMap.Collapse, m.keyMap.CollapseRecursively):
+		case key.Matches(msg, m.keyMap.Collapse):
 			m.showCursor = true
-			if m.expandedPaths[m.cursorPath()] {
-				if key.Matches(msg, m.keyMap.CollapseRecursively) {
-					m.collapseRecursively(m.cursorPath())
-				} else {
-					m.expandedPaths[m.cursorPath()] = false
-				}
+			if m.canBeExpanded[m.cursorPath()] && m.expandedPaths[m.cursorPath()] {
+				m.expandedPaths[m.cursorPath()] = false
 			} else {
 				parentPath, ok := m.parents[m.cursorPath()]
 				if ok {
-					if key.Matches(msg, m.keyMap.CollapseRecursively) {
-						m.collapseRecursively(m.cursorPath())
-					} else {
-						m.expandedPaths[m.cursorPath()] = false
-					}
+					m.expandedPaths[parentPath] = false
 					index, _ := m.pathToLineNumber.index(parentPath)
 					m.cursor = index
 				}
 			}
 			m.render()
-			at := m.cursorLineNumber()
-			if at < m.offset+m.height { // cursor is above
-				m.LineUp(max(0, m.offset-at))
+			m.scrollUpToCursor()
+
+		case key.Matches(msg, m.keyMap.CollapseRecursively):
+			m.showCursor = true
+			if m.canBeExpanded[m.cursorPath()] && m.expandedPaths[m.cursorPath()] {
+				m.collapseRecursively(m.cursorPath())
 			} else {
-				m.SetOffset(at)
+				parentPath, ok := m.parents[m.cursorPath()]
+				if ok {
+					m.collapseRecursively(parentPath)
+					index, _ := m.pathToLineNumber.index(parentPath)
+					m.cursor = index
+				}
 			}
+			m.render()
+			m.scrollUpToCursor()
 
 		case key.Matches(msg, m.keyMap.ToggleWrap):
 			m.wrap = !m.wrap
@@ -379,10 +378,13 @@ func (m *model) View() string {
 	if len(lines) < m.height {
 		extraLines = strings.Repeat("\n", max(0, m.height-len(lines)))
 	}
-	statusBar := m.cursorPath() + " "
 	if m.showHelp {
-		statusBar = "Press Esc or q to close help."
+		statusBar := "Press Esc or q to close help."
+		statusBar += strings.Repeat(" ", max(0, m.width-width(statusBar)))
+		statusBar = colors.statusBar.Render(statusBar)
+		return strings.Join(lines, "\n") + extraLines + "\n" + statusBar
 	}
+	statusBar := m.cursorPath() + " "
 	statusBar += strings.Repeat(" ", max(0, m.width-width(statusBar)-width(m.fileName)))
 	statusBar += m.fileName
 	statusBar = colors.statusBar.Render(statusBar)
@@ -393,27 +395,29 @@ func (m *model) View() string {
 	if len(m.searchRegexCompileError) > 0 {
 		output += fmt.Sprintf("\n/%v/i  %v", m.searchInput.Value(), m.searchRegexCompileError)
 	}
-	if m.showSearchResults {
-		if len(m.searchResults.keys) == 0 {
-			output += fmt.Sprintf("\n/%v/i  not found", m.searchInput.Value())
-		} else {
-			output += fmt.Sprintf("\n/%v/i  found: [%v/%v]", m.searchInput.Value(), m.resultsCursor+1, len(m.searchResults.keys))
-		}
-	}
+	//if m.showSearchResults {
+	//	if len(m.searchResults.keys) == 0 {
+	//		output += fmt.Sprintf("\n/%v/i  not found", m.searchInput.Value())
+	//	} else {
+	//		output += fmt.Sprintf("\n/%v/i  found: [%v/%v]", m.searchInput.Value(), m.searchResultsCursor+1, len(m.searchResults.keys))
+	//	}
+	//}
 	return output
 }
 
 func (m *model) recalculateViewportHeight() {
 	m.height = m.windowHeight
 	m.height-- // status bar
-	if m.searchInput.Focused() {
-		m.height--
-	}
-	if m.showSearchResults {
-		m.height--
-	}
-	if len(m.searchRegexCompileError) > 0 {
-		m.height--
+	if !m.showHelp {
+		if m.searchInput.Focused() {
+			m.height--
+		}
+		if m.showSearchResults {
+			m.height--
+		}
+		if len(m.searchRegexCompileError) > 0 {
+			m.height--
+		}
 	}
 }
 
@@ -425,9 +429,17 @@ func (m *model) render() {
 		return
 	}
 
-	m.pathToLineNumber = newDict()
-	m.lineNumberToPath = map[int]string{}
-	m.lines = m.print(m.json, 1, 0, 0, "", false)
+	if m.pathToLineNumber == nil {
+		m.pathToLineNumber = newDict()
+	} else {
+		m.pathToLineNumber = newDictOfCapacity(cap(m.pathToLineNumber.keys))
+	}
+	if m.lineNumberToPath == nil {
+		m.lineNumberToPath = make(map[int]string, 0)
+	} else {
+		m.lineNumberToPath = make(map[int]string, len(m.lineNumberToPath))
+	}
+	m.lines = m.print(m.json, 1, 0, 0, "", true)
 
 	if m.offset > len(m.lines)-1 {
 		m.GotoBottom()
@@ -468,5 +480,59 @@ func (m *model) collapseRecursively(path string) {
 		if childPath != "" {
 			m.collapseRecursively(childPath)
 		}
+	}
+}
+
+func (m *model) collectSiblings(v interface{}, path string) {
+	switch v.(type) {
+	case *dict:
+		prev := ""
+		for _, k := range v.(*dict).keys {
+			subpath := path + "." + k
+			if prev != "" {
+				m.nextSiblings[prev] = subpath
+				m.prevSiblings[subpath] = prev
+			}
+			prev = subpath
+			value, _ := v.(*dict).get(k)
+			m.collectSiblings(value, subpath)
+		}
+
+	case array:
+		prev := ""
+		for i, value := range v.(array) {
+			subpath := fmt.Sprintf("%v[%v]", path, i)
+			if prev != "" {
+				m.nextSiblings[prev] = subpath
+				m.prevSiblings[subpath] = prev
+			}
+			prev = subpath
+			m.collectSiblings(value, subpath)
+		}
+	}
+}
+
+func (m *model) down() {
+	m.showCursor = true
+	if m.cursor < len(m.pathToLineNumber.keys)-1 { // scroll till last element in m.pathToLineNumber
+		m.cursor++
+	} else {
+		// at the bottom of viewport maybe some hidden brackets, lets scroll to see them
+		if !m.AtBottom() {
+			m.LineDown(1)
+		}
+	}
+	if m.cursor >= len(m.pathToLineNumber.keys) {
+		m.cursor = len(m.pathToLineNumber.keys) - 1
+	}
+}
+
+func (m *model) up() {
+	m.showCursor = true
+	if m.cursor > 0 {
+		m.cursor--
+	}
+	if m.cursor >= len(m.pathToLineNumber.keys) {
+		m.cursor = len(m.pathToLineNumber.keys) - 1
 	}
 }

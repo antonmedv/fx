@@ -136,3 +136,65 @@ func reduce(object interface{}, args []string) {
 		os.Exit(exitCode)
 	}
 }
+
+func prettyPrint(v interface{}, level int) string {
+	ident := strings.Repeat("  ", level)
+	subident := strings.Repeat("  ", level-1)
+	switch v.(type) {
+	case nil:
+		return colors.null.Render("null")
+
+	case bool:
+		if v.(bool) {
+			return colors.boolean.Render("true")
+		} else {
+			return colors.boolean.Render("false")
+		}
+
+	case number:
+		return colors.number.Render(v.(number).String())
+
+	case string:
+		return colors.string.Render(fmt.Sprintf("%q", v))
+
+	case *dict:
+		keys := v.(*dict).keys
+		if len(keys) == 0 {
+			return colors.syntax.Render("{}")
+		}
+		output := colors.syntax.Render("{\n")
+		for i, k := range keys {
+			key := colors.key.Render(fmt.Sprintf("%q", k))
+			value, _ := v.(*dict).get(k)
+			delim := ": "
+			line := ident + key + delim + prettyPrint(value, level+1)
+			if i < len(keys)-1 {
+				line += ",\n"
+			} else {
+				line += "\n"
+			}
+			output += line
+		}
+		return output + subident + colors.syntax.Render("}")
+
+	case array:
+		slice := v.(array)
+		if len(slice) == 0 {
+			return colors.syntax.Render("[]")
+		}
+		output := colors.syntax.Render("[\n")
+		for i, value := range v.(array) {
+			line := ident + prettyPrint(value, level+1)
+			if i < len(slice)-1 {
+				line += ",\n"
+			} else {
+				line += "\n"
+			}
+			output += line
+		}
+		return output + subident + colors.syntax.Render("]")
+
+	default:
+		return "unknown type"
+	}
+}
