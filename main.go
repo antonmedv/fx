@@ -137,14 +137,16 @@ type model struct {
 	keyMap   KeyMap
 	showHelp bool
 
-	expandedPaths              map[string]bool     // a set with expanded paths
-	canBeExpanded              map[string]bool     // a set for path => can be expanded (i.e. dict or array)
-	pathToLineNumber           *dict               // dict with path => line number
+	expandedPaths              map[string]bool     // set of expanded paths
+	canBeExpanded              map[string]bool     // set of path => can be expanded (i.e. dict or array)
+	paths                      []string            // array of paths on screen
+	pathToLineNumber           map[string]int      // map of path => line number
+	pathToIndex                map[string]int      // map of path => index in m.paths
 	lineNumberToPath           map[int]string      // map of line number => path
 	parents                    map[string]string   // map of subpath => parent path
 	children                   map[string][]string // map of path => child paths
 	nextSiblings, prevSiblings map[string]string   // map of path => sibling path
-	cursor                     int                 // cursor in range of m.pathToLineNumber.keys slice
+	cursor                     int                 // cursor in [0, len(m.paths)]
 	showCursor                 bool
 
 	searchInput             textinput.Model
@@ -253,9 +255,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, m.keyMap.NextSibling):
 			nextSiblingPath, ok := m.nextSiblings[m.cursorPath()]
 			if ok {
-				index, _ := m.pathToLineNumber.indexes[nextSiblingPath]
 				m.showCursor = true
-				m.cursor = index
+				m.cursor = m.pathToIndex[nextSiblingPath]
 			} else {
 				m.down()
 			}
@@ -265,9 +266,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, m.keyMap.PrevSibling):
 			prevSiblingPath, ok := m.prevSiblings[m.cursorPath()]
 			if ok {
-				index, _ := m.pathToLineNumber.indexes[prevSiblingPath]
 				m.showCursor = true
-				m.cursor = index
+				m.cursor = m.pathToIndex[prevSiblingPath]
 			} else {
 				m.up()
 			}
@@ -296,8 +296,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				parentPath, ok := m.parents[m.cursorPath()]
 				if ok {
 					m.expandedPaths[parentPath] = false
-					index, _ := m.pathToLineNumber.index(parentPath)
-					m.cursor = index
+					m.cursor = m.pathToIndex[parentPath]
 				}
 			}
 			m.render()
@@ -311,8 +310,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				parentPath, ok := m.parents[m.cursorPath()]
 				if ok {
 					m.collapseRecursively(parentPath)
-					index, _ := m.pathToLineNumber.index(parentPath)
-					m.cursor = index
+					m.cursor = m.pathToIndex[parentPath]
 				}
 			}
 			m.render()
@@ -363,8 +361,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.canBeExpanded[clickedPath] {
 					m.expandedPaths[clickedPath] = !m.expandedPaths[clickedPath]
 				}
-				index, _ := m.pathToLineNumber.index(clickedPath)
-				m.cursor = index
+				m.cursor = m.pathToIndex[clickedPath]
 				m.render()
 			}
 		}
@@ -429,10 +426,12 @@ func (m *model) render() {
 		return
 	}
 
+	m.paths = make([]string, 0)
+	m.pathToIndex = make(map[string]int, 0)
 	if m.pathToLineNumber == nil {
-		m.pathToLineNumber = newDict()
+		m.pathToLineNumber = make(map[string]int, 0)
 	} else {
-		m.pathToLineNumber = newDictOfCapacity(cap(m.pathToLineNumber.keys))
+		m.pathToLineNumber = make(map[string]int, len(m.pathToLineNumber))
 	}
 	if m.lineNumberToPath == nil {
 		m.lineNumberToPath = make(map[int]string, 0)
@@ -450,15 +449,15 @@ func (m *model) cursorPath() string {
 	if m.cursor == 0 {
 		return ""
 	}
-	if 0 <= m.cursor && m.cursor < len(m.pathToLineNumber.keys) {
-		return m.pathToLineNumber.keys[m.cursor]
+	if 0 <= m.cursor && m.cursor < len(m.paths) {
+		return m.paths[m.cursor]
 	}
 	return "?"
 }
 
 func (m *model) cursorLineNumber() int {
-	if 0 <= m.cursor && m.cursor < len(m.pathToLineNumber.keys) {
-		return m.pathToLineNumber.values[m.pathToLineNumber.keys[m.cursor]].(int)
+	if 0 <= m.cursor && m.cursor < len(m.paths) {
+		return m.pathToLineNumber[m.paths[m.cursor]]
 	}
 	return -1
 }
@@ -514,7 +513,7 @@ func (m *model) collectSiblings(v interface{}, path string) {
 
 func (m *model) down() {
 	m.showCursor = true
-	if m.cursor < len(m.pathToLineNumber.keys)-1 { // scroll till last element in m.pathToLineNumber
+	if m.cursor < len(m.paths)-1 { // scroll till last element in m.paths
 		m.cursor++
 	} else {
 		// at the bottom of viewport maybe some hidden brackets, lets scroll to see them
@@ -522,8 +521,8 @@ func (m *model) down() {
 			m.LineDown(1)
 		}
 	}
-	if m.cursor >= len(m.pathToLineNumber.keys) {
-		m.cursor = len(m.pathToLineNumber.keys) - 1
+	if m.cursor >= len(m.paths) {
+		m.cursor = len(m.paths) - 1
 	}
 }
 
@@ -532,7 +531,7 @@ func (m *model) up() {
 	if m.cursor > 0 {
 		m.cursor--
 	}
-	if m.cursor >= len(m.pathToLineNumber.keys) {
-		m.cursor = len(m.pathToLineNumber.keys) - 1
+	if m.cursor >= len(m.paths) {
+		m.cursor = len(m.paths) - 1
 	}
 }

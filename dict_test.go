@@ -9,19 +9,11 @@ func Test_dict(t *testing.T) {
 	if v.(int) != 3 {
 		t.Error("Set number")
 	}
-	i, _ := d.index("number")
-	if i != 0 {
-		t.Error("Index error")
-	}
 	// string
 	d.set("string", "x")
 	v, _ = d.get("string")
 	if v.(string) != "x" {
 		t.Error("Set string")
-	}
-	i, _ = d.index("string")
-	if i != 1 {
-		t.Error("Index error")
 	}
 	// string slice
 	d.set("strings", []string{
@@ -34,10 +26,6 @@ func Test_dict(t *testing.T) {
 	}
 	if v.([]string)[1] != "u" {
 		t.Error("Set strings second index")
-	}
-	i, _ = d.index("strings")
-	if i != 2 {
-		t.Error("Index error")
 	}
 	// mixed slice
 	d.set("mixed", []interface{}{
