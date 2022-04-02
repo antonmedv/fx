@@ -6,13 +6,20 @@ import (
 	"strings"
 )
 
+func (m *model) connect(path string, lineNumber int) {
+	if _, exist := m.pathToLineNumber[path]; exist {
+		return
+	}
+	m.paths = append(m.paths, path)
+	m.pathToIndex[path] = len(m.paths) - 1
+	m.pathToLineNumber[path] = lineNumber
+	m.lineNumberToPath[lineNumber] = path
+}
+
 func (m *model) print(v interface{}, level, lineNumber, keyEndPos int, path string, selectableValues bool) []string {
+	m.connect(path, lineNumber)
 	ident := strings.Repeat("  ", level)
 	subident := strings.Repeat("  ", level-1)
-	connect := func(path string, lineNumber int) {
-		m.pathToLineNumber.set(path, lineNumber)
-		m.lineNumberToPath[lineNumber] = path
-	}
 	sri := m.searchResultsIndex[path]
 
 	switch v.(type) {
@@ -39,7 +46,6 @@ func (m *model) print(v interface{}, level, lineNumber, keyEndPos int, path stri
 		return []string{merge(chunks)}
 
 	case *dict:
-		connect(path, lineNumber)
 		if !m.expandedPaths[path] {
 			return []string{m.preview(v, path, selectableValues)}
 		}
@@ -49,7 +55,7 @@ func (m *model) print(v interface{}, level, lineNumber, keyEndPos int, path stri
 		for i, k := range keys {
 			subpath := path + "." + k
 			s := m.searchResultsIndex[subpath]
-			connect(subpath, lineNumber)
+			m.connect(subpath, lineNumber)
 			key := fmt.Sprintf("%q", k)
 			key = merge(m.explode(key, s.key, colors.key, subpath, true))
 			value, _ := v.(*dict).get(k)
@@ -67,7 +73,6 @@ func (m *model) print(v interface{}, level, lineNumber, keyEndPos int, path stri
 		return output
 
 	case array:
-		connect(path, lineNumber)
 		if !m.expandedPaths[path] {
 			return []string{m.preview(v, path, selectableValues)}
 		}
@@ -77,7 +82,7 @@ func (m *model) print(v interface{}, level, lineNumber, keyEndPos int, path stri
 		for i, value := range slice {
 			subpath := fmt.Sprintf("%v[%v]", path, i)
 			s := m.searchResultsIndex[subpath]
-			connect(subpath, lineNumber)
+			m.connect(subpath, lineNumber)
 			lines := m.print(value, level+1, lineNumber, width(ident), subpath, true)
 			lines[0] = ident + lines[0]
 			if i < len(slice)-1 {
