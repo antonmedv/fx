@@ -20,25 +20,29 @@ func (m *model) print(v interface{}, level, lineNumber, keyEndPos int, path stri
 	m.connect(path, lineNumber)
 	ident := strings.Repeat("  ", level)
 	subident := strings.Repeat("  ", level-1)
-	sri := m.searchResultsIndex[path]
+	highlight := m.highlightIndex[path]
+	var searchValue []*foundRange
+	if highlight != nil {
+		searchValue = highlight.value
+	}
 
 	switch v.(type) {
 	case nil:
-		return []string{merge(m.explode("null", sri.value, colors.null, path, selectableValues))}
+		return []string{merge(m.explode("null", searchValue, colors.null, path, selectableValues))}
 
 	case bool:
 		if v.(bool) {
-			return []string{merge(m.explode("true", sri.value, colors.boolean, path, selectableValues))}
+			return []string{merge(m.explode("true", searchValue, colors.boolean, path, selectableValues))}
 		} else {
-			return []string{merge(m.explode("false", sri.value, colors.boolean, path, selectableValues))}
+			return []string{merge(m.explode("false", searchValue, colors.boolean, path, selectableValues))}
 		}
 
 	case number:
-		return []string{merge(m.explode(v.(number).String(), sri.value, colors.number, path, selectableValues))}
+		return []string{merge(m.explode(v.(number).String(), searchValue, colors.number, path, selectableValues))}
 
 	case string:
 		line := fmt.Sprintf("%q", v)
-		chunks := m.explode(line, sri.value, colors.string, path, selectableValues)
+		chunks := m.explode(line, searchValue, colors.string, path, selectableValues)
 		if m.wrap && keyEndPos+width(line) > m.width {
 			return wrapLines(chunks, keyEndPos, m.width, subident)
 		}
@@ -49,39 +53,43 @@ func (m *model) print(v interface{}, level, lineNumber, keyEndPos int, path stri
 		if !m.expandedPaths[path] {
 			return []string{m.preview(v, path, selectableValues)}
 		}
-		output := []string{m.printOpenBracket("{", sri, path, selectableValues)}
+		output := []string{m.printOpenBracket("{", highlight, path, selectableValues)}
 		lineNumber++ // bracket is on separate line
 		keys := v.(*dict).keys
 		for i, k := range keys {
 			subpath := path + "." + k
-			s := m.searchResultsIndex[subpath]
+			highlight := m.highlightIndex[subpath]
+			var searchKey []*foundRange
+			if highlight != nil {
+				searchKey = highlight.key
+			}
 			m.connect(subpath, lineNumber)
 			key := fmt.Sprintf("%q", k)
-			key = merge(m.explode(key, s.key, colors.key, subpath, true))
+			key = merge(m.explode(key, searchKey, colors.key, subpath, true))
 			value, _ := v.(*dict).get(k)
-			delim := m.printDelim(": ", s)
+			delim := m.printDelim(": ", highlight)
 			keyEndPos := width(ident) + width(key) + width(delim)
 			lines := m.print(value, level+1, lineNumber, keyEndPos, subpath, false)
 			lines[0] = ident + key + delim + lines[0]
 			if i < len(keys)-1 {
-				lines[len(lines)-1] += m.printComma(",", s)
+				lines[len(lines)-1] += m.printComma(",", highlight)
 			}
 			output = append(output, lines...)
 			lineNumber += len(lines)
 		}
-		output = append(output, subident+m.printCloseBracket("}", sri, path, false))
+		output = append(output, subident+m.printCloseBracket("}", highlight, path, false))
 		return output
 
 	case array:
 		if !m.expandedPaths[path] {
 			return []string{m.preview(v, path, selectableValues)}
 		}
-		output := []string{m.printOpenBracket("[", sri, path, selectableValues)}
+		output := []string{m.printOpenBracket("[", highlight, path, selectableValues)}
 		lineNumber++ // bracket is on separate line
 		slice := v.(array)
 		for i, value := range slice {
 			subpath := fmt.Sprintf("%v[%v]", path, i)
-			s := m.searchResultsIndex[subpath]
+			s := m.highlightIndex[subpath]
 			m.connect(subpath, lineNumber)
 			lines := m.print(value, level+1, lineNumber, width(ident), subpath, true)
 			lines[0] = ident + lines[0]
@@ -91,7 +99,7 @@ func (m *model) print(v interface{}, level, lineNumber, keyEndPos int, path stri
 			lineNumber += len(lines)
 			output = append(output, lines...)
 		}
-		output = append(output, subident+m.printCloseBracket("]", sri, path, false))
+		output = append(output, subident+m.printCloseBracket("]", highlight, path, false))
 		return output
 
 	default:
@@ -100,7 +108,7 @@ func (m *model) print(v interface{}, level, lineNumber, keyEndPos int, path stri
 }
 
 func (m *model) preview(v interface{}, path string, selectableValues bool) string {
-	searchResult := m.searchResultsIndex[path]
+	searchResult := m.highlightIndex[path]
 	previewStyle := colors.preview
 	if selectableValues && m.cursorPath() == path {
 		previewStyle = colors.cursor
@@ -183,12 +191,12 @@ func (w withStyle) Render(s string) string {
 	return w.style.Render(s)
 }
 
-func (m *model) printOpenBracket(line string, s searchResultGroup, path string, selectableValues bool) string {
+func (m *model) printOpenBracket(line string, s *rangeGroup, path string, selectableValues bool) string {
 	if selectableValues && m.cursorPath() == path {
 		return colors.cursor.Render(line)
 	}
-	if s.openBracket != nil {
-		if s.openBracket.index == m.searchResultsCursor {
+	if s != nil && s.openBracket != nil {
+		if s.openBracket.parent.index == m.searchResultsCursor {
 			return colors.cursor.Render(line)
 		} else {
 			return colors.search.Render(line)
@@ -198,12 +206,12 @@ func (m *model) printOpenBracket(line string, s searchResultGroup, path string, 
 	}
 }
 
-func (m *model) printCloseBracket(line string, s searchResultGroup, path string, selectableValues bool) string {
+func (m *model) printCloseBracket(line string, s *rangeGroup, path string, selectableValues bool) string {
 	if selectableValues && m.cursorPath() == path {
 		return colors.cursor.Render(line)
 	}
-	if s.closeBracket != nil {
-		if s.closeBracket.index == m.searchResultsCursor {
+	if s != nil && s.closeBracket != nil {
+		if s.closeBracket.parent.index == m.searchResultsCursor {
 			return colors.cursor.Render(line)
 		} else {
 			return colors.search.Render(line)
@@ -213,9 +221,9 @@ func (m *model) printCloseBracket(line string, s searchResultGroup, path string,
 	}
 }
 
-func (m *model) printDelim(line string, s searchResultGroup) string {
-	if s.delim != nil {
-		if s.delim.index == m.searchResultsCursor {
+func (m *model) printDelim(line string, s *rangeGroup) string {
+	if s != nil && s.delim != nil {
+		if s.delim.parent.index == m.searchResultsCursor {
 			return colors.cursor.Render(line)
 		} else {
 			return colors.search.Render(line)
@@ -225,9 +233,9 @@ func (m *model) printDelim(line string, s searchResultGroup) string {
 	}
 }
 
-func (m *model) printComma(line string, s searchResultGroup) string {
-	if s.comma != nil {
-		if s.comma.index == m.searchResultsCursor {
+func (m *model) printComma(line string, s *rangeGroup) string {
+	if s != nil && s.comma != nil {
+		if s.comma.parent.index == m.searchResultsCursor {
 			return colors.cursor.Render(line)
 		} else {
 			return colors.search.Render(line)
@@ -242,27 +250,27 @@ type withStyle struct {
 	style lipgloss.Style
 }
 
-func (m *model) explode(line string, searchResults []*searchResult, defaultStyle lipgloss.Style, path string, selectable bool) []withStyle {
+func (m *model) explode(line string, highlightRanges []*foundRange, defaultStyle lipgloss.Style, path string, selectable bool) []withStyle {
 	if selectable && m.cursorPath() == path {
 		return []withStyle{{line, colors.cursor}}
 	}
 
 	out := make([]withStyle, 0, 1)
 	pos := 0
-	for _, sr := range searchResults {
+	for _, r := range highlightRanges {
 		style := colors.search
-		if sr.index == m.searchResultsCursor {
+		if r.parent.index == m.searchResultsCursor {
 			style = colors.cursor
 		}
 		out = append(out, withStyle{
-			value: line[pos:sr.start],
+			value: line[pos:r.start],
 			style: defaultStyle,
 		})
 		out = append(out, withStyle{
-			value: line[sr.start:sr.end],
+			value: line[r.start:r.end],
 			style: style,
 		})
-		pos = sr.end
+		pos = r.end
 	}
 	out = append(out, withStyle{
 		value: line[pos:],

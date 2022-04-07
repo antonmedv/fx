@@ -1,84 +1,169 @@
 package main
 
+import (
+	"fmt"
+	"regexp"
+)
+
 type searchResult struct {
-	path       string
-	index      int
+	path   string
+	index  int
+	ranges []*foundRange
+}
+
+type rangeKind int
+
+const (
+	keyRange rangeKind = 1 + iota
+	valueRange
+	delimRange
+	openBracketRange
+	closeBracketRange
+	commaRange
+)
+
+type foundRange struct {
+	parent     *searchResult
 	start, end int
+	kind       rangeKind
 }
 
-type searchResultGroup struct {
-	key          []*searchResult
-	value        []*searchResult
-	delim        *searchResult
-	openBracket  *searchResult
-	closeBracket *searchResult
-	comma        *searchResult
+type rangeGroup struct {
+	key          []*foundRange
+	value        []*foundRange
+	delim        *foundRange
+	openBracket  *foundRange
+	closeBracket *foundRange
+	comma        *foundRange
 }
-
-// TODO: Implement search.
-// TODO: Uncomment all code blocks.
 
 func (m *model) doSearch(s string) {
-	//re, err := regexp.Compile("(?i)" + s)
-	//if err != nil {
-	//	m.searchRegexCompileError = err.Error()
-	//	m.searchInput.Blur()
-	//	return
-	//}
-	//m.searchRegexCompileError = ""
-	//results := newDict()
-	//addSearchResult := func(path string, indexes [][]int) {
-	//	if indexes != nil {
-	//		sr := searchResult{}
-	//		prev, ok := results.get(path)
-	//		if ok {
-	//			sr = prev.(searchResult)
-	//		}
-	//		sr.value = indexes
-	//		results.set(path, sr)
-	//	}
-	//}
-	//
-	//dfs(m.json, func(it iterator) {
-	//	switch it.object.(type) {
-	//	case nil:
-	//		line := "null"
-	//		found := re.FindAllStringIndex(line, -1)
-	//		addSearchResult(it.path, found)
-	//	case bool:
-	//		line := stringify(it.object)
-	//		found := re.FindAllStringIndex(line, -1)
-	//		addSearchResult(it.path, found)
-	//	case number:
-	//		line := it.object.(number).String()
-	//		found := re.FindAllStringIndex(line, -1)
-	//		addSearchResult(it.path, found)
-	//	case string:
-	//		line := fmt.Sprintf("%q", it.object)
-	//		found := re.FindAllStringIndex(line, -1)
-	//		addSearchResult(it.path, found)
-	//	case *dict:
-	//		keys := it.object.(*dict).keys
-	//		for _, key := range keys {
-	//			line := fmt.Sprintf("%q", key)
-	//			subpath := it.path + "." + key
-	//			indexes := re.FindAllStringIndex(line, -1)
-	//			if indexes != nil {
-	//				sr := searchResult{}
-	//				prev, ok := results.get(subpath)
-	//				if ok {
-	//					sr = prev.(searchResult)
-	//				}
-	//				sr.key = indexes
-	//				results.set(subpath, sr)
-	//			}
-	//		}
-	//	}
-	//})
-	//m.searchResults = results
-	//m.searchInput.Blur()
-	//m.showSearchResults = true
-	//m.jumpToSearchResult(0)
+	m.searchRegexCompileError = ""
+	re, err := regexp.Compile("(?i)" + s)
+	if err != nil {
+		m.searchRegexCompileError = err.Error()
+		m.searchInput.Blur()
+		return
+	}
+	indexes := re.FindAllStringIndex(stringify(m.json), -1)
+	m.remapSearchResult(m.json, "", 0, indexes, 0, nil)
+	m.indexSearchResults()
+	m.searchInput.Blur()
+	m.showSearchResults = true
+	m.jumpToSearchResult(0)
+}
+
+func (m *model) remapSearchResult(object interface{}, path string, pos int, indexes [][]int, id int, current *searchResult) (int, int, *searchResult) {
+	switch object.(type) {
+	case nil:
+		return pos + len("null"), id, current
+
+	case bool:
+		if object.(bool) {
+			return pos + len("true"), id, current
+		} else {
+			return pos + len("false"), id, current
+		}
+
+	case number:
+		return pos + len(object.(number).String()), id, current
+
+	case string:
+		s := fmt.Sprintf("%q", object)
+		id, current = m.findRanges(valueRange, s, path, pos, indexes, id, current)
+		return pos + len(s), id, current
+	case *dict:
+		pos++ // {
+		for i, k := range object.(*dict).keys {
+			subpath := path + "." + k
+			key := fmt.Sprintf("%q", k)
+			id, current = m.findRanges(keyRange, key, subpath, pos, indexes, id, current)
+			pos += len(key)
+			delim := ": "
+			pos += len(delim)
+			pos, id, current = m.remapSearchResult(object.(*dict).values[k], subpath, pos, indexes, id, current)
+			if i < len(object.(*dict).keys)-1 {
+				pos += len(", ")
+			}
+		}
+		pos++ // }
+		return pos, id, current
+
+	case array:
+		pos++ // [
+		for i, v := range object.(array) {
+			subpath := fmt.Sprintf("%v[%v]", path, i)
+			pos, id, current = m.remapSearchResult(v, subpath, pos, indexes, id, current)
+			if i < len(object.(array))-1 {
+				pos += len(", ")
+			}
+		}
+		pos++ // ]
+		return pos, id, current
+	default:
+		panic("unexpected object type")
+	}
+}
+
+func (m *model) findRanges(kind rangeKind, s string, path string, pos int, indexes [][]int, id int, current *searchResult) (int, *searchResult) {
+	for ; id < len(indexes); id++ {
+		start, end := indexes[id][0]-pos, indexes[id][1]-pos
+		if end <= 0 {
+			current = nil
+			continue
+		}
+		if start < len(s) {
+			if current == nil {
+				current = &searchResult{
+					path:  path,
+					index: len(m.searchResults),
+				}
+				m.searchResults = append(m.searchResults, current)
+			}
+			found := &foundRange{
+				parent: current,
+				start:  max(start, 0),
+				end:    min(end, len(s)),
+				kind:   kind,
+			}
+			current.ranges = append(current.ranges, found)
+			if end < len(s) {
+				current = nil
+			} else {
+				break
+			}
+		} else {
+			break
+		}
+	}
+	return id, current
+}
+
+func (m *model) indexSearchResults() {
+	m.highlightIndex = map[string]*rangeGroup{}
+	for _, s := range m.searchResults {
+		for _, r := range s.ranges {
+			highlight, exist := m.highlightIndex[r.parent.path]
+			if !exist {
+				highlight = &rangeGroup{}
+				m.highlightIndex[r.parent.path] = highlight
+			}
+			switch r.kind {
+			case keyRange:
+				highlight.key = append(highlight.key, r)
+			case valueRange:
+				highlight.value = append(highlight.value, r)
+			case delimRange:
+				highlight.delim = r
+			case openBracketRange:
+				highlight.openBracket = r
+			case closeBracketRange:
+				highlight.closeBracket = r
+			case commaRange:
+				highlight.comma = r
+			}
+		}
+	}
 }
 
 func (m *model) jumpToSearchResult(at int) {

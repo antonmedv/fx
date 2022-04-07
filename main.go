@@ -10,6 +10,7 @@ import (
 	"golang.org/x/term"
 	"os"
 	"path"
+	"regexp"
 	"strings"
 )
 
@@ -113,11 +114,22 @@ func main() {
 	}
 	m.collectSiblings(m.json, "")
 
+	// DEBUG START
+	re, _ := regexp.Compile("\"[\\w\\s]+\"")
+	s := stringify(m.json)
+	indexes := re.FindAllStringIndex(s, -1)
+	m.remapSearchResult(m.json, "", 0, indexes, 0, nil)
+	m.indexSearchResults()
+	searchResults := m.searchResults
+	highlightIndex := m.highlightIndex
+	fmt.Println(searchResults, highlightIndex)
+	// DEBUG END
+
 	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
 	if err := p.Start(); err != nil {
 		panic(err)
 	}
-	//os.Exit(m.exitCode)
+	os.Exit(m.exitCode)
 }
 
 type model struct {
@@ -154,7 +166,7 @@ type model struct {
 	showSearchResults       bool
 	searchResults           []*searchResult
 	searchResultsCursor     int
-	searchResultsIndex      map[string]searchResultGroup
+	highlightIndex          map[string]*rangeGroup
 }
 
 func (m *model) Init() tea.Cmd {
