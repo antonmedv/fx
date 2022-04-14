@@ -23,7 +23,10 @@ const (
 )
 
 type foundRange struct {
-	parent     *searchResult
+	parent *searchResult
+	// Range needs separate path, as for one searchResult's path
+	// there can be multiple ranges for different paths (within parent path).
+	path       string
 	start, end int
 	kind       rangeKind
 }
@@ -31,14 +34,20 @@ type foundRange struct {
 type rangeGroup struct {
 	key          []*foundRange
 	value        []*foundRange
-	delim        *foundRange
+	delim        []*foundRange
 	openBracket  *foundRange
 	closeBracket *foundRange
 	comma        *foundRange
 }
 
-func (m *model) doSearch(s string) {
+func (m *model) clearSearchResults() {
 	m.searchRegexCompileError = ""
+	m.searchResults = nil
+	m.highlightIndex = nil
+}
+
+func (m *model) doSearch(s string) {
+	m.clearSearchResults()
 	re, err := regexp.Compile("(?i)" + s)
 	if err != nil {
 		m.searchRegexCompileError = err.Error()
@@ -56,50 +65,71 @@ func (m *model) doSearch(s string) {
 func (m *model) remapSearchResult(object interface{}, path string, pos int, indexes [][]int, id int, current *searchResult) (int, int, *searchResult) {
 	switch object.(type) {
 	case nil:
-		return pos + len("null"), id, current
+		s := "null"
+		id, current = m.findRanges(valueRange, s, path, pos, indexes, id, current)
+		return pos + len(s), id, current
 
 	case bool:
+		var s string
 		if object.(bool) {
-			return pos + len("true"), id, current
+			s = "true"
 		} else {
-			return pos + len("false"), id, current
+			s = "false"
 		}
+		id, current = m.findRanges(valueRange, s, path, pos, indexes, id, current)
+		return pos + len(s), id, current
 
 	case number:
-		return pos + len(object.(number).String()), id, current
+		s := object.(number).String()
+		id, current = m.findRanges(valueRange, s, path, pos, indexes, id, current)
+		return pos + len(s), id, current
 
 	case string:
 		s := fmt.Sprintf("%q", object)
 		id, current = m.findRanges(valueRange, s, path, pos, indexes, id, current)
 		return pos + len(s), id, current
+
 	case *dict:
+		id, current = m.findRanges(openBracketRange, "{", path, pos, indexes, id, current)
 		pos++ // {
 		for i, k := range object.(*dict).keys {
 			subpath := path + "." + k
+
 			key := fmt.Sprintf("%q", k)
 			id, current = m.findRanges(keyRange, key, subpath, pos, indexes, id, current)
 			pos += len(key)
+
 			delim := ": "
+			id, current = m.findRanges(delimRange, delim, subpath, pos, indexes, id, current)
 			pos += len(delim)
+
 			pos, id, current = m.remapSearchResult(object.(*dict).values[k], subpath, pos, indexes, id, current)
 			if i < len(object.(*dict).keys)-1 {
-				pos += len(", ")
+				comma := ","
+				id, current = m.findRanges(commaRange, comma, subpath, pos, indexes, id, current)
+				pos += len(comma)
 			}
 		}
+		id, current = m.findRanges(closeBracketRange, "}", path, pos, indexes, id, current)
 		pos++ // }
 		return pos, id, current
 
 	case array:
+		id, current = m.findRanges(openBracketRange, "[", path, pos, indexes, id, current)
 		pos++ // [
 		for i, v := range object.(array) {
 			subpath := fmt.Sprintf("%v[%v]", path, i)
 			pos, id, current = m.remapSearchResult(v, subpath, pos, indexes, id, current)
 			if i < len(object.(array))-1 {
-				pos += len(", ")
+				comma := ","
+				id, current = m.findRanges(commaRange, comma, subpath, pos, indexes, id, current)
+				pos += len(comma)
 			}
 		}
+		id, current = m.findRanges(closeBracketRange, "]", path, pos, indexes, id, current)
 		pos++ // ]
 		return pos, id, current
+
 	default:
 		panic("unexpected object type")
 	}
@@ -122,6 +152,7 @@ func (m *model) findRanges(kind rangeKind, s string, path string, pos int, index
 			}
 			found := &foundRange{
 				parent: current,
+				path:   path,
 				start:  max(start, 0),
 				end:    min(end, len(s)),
 				kind:   kind,
@@ -143,10 +174,10 @@ func (m *model) indexSearchResults() {
 	m.highlightIndex = map[string]*rangeGroup{}
 	for _, s := range m.searchResults {
 		for _, r := range s.ranges {
-			highlight, exist := m.highlightIndex[r.parent.path]
+			highlight, exist := m.highlightIndex[r.path]
 			if !exist {
 				highlight = &rangeGroup{}
-				m.highlightIndex[r.parent.path] = highlight
+				m.highlightIndex[r.path] = highlight
 			}
 			switch r.kind {
 			case keyRange:
@@ -154,7 +185,7 @@ func (m *model) indexSearchResults() {
 			case valueRange:
 				highlight.value = append(highlight.value, r)
 			case delimRange:
-				highlight.delim = r
+				highlight.delim = append(highlight.delim, r)
 			case openBracketRange:
 				highlight.openBracket = r
 			case closeBracketRange:
@@ -167,22 +198,22 @@ func (m *model) indexSearchResults() {
 }
 
 func (m *model) jumpToSearchResult(at int) {
-	//if m.searchResults == nil || len(m.searchResults.keys) == 0 {
-	//	return
-	//}
-	//m.showCursor = false
-	//m.searchResultsCursor = at % len(m.searchResults.keys)
-	//desiredPath := m.searchResults.keys[m.searchResultsCursor]
-	//lineNumber, ok := m.pathToLineNumber.get(desiredPath)
-	//if ok {
-	//	m.cursor = m.pathToLineNumber.indexes[desiredPath]
-	//	m.SetOffset(lineNumber.(int))
-	//	m.render()
-	//} else {
-	//	m.expandToPath(desiredPath)
-	//	m.render()
-	//	m.jumpToSearchResult(at)
-	//}
+	if len(m.searchResults) == 0 {
+		return
+	}
+	m.showCursor = false
+	m.searchResultsCursor = at % len(m.searchResults)
+	desiredPath := m.searchResults[m.searchResultsCursor].path
+	lineNumber, ok := m.pathToLineNumber[desiredPath]
+	if ok {
+		m.cursor = m.pathToIndex[desiredPath]
+		m.SetOffset(lineNumber)
+		m.render()
+	} else {
+		m.expandToPath(desiredPath)
+		m.render()
+		m.jumpToSearchResult(at)
+	}
 }
 
 func (m *model) expandToPath(path string) {
@@ -193,21 +224,22 @@ func (m *model) expandToPath(path string) {
 }
 
 func (m *model) nextSearchResult() {
-	//m.jumpToSearchResult((m.searchResultsCursor + 1) % len(m.searchResults.keys))
+	if len(m.searchResults) > 0 {
+		m.jumpToSearchResult((m.searchResultsCursor + 1) % len(m.searchResults))
+	}
 }
 
 func (m *model) prevSearchResult() {
-	//i := m.searchResultsCursor - 1
-	//if i < 0 {
-	//	i = len(m.searchResults.keys) - 1
-	//}
-	//m.jumpToSearchResult(i)
+	i := m.searchResultsCursor - 1
+	if i < 0 {
+		i = len(m.searchResults) - 1
+	}
+	m.jumpToSearchResult(i)
 }
 
 func (m *model) resultsCursorPath() string {
-	//if m.searchResults == nil || len(m.searchResults.keys) == 0 {
-	//	return "?"
-	//}
-	//return m.searchResults.keys[m.searchResultsCursor]
-	return ""
+	if len(m.searchResults) == 0 {
+		return "?"
+	}
+	return m.searchResults[m.searchResultsCursor].path
 }
