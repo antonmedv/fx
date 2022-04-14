@@ -59,15 +59,16 @@ func (m *model) print(v interface{}, level, lineNumber, keyEndPos int, path stri
 		for i, k := range keys {
 			subpath := path + "." + k
 			highlight := m.highlightIndex[subpath]
-			var searchKey []*foundRange
+			var keyRanges, delimRanges []*foundRange
 			if highlight != nil {
-				searchKey = highlight.key
+				keyRanges = highlight.key
+				delimRanges = highlight.delim
 			}
 			m.connect(subpath, lineNumber)
 			key := fmt.Sprintf("%q", k)
-			key = merge(m.explode(key, searchKey, colors.key, subpath, true))
+			key = merge(m.explode(key, keyRanges, colors.key, subpath, true))
 			value, _ := v.(*dict).get(k)
-			delim := m.printDelim(": ", highlight)
+			delim := merge(m.explode(": ", delimRanges, colors.syntax, subpath, false))
 			keyEndPos := width(ident) + width(key) + width(delim)
 			lines := m.print(value, level+1, lineNumber, keyEndPos, subpath, false)
 			lines[0] = ident + key + delim + lines[0]
@@ -221,18 +222,6 @@ func (m *model) printCloseBracket(line string, s *rangeGroup, path string, selec
 	}
 }
 
-func (m *model) printDelim(line string, s *rangeGroup) string {
-	if s != nil && s.delim != nil {
-		if s.delim.parent.index == m.searchResultsCursor {
-			return colors.cursor.Render(line)
-		} else {
-			return colors.search.Render(line)
-		}
-	} else {
-		return colors.syntax.Render(line)
-	}
-}
-
 func (m *model) printComma(line string, s *rangeGroup) string {
 	if s != nil && s.comma != nil {
 		if s.comma.parent.index == m.searchResultsCursor {
@@ -251,7 +240,7 @@ type withStyle struct {
 }
 
 func (m *model) explode(line string, highlightRanges []*foundRange, defaultStyle lipgloss.Style, path string, selectable bool) []withStyle {
-	if selectable && m.cursorPath() == path {
+	if selectable && m.cursorPath() == path && m.showCursor {
 		return []withStyle{{line, colors.cursor}}
 	}
 

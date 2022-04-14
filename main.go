@@ -10,7 +10,7 @@ import (
 	"golang.org/x/term"
 	"os"
 	"path"
-	"regexp"
+	"runtime/pprof"
 	"strings"
 )
 
@@ -41,6 +41,17 @@ var colors = struct {
 }
 
 func main() {
+	cpuProfile := os.Getenv("CPU_PROFILE")
+	if cpuProfile != "" {
+		f, err := os.Create(cpuProfile)
+		if err != nil {
+			panic(err)
+		}
+		err = pprof.StartCPUProfile(f)
+		if err != nil {
+			panic(err)
+		}
+	}
 	filePath := ""
 	var args []string
 	var dec *json.Decoder
@@ -114,20 +125,12 @@ func main() {
 	}
 	m.collectSiblings(m.json, "")
 
-	// DEBUG START
-	re, _ := regexp.Compile("\"[\\w\\s]+\"")
-	s := stringify(m.json)
-	indexes := re.FindAllStringIndex(s, -1)
-	m.remapSearchResult(m.json, "", 0, indexes, 0, nil)
-	m.indexSearchResults()
-	searchResults := m.searchResults
-	highlightIndex := m.highlightIndex
-	fmt.Println(searchResults, highlightIndex)
-	// DEBUG END
-
 	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
 	if err := p.Start(); err != nil {
 		panic(err)
+	}
+	if cpuProfile != "" {
+		pprof.StopCPUProfile()
 	}
 	os.Exit(m.exitCode)
 }
@@ -196,7 +199,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.Type {
 			case tea.KeyEsc:
 				m.searchInput.Blur()
-				//m.searchResults = newDict()
+				m.clearSearchResults()
 				m.render()
 
 			case tea.KeyEnter:
@@ -349,6 +352,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, m.keyMap.Search):
 			m.showSearchResults = false
+			m.searchRegexCompileError = ""
 			m.searchInput.Focus()
 			m.render()
 			return m, textinput.Blink
@@ -404,13 +408,13 @@ func (m *model) View() string {
 	if len(m.searchRegexCompileError) > 0 {
 		output += fmt.Sprintf("\n/%v/i  %v", m.searchInput.Value(), m.searchRegexCompileError)
 	}
-	//if m.showSearchResults {
-	//	if len(m.searchResults.keys) == 0 {
-	//		output += fmt.Sprintf("\n/%v/i  not found", m.searchInput.Value())
-	//	} else {
-	//		output += fmt.Sprintf("\n/%v/i  found: [%v/%v]", m.searchInput.Value(), m.searchResultsCursor+1, len(m.searchResults.keys))
-	//	}
-	//}
+	if m.showSearchResults {
+		if len(m.searchResults) == 0 {
+			output += fmt.Sprintf("\n/%v/i  not found", m.searchInput.Value())
+		} else {
+			output += fmt.Sprintf("\n/%v/i  found: [%v/%v]", m.searchInput.Value(), m.searchResultsCursor+1, len(m.searchResults))
+		}
+	}
 	return output
 }
 

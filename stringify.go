@@ -27,7 +27,7 @@ func stringify(v interface{}) string {
 		for i, key := range v.(*dict).keys {
 			line := fmt.Sprintf("%q", key) + ": " + stringify(v.(*dict).values[key])
 			if i < len(v.(*dict).keys)-1 {
-				line += ", "
+				line += ","
 			}
 			result += line
 		}
@@ -38,7 +38,7 @@ func stringify(v interface{}) string {
 		for i, value := range v.(array) {
 			line := stringify(value)
 			if i < len(v.(array))-1 {
-				line += ", "
+				line += ","
 			}
 			result += line
 		}
