@@ -104,7 +104,7 @@ func fold(s []string) string {
 	return fmt.Sprintf("x => Object.values(%v).flatMap(%v)", obj, fold(s[1:]))
 }
 
-func reduce(object interface{}, args []string) {
+func reduce(object interface{}, args []string, theme Theme) {
 	var stdout, stderr bytes.Buffer
 	cmd := exec.Command("node", "-e", generateCode(args))
 	cmd.Env = os.Environ()
@@ -121,7 +121,7 @@ func reduce(object interface{}, args []string) {
 			if str, ok := jsonObject.(string); ok {
 				fmt.Println(str)
 			} else {
-				fmt.Println(prettyPrint(jsonObject, 1))
+				fmt.Println(prettyPrint(jsonObject, 1, theme))
 			}
 		} else {
 			_, _ = fmt.Fprint(os.Stderr, stderr.String())
@@ -137,54 +137,54 @@ func reduce(object interface{}, args []string) {
 	}
 }
 
-func prettyPrint(v interface{}, level int) string {
+func prettyPrint(v interface{}, level int, theme Theme) string {
 	ident := strings.Repeat("  ", level)
 	subident := strings.Repeat("  ", level-1)
 	switch v.(type) {
 	case nil:
-		return colors.null.Render("null")
+		return theme.null("null")
 
 	case bool:
 		if v.(bool) {
-			return colors.boolean.Render("true")
+			return theme.boolean("true")
 		} else {
-			return colors.boolean.Render("false")
+			return theme.boolean("false")
 		}
 
 	case number:
-		return colors.number.Render(v.(number).String())
+		return theme.number(v.(number).String())
 
 	case string:
-		return colors.string.Render(fmt.Sprintf("%q", v))
+		return theme.string(fmt.Sprintf("%q", v))
 
 	case *dict:
 		keys := v.(*dict).keys
 		if len(keys) == 0 {
-			return colors.syntax.Render("{}")
+			return theme.syntax("{}")
 		}
-		output := colors.syntax.Render("{\n")
+		output := theme.syntax("{")
+		output += "\n"
 		for i, k := range keys {
-			key := colors.key.Render(fmt.Sprintf("%q", k))
+			key := theme.key(i, len(keys))(fmt.Sprintf("%q", k))
 			value, _ := v.(*dict).get(k)
-			delim := ": "
-			line := ident + key + delim + prettyPrint(value, level+1)
+			delim := theme.syntax(": ")
+			line := ident + key + delim + prettyPrint(value, level+1, theme)
 			if i < len(keys)-1 {
-				line += ",\n"
-			} else {
-				line += "\n"
+				line += theme.syntax(",")
 			}
+			line += "\n"
 			output += line
 		}
-		return output + subident + colors.syntax.Render("}")
+		return output + subident + theme.syntax("}")
 
 	case array:
 		slice := v.(array)
 		if len(slice) == 0 {
-			return colors.syntax.Render("[]")
+			return theme.syntax("[]")
 		}
-		output := colors.syntax.Render("[\n")
+		output := theme.syntax("[\n")
 		for i, value := range v.(array) {
-			line := ident + prettyPrint(value, level+1)
+			line := ident + prettyPrint(value, level+1, theme)
 			if i < len(slice)-1 {
 				line += ",\n"
 			} else {
@@ -192,7 +192,7 @@ func prettyPrint(v interface{}, level int) string {
 			}
 			output += line
 		}
-		return output + subident + colors.syntax.Render("]")
+		return output + subident + theme.syntax("]")
 
 	default:
 		return "unknown type"
