@@ -6,7 +6,8 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/mattn/go-isatty"
+	"github.com/muesli/termenv"
 	"golang.org/x/term"
 	"os"
 	"path"
@@ -15,30 +16,6 @@ import (
 )
 
 type number = json.Number
-
-var colors = struct {
-	cursor    lipgloss.Style
-	syntax    lipgloss.Style
-	key       lipgloss.Style
-	null      lipgloss.Style
-	boolean   lipgloss.Style
-	number    lipgloss.Style
-	string    lipgloss.Style
-	preview   lipgloss.Style
-	statusBar lipgloss.Style
-	search    lipgloss.Style
-}{
-	cursor:    lipgloss.NewStyle().Reverse(true),
-	syntax:    lipgloss.NewStyle(),
-	key:       lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("4")),
-	null:      lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("8")),
-	boolean:   lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("3")),
-	number:    lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6")),
-	string:    lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("2")),
-	preview:   lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("8")),
-	statusBar: lipgloss.NewStyle().Background(lipgloss.Color("7")).Foreground(lipgloss.Color("0")),
-	search:    lipgloss.NewStyle().Background(lipgloss.Color("11")).Foreground(lipgloss.Color("16")),
-}
 
 func main() {
 	cpuProfile := os.Getenv("CPU_PROFILE")
@@ -52,6 +29,19 @@ func main() {
 			panic(err)
 		}
 	}
+
+	themeId, ok := os.LookupEnv("FX_THEME")
+	if !ok {
+		themeId = "1"
+	}
+	theme, ok := themes[themeId]
+	if !ok {
+		theme = themes["1"]
+	}
+	if termenv.ColorProfile() == termenv.Ascii {
+		theme = themes["0"]
+	}
+
 	filePath := ""
 	var args []string
 	var dec *json.Decoder
@@ -75,12 +65,13 @@ func main() {
 		panic(err)
 	}
 
-	if len(args) > 0 {
-		if args[0] == "--print-code" {
+	tty := isatty.IsTerminal(os.Stdout.Fd())
+	if len(args) > 0 || !tty {
+		if len(args) > 0 && args[0] == "--print-code" {
 			fmt.Print(generateCode(args[1:]))
 			return
 		}
-		reduce(jsonObject, args)
+		reduce(jsonObject, args, theme)
 		return
 	}
 
@@ -105,10 +96,13 @@ func main() {
 			canBeExpanded[it.path] = len(it.object.(array)) > 0
 		}
 	})
+
 	input := textinput.New()
 	input.Prompt = ""
+
 	m := &model{
 		fileName:        path.Base(filePath),
+		theme:           theme,
 		json:            jsonObject,
 		width:           80,
 		height:          60,
@@ -141,6 +135,7 @@ type model struct {
 	windowHeight  int
 	footerHeight  int
 	wrap          bool
+	theme         Theme
 
 	fileName string
 	json     interface{}
@@ -394,13 +389,13 @@ func (m *model) View() string {
 	if m.showHelp {
 		statusBar := "Press Esc or q to close help."
 		statusBar += strings.Repeat(" ", max(0, m.width-width(statusBar)))
-		statusBar = colors.statusBar.Render(statusBar)
+		statusBar = m.theme.statusBar(statusBar)
 		return strings.Join(lines, "\n") + extraLines + "\n" + statusBar
 	}
 	statusBar := m.cursorPath() + " "
 	statusBar += strings.Repeat(" ", max(0, m.width-width(statusBar)-width(m.fileName)))
 	statusBar += m.fileName
-	statusBar = colors.statusBar.Render(statusBar)
+	statusBar = m.theme.statusBar(statusBar)
 	output := strings.Join(lines, "\n") + extraLines + "\n" + statusBar
 	if m.searchInput.Focused() {
 		output += "\n/" + m.searchInput.View()
