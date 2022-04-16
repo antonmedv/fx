@@ -72,7 +72,7 @@ See full [documentation](https://github.com/antonmedv/fx/blob/master/DOCS.md).
 ## Themes
 
 | `FX_THEME=1` ![](docs/images/1.png) | `FX_THEME=2` ![](docs/images/2.png) | `FX_THEME=3` ![](docs/images/3.png) |
-|-------------------------------------|-------------------------------------|-------------------------------------|
+|:-----------------------------------:|:-----------------------------------:|:-----------------------------------:|
 | `FX_THEME=4` ![](docs/images/4.png) | `FX_THEME=5` ![](docs/images/5.png) | `FX_THEME=6` ![](docs/images/6.png) |
 | `FX_THEME=7` ![](docs/images/7.png) | `FX_THEME=8` ![](docs/images/8.png) | `FX_THEME=9` ![](docs/images/9.png) |
 
