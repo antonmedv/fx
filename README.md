@@ -7,7 +7,7 @@ _* Function eXecution_
 ## Install
 
 ```bash
-go install github.com/antonmedv/fx
+go install github.com/antonmedv/fx@latest
 ```
 
 Or via Homebrew
