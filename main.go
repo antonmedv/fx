@@ -59,6 +59,10 @@ func main() {
 		dec = json.NewDecoder(os.Stdin)
 		args = os.Args[1:]
 	}
+	if dec == nil {
+		fmt.Println("No input provided. Usage: `fx data.json` or `curl ... | fx`")
+		os.Exit(1)
+	}
 	dec.UseNumber()
 	jsonObject, err := parse(dec)
 	if err != nil {
