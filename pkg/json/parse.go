@@ -1,10 +1,11 @@
-package main
+package json
 
 import (
 	"encoding/json"
+	. "github.com/antonmedv/fx/pkg/dict"
 )
 
-func parse(dec *json.Decoder) (interface{}, error) {
+func Parse(dec *json.Decoder) (interface{}, error) {
 	token, err := dec.Token()
 	if err != nil {
 		return nil, err
@@ -20,8 +21,8 @@ func parse(dec *json.Decoder) (interface{}, error) {
 	return token, nil
 }
 
-func decodeDict(dec *json.Decoder) (*dict, error) {
-	d := newDict()
+func decodeDict(dec *json.Decoder) (*Dict, error) {
+	d := NewDict()
 	for {
 		token, err := dec.Token()
 		if err != nil {
@@ -50,14 +51,12 @@ func decodeDict(dec *json.Decoder) (*dict, error) {
 				}
 			}
 		}
-		d.set(key, value)
+		d.Set(key, value)
 	}
 }
 
-type array = []interface{}
-
 func decodeArray(dec *json.Decoder) ([]interface{}, error) {
-	slice := make(array, 0)
+	slice := make(Array, 0)
 	for index := 0; ; index++ {
 		token, err := dec.Token()
 		if err != nil {

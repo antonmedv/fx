@@ -3,20 +3,22 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	. "github.com/antonmedv/fx/pkg/dict"
+	. "github.com/antonmedv/fx/pkg/json"
+	"github.com/antonmedv/fx/pkg/reducer"
+	. "github.com/antonmedv/fx/pkg/theme"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/mattn/go-isatty"
 	"github.com/muesli/termenv"
 	"golang.org/x/term"
+	"io/fs"
 	"os"
 	"path"
-	"io/fs"
 	"runtime/pprof"
 	"strings"
 )
-
-type number = json.Number
 
 func main() {
 	cpuProfile := os.Getenv("CPU_PROFILE")
@@ -35,12 +37,12 @@ func main() {
 	if !ok {
 		themeId = "1"
 	}
-	theme, ok := themes[themeId]
+	theme, ok := Themes[themeId]
 	if !ok {
-		theme = themes["1"]
+		theme = Themes["1"]
 	}
 	if termenv.ColorProfile() == termenv.Ascii {
-		theme = themes["0"]
+		theme = Themes["0"]
 	}
 
 	filePath := ""
@@ -71,7 +73,7 @@ func main() {
 		os.Exit(1)
 	}
 	dec.UseNumber()
-	jsonObject, err := parse(dec)
+	jsonObject, err := Parse(dec)
 	if err != nil {
 		panic(err)
 	}
@@ -79,17 +81,17 @@ func main() {
 	tty := isatty.IsTerminal(os.Stdout.Fd())
 	if len(args) > 0 || !tty {
 		if len(args) > 0 && args[0] == "--print-code" {
-			fmt.Print(generateCode(args[1:]))
+			fmt.Print(reducer.GenerateCode(args[1:]))
 			return
 		}
-		reduce(jsonObject, args, theme)
+		reducer.Reduce(jsonObject, args, theme)
 		return
 	}
 
 	expand := map[string]bool{
 		"": true,
 	}
-	if array, ok := jsonObject.(array); ok {
+	if array, ok := jsonObject.(Array); ok {
 		for i := range array {
 			expand[accessor("", i)] = true
 		}
@@ -97,14 +99,14 @@ func main() {
 	parents := map[string]string{}
 	children := map[string][]string{}
 	canBeExpanded := map[string]bool{}
-	dfs(jsonObject, func(it iterator) {
-		parents[it.path] = it.parent
-		children[it.parent] = append(children[it.parent], it.path)
-		switch it.object.(type) {
-		case *dict:
-			canBeExpanded[it.path] = len(it.object.(*dict).keys) > 0
-		case array:
-			canBeExpanded[it.path] = len(it.object.(array)) > 0
+	Dfs(jsonObject, func(it Iterator) {
+		parents[it.Path] = it.Parent
+		children[it.Parent] = append(children[it.Parent], it.Path)
+		switch it.Object.(type) {
+		case *Dict:
+			canBeExpanded[it.Path] = len(it.Object.(*Dict).Keys) > 0
+		case Array:
+			canBeExpanded[it.Path] = len(it.Object.(Array)) > 0
 		}
 	})
 
@@ -152,7 +154,7 @@ type model struct {
 	json     interface{}
 	lines    []string
 
-	mouseWheelDelta int // number of lines the mouse wheel will scroll
+	mouseWheelDelta int // Number of lines the mouse wheel will scroll
 	offset          int // offset is the vertical scroll position
 
 	keyMap   KeyMap
@@ -161,9 +163,9 @@ type model struct {
 	expandedPaths              map[string]bool     // set of expanded paths
 	canBeExpanded              map[string]bool     // set of path => can be expanded (i.e. dict or array)
 	paths                      []string            // array of paths on screen
-	pathToLineNumber           map[string]int      // map of path => line number
+	pathToLineNumber           map[string]int      // map of path => line Number
 	pathToIndex                map[string]int      // map of path => index in m.paths
-	lineNumberToPath           map[int]string      // map of line number => path
+	lineNumberToPath           map[int]string      // map of line Number => path
 	parents                    map[string]string   // map of subpath => parent path
 	children                   map[string][]string // map of path => child paths
 	nextSiblings, prevSiblings map[string]string   // map of path => sibling path
@@ -342,10 +344,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.render()
 
 		case key.Matches(msg, m.keyMap.ExpandAll):
-			dfs(m.json, func(it iterator) {
-				switch it.object.(type) {
-				case *dict, array:
-					m.expandedPaths[it.path] = true
+			Dfs(m.json, func(it Iterator) {
+				switch it.Object.(type) {
+				case *Dict, Array:
+					m.expandedPaths[it.Path] = true
 				}
 			})
 			m.render()
@@ -400,13 +402,13 @@ func (m *model) View() string {
 	if m.showHelp {
 		statusBar := "Press Esc or q to close help."
 		statusBar += strings.Repeat(" ", max(0, m.width-width(statusBar)))
-		statusBar = m.theme.statusBar(statusBar)
+		statusBar = m.theme.StatusBar(statusBar)
 		return strings.Join(lines, "\n") + extraLines + "\n" + statusBar
 	}
 	statusBar := m.cursorPath() + " "
 	statusBar += strings.Repeat(" ", max(0, m.width-width(statusBar)-width(m.fileName)))
 	statusBar += m.fileName
-	statusBar = m.theme.statusBar(statusBar)
+	statusBar = m.theme.StatusBar(statusBar)
 	output := strings.Join(lines, "\n") + extraLines + "\n" + statusBar
 	if m.searchInput.Focused() {
 		output += "\n/" + m.searchInput.View()
@@ -506,22 +508,22 @@ func (m *model) collapseRecursively(path string) {
 
 func (m *model) collectSiblings(v interface{}, path string) {
 	switch v.(type) {
-	case *dict:
+	case *Dict:
 		prev := ""
-		for _, k := range v.(*dict).keys {
+		for _, k := range v.(*Dict).Keys {
 			subpath := path + "." + k
 			if prev != "" {
 				m.nextSiblings[prev] = subpath
 				m.prevSiblings[subpath] = prev
 			}
 			prev = subpath
-			value, _ := v.(*dict).get(k)
+			value, _ := v.(*Dict).Get(k)
 			m.collectSiblings(value, subpath)
 		}
 
-	case array:
+	case Array:
 		prev := ""
-		for i, value := range v.(array) {
+		for i, value := range v.(Array) {
 			subpath := fmt.Sprintf("%v[%v]", path, i)
 			if prev != "" {
 				m.nextSiblings[prev] = subpath

@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	. "github.com/antonmedv/fx/pkg/dict"
+	. "github.com/antonmedv/fx/pkg/json"
 	"regexp"
 )
 
@@ -54,7 +56,7 @@ func (m *model) doSearch(s string) {
 		m.searchInput.Blur()
 		return
 	}
-	indexes := re.FindAllStringIndex(stringify(m.json), -1)
+	indexes := re.FindAllStringIndex(Stringify(m.json), -1)
 	m.remapSearchResult(m.json, "", 0, indexes, 0, nil)
 	m.indexSearchResults()
 	m.searchInput.Blur()
@@ -79,8 +81,8 @@ func (m *model) remapSearchResult(object interface{}, path string, pos int, inde
 		id, current = m.findRanges(valueRange, s, path, pos, indexes, id, current)
 		return pos + len(s), id, current
 
-	case number:
-		s := object.(number).String()
+	case Number:
+		s := object.(Number).String()
 		id, current = m.findRanges(valueRange, s, path, pos, indexes, id, current)
 		return pos + len(s), id, current
 
@@ -89,10 +91,10 @@ func (m *model) remapSearchResult(object interface{}, path string, pos int, inde
 		id, current = m.findRanges(valueRange, s, path, pos, indexes, id, current)
 		return pos + len(s), id, current
 
-	case *dict:
+	case *Dict:
 		id, current = m.findRanges(openBracketRange, "{", path, pos, indexes, id, current)
 		pos++ // {
-		for i, k := range object.(*dict).keys {
+		for i, k := range object.(*Dict).Keys {
 			subpath := path + "." + k
 
 			key := fmt.Sprintf("%q", k)
@@ -103,8 +105,8 @@ func (m *model) remapSearchResult(object interface{}, path string, pos int, inde
 			id, current = m.findRanges(delimRange, delim, subpath, pos, indexes, id, current)
 			pos += len(delim)
 
-			pos, id, current = m.remapSearchResult(object.(*dict).values[k], subpath, pos, indexes, id, current)
-			if i < len(object.(*dict).keys)-1 {
+			pos, id, current = m.remapSearchResult(object.(*Dict).Values[k], subpath, pos, indexes, id, current)
+			if i < len(object.(*Dict).Keys)-1 {
 				comma := ","
 				id, current = m.findRanges(commaRange, comma, subpath, pos, indexes, id, current)
 				pos += len(comma)
@@ -114,13 +116,13 @@ func (m *model) remapSearchResult(object interface{}, path string, pos int, inde
 		pos++ // }
 		return pos, id, current
 
-	case array:
+	case Array:
 		id, current = m.findRanges(openBracketRange, "[", path, pos, indexes, id, current)
 		pos++ // [
-		for i, v := range object.(array) {
+		for i, v := range object.(Array) {
 			subpath := fmt.Sprintf("%v[%v]", path, i)
 			pos, id, current = m.remapSearchResult(v, subpath, pos, indexes, id, current)
-			if i < len(object.(array))-1 {
+			if i < len(object.(Array))-1 {
 				comma := ","
 				id, current = m.findRanges(commaRange, comma, subpath, pos, indexes, id, current)
 				pos += len(comma)

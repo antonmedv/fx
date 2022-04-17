@@ -1,6 +1,8 @@
 package main
 
 import (
+	. "github.com/antonmedv/fx/pkg/dict"
+	. "github.com/antonmedv/fx/pkg/json"
 	"github.com/stretchr/testify/require"
 	"regexp"
 	"testing"
@@ -15,7 +17,7 @@ func Test_search_values(t *testing.T) {
 		{name: "null", object: nil},
 		{name: "true", object: true},
 		{name: "false", object: false},
-		{name: "number", object: number("42")},
+		{name: "Number", object: Number("42")},
 		{name: "string", object: "Hello, World!"},
 	}
 	for _, tt := range tests {
@@ -24,7 +26,7 @@ func Test_search_values(t *testing.T) {
 				json: tt.object,
 			}
 			re, _ := regexp.Compile(".+")
-			str := stringify(m.json)
+			str := Stringify(m.json)
 			indexes := re.FindAllStringIndex(str, -1)
 			m.remapSearchResult(m.json, "", 0, indexes, 0, nil)
 
@@ -47,10 +49,10 @@ func Test_search_array(t *testing.T) {
 	  ^^^^^   ^^^^^^
 `
 	m := &model{
-		json: array{"first", "second"},
+		json: Array{"first", "second"},
 	}
 	re, _ := regexp.Compile("\\w+")
-	indexes := re.FindAllStringIndex(stringify(m.json), -1)
+	indexes := re.FindAllStringIndex(Stringify(m.json), -1)
 	m.remapSearchResult(m.json, "", 0, indexes, 0, nil)
 
 	s1 := &searchResult{path: "[0]"}
@@ -82,10 +84,10 @@ func Test_search_between_array(t *testing.T) {
 	  ^^^^^^^^^^^^^^
 `
 	m := &model{
-		json: array{"first", "second"},
+		json: Array{"first", "second"},
 	}
 	re, _ := regexp.Compile("\\w.+\\w")
-	indexes := re.FindAllStringIndex(stringify(m.json), -1)
+	indexes := re.FindAllStringIndex(Stringify(m.json), -1)
 	m.remapSearchResult(m.json, "", 0, indexes, 0, nil)
 
 	s := &searchResult{path: "[0]"}
@@ -120,13 +122,13 @@ func Test_search_dict(t *testing.T) {
 	{"key": "hello world"}
 	 ^^^^^  ^^^^^^^^^^^^^
 `
-	d := newDict()
-	d.set("key", "hello world")
+	d := NewDict()
+	d.Set("key", "hello world")
 	m := &model{
 		json: d,
 	}
 	re, _ := regexp.Compile("\"[\\w\\s]+\"")
-	indexes := re.FindAllStringIndex(stringify(m.json), -1)
+	indexes := re.FindAllStringIndex(Stringify(m.json), -1)
 	m.remapSearchResult(m.json, "", 0, indexes, 0, nil)
 
 	s1 := &searchResult{path: ".key"}
@@ -157,14 +159,14 @@ func Test_search_dict_with_array(t *testing.T) {
 	{"first": [1,2],"second": []}
 	^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 `
-	d := newDict()
-	d.set("first", array{number("1"), number("2")})
-	d.set("second", array{})
+	d := NewDict()
+	d.Set("first", Array{Number("1"), Number("2")})
+	d.Set("second", Array{})
 	m := &model{
 		json: d,
 	}
 	re, _ := regexp.Compile(".+")
-	indexes := re.FindAllStringIndex(stringify(m.json), -1)
+	indexes := re.FindAllStringIndex(Stringify(m.json), -1)
 	m.remapSearchResult(m.json, "", 0, indexes, 0, nil)
 
 	s := &searchResult{path: ""}

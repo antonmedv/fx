@@ -81,8 +81,8 @@ func (m *model) LineDown(n int) {
 		return
 	}
 
-	// Make sure the number of lines by which we're going to scroll isn't
-	// greater than the number of lines we actually have left before we reach
+	// Make sure the Number of lines by which we're going to scroll isn't
+	// greater than the Number of lines we actually have left before we reach
 	// the bottom.
 	m.SetOffset(m.offset + n)
 }
@@ -92,8 +92,8 @@ func (m *model) LineUp(n int) {
 		return
 	}
 
-	// Make sure the number of lines by which we're going to scroll isn't
-	// greater than the number of lines we are from the top.
+	// Make sure the Number of lines by which we're going to scroll isn't
+	// greater than the Number of lines we are from the top.
 	m.SetOffset(m.offset - n)
 }
 

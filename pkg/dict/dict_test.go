@@ -1,26 +1,26 @@
-package main
+package dict
 
 import "testing"
 
 func Test_dict(t *testing.T) {
-	d := newDict()
-	d.set("number", 3)
-	v, _ := d.get("number")
+	d := NewDict()
+	d.Set("number", 3)
+	v, _ := d.Get("number")
 	if v.(int) != 3 {
 		t.Error("Set number")
 	}
 	// string
-	d.set("string", "x")
-	v, _ = d.get("string")
+	d.Set("string", "x")
+	v, _ = d.Get("string")
 	if v.(string) != "x" {
 		t.Error("Set string")
 	}
 	// string slice
-	d.set("strings", []string{
+	d.Set("strings", []string{
 		"t",
 		"u",
 	})
-	v, _ = d.get("strings")
+	v, _ = d.Get("strings")
 	if v.([]string)[0] != "t" {
 		t.Error("Set strings first index")
 	}
@@ -28,11 +28,11 @@ func Test_dict(t *testing.T) {
 		t.Error("Set strings second index")
 	}
 	// mixed slice
-	d.set("mixed", []interface{}{
+	d.Set("mixed", []interface{}{
 		1,
 		"1",
 	})
-	v, _ = d.get("mixed")
+	v, _ = d.Get("mixed")
 	if v.([]interface{})[0].(int) != 1 {
 		t.Error("Set mixed int")
 	}
@@ -40,19 +40,19 @@ func Test_dict(t *testing.T) {
 		t.Error("Set mixed string")
 	}
 	// overriding existing key
-	d.set("number", 4)
-	v, _ = d.get("number")
+	d.Set("number", 4)
+	v, _ = d.Get("number")
 	if v.(int) != 4 {
 		t.Error("Override existing key")
 	}
-	// keys
+	// Keys
 	expectedKeys := []string{
 		"number",
 		"string",
 		"strings",
 		"mixed",
 	}
-	for i, key := range d.keys {
+	for i, key := range d.Keys {
 		if key != expectedKeys[i] {
 			t.Error("Keys method", key, "!=", expectedKeys[i])
 		}

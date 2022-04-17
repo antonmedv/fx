@@ -1,10 +1,12 @@
-package main
+package reducer
 
 import (
 	"bytes"
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	. "github.com/antonmedv/fx/pkg/json"
+	. "github.com/antonmedv/fx/pkg/theme"
 	"os"
 	"os/exec"
 	"regexp"
@@ -16,7 +18,7 @@ var template string
 
 var flatMapRegex = regexp.MustCompile("^(\\.\\w*)+\\[]")
 
-func generateCode(args []string) string {
+func GenerateCode(args []string) string {
 	rs := "\n"
 	for i, a := range args {
 		rs += "  try {"
@@ -74,9 +76,9 @@ func generateCode(args []string) string {
 		}
 		pointer := fmt.Sprintf(
 			"%v %v %v",
-			strings.Repeat(" ", width(pre)),
-			strings.Repeat("^", width(a)),
-			strings.Repeat(" ", width(post)),
+			strings.Repeat(" ", len(pre)),
+			strings.Repeat("^", len(a)),
+			strings.Repeat(" ", len(post)),
 		)
 		rs += fmt.Sprintf(
 			"    throw `\\n"+
@@ -104,24 +106,24 @@ func fold(s []string) string {
 	return fmt.Sprintf("x => Object.values(%v).flatMap(%v)", obj, fold(s[1:]))
 }
 
-func reduce(object interface{}, args []string, theme Theme) {
+func Reduce(object interface{}, args []string, theme Theme) {
 	var stdout, stderr bytes.Buffer
-	cmd := exec.Command("node", "-e", generateCode(args))
+	cmd := exec.Command("node", "-e", GenerateCode(args))
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, "NODE_OPTIONS=--max-old-space-size=8192")
-	cmd.Stdin = strings.NewReader(stringify(object))
+	cmd.Stdin = strings.NewReader(Stringify(object))
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	err := cmd.Run()
 	if err == nil {
 		dec := json.NewDecoder(&stdout)
 		dec.UseNumber()
-		jsonObject, err := parse(dec)
+		jsonObject, err := Parse(dec)
 		if err == nil {
 			if str, ok := jsonObject.(string); ok {
 				fmt.Println(str)
 			} else {
-				fmt.Println(prettyPrint(jsonObject, 1, theme))
+				fmt.Println(PrettyPrint(jsonObject, 1, theme))
 			}
 		} else {
 			_, _ = fmt.Fprint(os.Stderr, stderr.String())
@@ -134,67 +136,5 @@ func reduce(object interface{}, args []string, theme Theme) {
 		}
 		_, _ = fmt.Fprint(os.Stderr, stderr.String())
 		os.Exit(exitCode)
-	}
-}
-
-func prettyPrint(v interface{}, level int, theme Theme) string {
-	ident := strings.Repeat("  ", level)
-	subident := strings.Repeat("  ", level-1)
-	switch v.(type) {
-	case nil:
-		return theme.null("null")
-
-	case bool:
-		if v.(bool) {
-			return theme.boolean("true")
-		} else {
-			return theme.boolean("false")
-		}
-
-	case number:
-		return theme.number(v.(number).String())
-
-	case string:
-		return theme.string(fmt.Sprintf("%q", v))
-
-	case *dict:
-		keys := v.(*dict).keys
-		if len(keys) == 0 {
-			return theme.syntax("{}")
-		}
-		output := theme.syntax("{")
-		output += "\n"
-		for i, k := range keys {
-			key := theme.key(i, len(keys))(fmt.Sprintf("%q", k))
-			value, _ := v.(*dict).get(k)
-			delim := theme.syntax(": ")
-			line := ident + key + delim + prettyPrint(value, level+1, theme)
-			if i < len(keys)-1 {
-				line += theme.syntax(",")
-			}
-			line += "\n"
-			output += line
-		}
-		return output + subident + theme.syntax("}")
-
-	case array:
-		slice := v.(array)
-		if len(slice) == 0 {
-			return theme.syntax("[]")
-		}
-		output := theme.syntax("[\n")
-		for i, value := range v.(array) {
-			line := ident + prettyPrint(value, level+1, theme)
-			if i < len(slice)-1 {
-				line += ",\n"
-			} else {
-				line += "\n"
-			}
-			output += line
-		}
-		return output + subident + theme.syntax("]")
-
-	default:
-		return "unknown type"
 	}
 }
