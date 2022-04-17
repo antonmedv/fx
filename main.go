@@ -11,6 +11,7 @@ import (
 	"golang.org/x/term"
 	"os"
 	"path"
+	"io/fs"
 	"runtime/pprof"
 	"strings"
 )
@@ -50,7 +51,13 @@ func main() {
 			filePath = os.Args[1]
 			f, err := os.Open(os.Args[1])
 			if err != nil {
-				panic(err)
+				switch err.(type) {
+				case *fs.PathError:
+					fmt.Println(err)
+					os.Exit(1)
+				default:
+					panic(err)
+				}
 			}
 			dec = json.NewDecoder(f)
 			args = os.Args[2:]
