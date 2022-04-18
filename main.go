@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/mattn/go-isatty"
 	"github.com/muesli/termenv"
 	"golang.org/x/term"
@@ -69,7 +70,7 @@ func main() {
 		args = os.Args[1:]
 	}
 	if dec == nil {
-		fmt.Println("No input provided. Usage: `fx data.json` or `curl ... | fx`")
+		fmt.Println(usage(DefaultKeyMap()))
 		os.Exit(1)
 	}
 	dec.UseNumber()
@@ -446,7 +447,7 @@ func (m *model) render() {
 	m.recalculateViewportHeight()
 
 	if m.showHelp {
-		m.lines = m.helpView()
+		m.lines = keyMapInfo(m.keyMap, lipgloss.NewStyle().PaddingLeft(4).PaddingTop(2).PaddingBottom(2))
 		return
 	}
 

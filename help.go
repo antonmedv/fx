@@ -8,10 +8,36 @@ import (
 	"strings"
 )
 
-var helpStyle = lipgloss.NewStyle().PaddingLeft(4).PaddingTop(2).PaddingBottom(2)
+func usage(keyMap KeyMap) string {
+	title := lipgloss.NewStyle().Bold(true)
+	return fmt.Sprintf(`fx - terminal JSON viewer
 
-func (m *model) helpView() []string {
-	v := reflect.ValueOf(m.keyMap)
+%v  
+  fx data.json
+  fx data.json .field
+  curl ... | fx
+
+%v
+%v
+
+%v
+  [https://fx.wtf]
+`,
+		title.Render("Usage"),
+		title.Render("Key Bindings"),
+		strings.Join(
+			keyMapInfo(
+				keyMap,
+				lipgloss.NewStyle().PaddingLeft(2),
+			),
+			"\n",
+		),
+		title.Render("More info"),
+	)
+}
+
+func keyMapInfo(keyMap KeyMap, style lipgloss.Style) []string {
+	v := reflect.ValueOf(keyMap)
 	fields := reflect.VisibleFields(v.Type())
 
 	keys := make([]string, 0)
@@ -36,5 +62,5 @@ func (m *model) helpView() []string {
 		strings.Join(desc, "\n"),
 	)
 
-	return strings.Split(helpStyle.Render(content), "\n")
+	return strings.Split(style.Render(content), "\n")
 }
