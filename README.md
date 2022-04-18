@@ -36,26 +36,32 @@ Type `?` to see full list of key shortcuts.
 
 ### Reducers
 
+Write reducers in your favorite language: [JavaScript](docs/reducers.md#node),
+[Python](docs/reducers.md#python), or [Ruby](docs/reducers.md#ruby).
+
 ```bash
+$ export FX_LANG=node # Default
 $ fx data.json '.filter(x => x.startsWith("a"))'
 ```
 
-Access all lodash (or ramda, etc) methods by
-using [.fxrc](https://github.com/antonmedv/fx/blob/master/DOCS.md#using-fxrc)
-file.
+```bash
+$ export FX_LANG=python
+$ fx data.json '[x["age"] + i for i in range(10)]'
+```
 
 ```bash
-$ fx data.json 'groupBy("commit.committer.name")' 'mapValues(_.size)'
+$ export FX_LANG=ruby
+$ fx data.json 'x.to_a.map {|x| x[1]}'
 ```
 
 ## Documentation
-
 
 See full [documentation](https://github.com/antonmedv/fx/blob/master/DOCS.md).
 
 ## Themes
 
-Theme can be configured by setting environment variable `FX_THEME` from `1` to `9`:
+Theme can be configured by setting environment variable `FX_THEME` from `1`
+to `9`:
 
 ```bash
 export FX_THEME=9
