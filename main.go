@@ -19,10 +19,14 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mattn/go-isatty"
 	"github.com/muesli/termenv"
-	"golang.org/x/term"
 )
 
 func main() {
+	if len(os.Args) == 2 && (os.Args[1] == "-v" || os.Args[1] == "-V" || os.Args[1] == "--version") {
+		fmt.Println(version)
+		return
+	}
+
 	cpuProfile := os.Getenv("CPU_PROFILE")
 	if cpuProfile != "" {
 		f, err := os.Create(cpuProfile)
@@ -47,10 +51,13 @@ func main() {
 		theme = Themes["0"]
 	}
 
+	stdinIsTty := isatty.IsTerminal(os.Stdin.Fd())
+	stdoutIsTty := isatty.IsTerminal(os.Stdout.Fd())
+
 	filePath := ""
 	var args []string
 	var dec *json.Decoder
-	if term.IsTerminal(int(os.Stdin.Fd())) {
+	if stdinIsTty {
 		if len(os.Args) >= 2 {
 			filePath = os.Args[1]
 			f, err := os.Open(os.Args[1])
@@ -80,8 +87,7 @@ func main() {
 		panic(err)
 	}
 
-	tty := isatty.IsTerminal(os.Stdout.Fd())
-	if len(args) > 0 || !tty {
+	if len(args) > 0 || !stdoutIsTty {
 		if len(args) > 0 && args[0] == "--print-code" {
 			fmt.Print(GenerateCode(args[1:]))
 			return
