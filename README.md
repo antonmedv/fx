@@ -7,7 +7,6 @@ _* Function eXecution_
 - Interactive viewer
 - Preserves key order
 - Preserves big numbers
-- Themes 🎁
 
 ## Install
 
