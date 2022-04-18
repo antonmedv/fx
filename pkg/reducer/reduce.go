@@ -18,11 +18,13 @@ func GenerateCode(args []string) string {
 	if !ok {
 		lang = "node"
 	}
-	switch {
-	case lang == "node":
-		return GenerateCodeNodejs(args)
-	case strings.HasPrefix(lang, "python"):
-		return GenerateCodePython(args)
+	switch lang {
+	case "node":
+		return nodejs(args)
+	case "python", "python3":
+		return python(args)
+	case "ruby":
+		return ruby(args)
 	default:
 		panic("unknown lang")
 	}
@@ -34,11 +36,13 @@ func Reduce(object interface{}, args []string, theme Theme) {
 	if !ok {
 		lang = "node"
 	}
-	switch {
-	case lang == "node":
+	switch lang {
+	case "node":
 		cmd = CreateNodejs(args)
-	case strings.HasPrefix(lang, "python"):
+	case "python", "python3":
 		cmd = CreatePython(lang, args)
+	case "ruby":
+		cmd = CreateRuby(args)
 	default:
 		panic("unknown lang")
 	}

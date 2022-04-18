@@ -10,7 +10,7 @@ import (
 )
 
 func CreateNodejs(args []string) *exec.Cmd {
-	cmd := exec.Command("node", "-e", GenerateCode(args))
+	cmd := exec.Command("node", "-e", nodejs(args))
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, "NODE_OPTIONS=--max-old-space-size=8192")
 	return cmd
@@ -19,7 +19,7 @@ func CreateNodejs(args []string) *exec.Cmd {
 //go:embed reduce.js
 var templateJs string
 
-func GenerateCodeNodejs(args []string) string {
+func nodejs(args []string) string {
 	rs := "\n"
 	for i, a := range args {
 		rs += "  try {"

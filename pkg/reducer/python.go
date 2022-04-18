@@ -7,14 +7,14 @@ import (
 )
 
 func CreatePython(bin string, args []string) *exec.Cmd {
-	cmd := exec.Command(bin, "-c", GenerateCode(args))
+	cmd := exec.Command(bin, "-c", python(args))
 	return cmd
 }
 
 //go:embed reduce.py
 var templatePython string
 
-func GenerateCodePython(args []string) string {
+func python(args []string) string {
 	rs := "\n"
 	for i, a := range args {
 		rs += "try:"
@@ -27,7 +27,7 @@ func GenerateCodePython(args []string) string {
 		default:
 			rs += fmt.Sprintf(
 				`
-    f = (lambda json: (%v))(x)
+    f = (lambda x: (%v))(x)
     x = f(x) if callable(f) else f
 `, a)
 		}
