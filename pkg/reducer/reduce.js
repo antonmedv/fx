@@ -14,14 +14,14 @@ void async function () {
   for await (let chunk of process.stdin) {
     buffer += chunk
   }
-  let json = JSON.parse(buffer)
+  let x = JSON.parse(buffer)
 
   // Reducers %v
 
-  if (typeof json === 'undefined') {
+  if (typeof x === 'undefined') {
     process.stderr.write('undefined')
   } else {
-    process.stdout.write(JSON.stringify(json))
+    process.stdout.write(JSON.stringify(x))
   }
 }().catch(err => {
   console.error(err)
