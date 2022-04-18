@@ -40,18 +40,18 @@ Write reducers in your favorite language: [JavaScript](docs/reducers.md#node),
 [Python](docs/reducers.md#python), or [Ruby](docs/reducers.md#ruby).
 
 ```bash
-$ export FX_LANG=node # Default
-$ fx data.json '.filter(x => x.startsWith("a"))'
+export FX_LANG=node # Default
+fx data.json '.filter(x => x.startsWith("a"))'
 ```
 
 ```bash
-$ export FX_LANG=python
-$ fx data.json '[x["age"] + i for i in range(10)]'
+export FX_LANG=python
+fx data.json '[x["age"] + i for i in range(10)]'
 ```
 
 ```bash
-$ export FX_LANG=ruby
-$ fx data.json 'x.to_a.map {|x| x[1]}'
+export FX_LANG=ruby
+fx data.json 'x.to_a.map {|x| x[1]}'
 ```
 
 ## Documentation
