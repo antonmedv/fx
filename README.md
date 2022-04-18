@@ -4,10 +4,10 @@ _* Function eXecution_
 
 ## Features
 
-- Interactive terminal UI,
-- Preserves key order,
-- Preserves big numbers,
-- Use JavaScript, Python or Ruby. 
+- Interactive terminal UI
+- Preserves key order
+- Preserves big numbers
+- Use JavaScript, Python or Ruby 
 
 ## Install
 
