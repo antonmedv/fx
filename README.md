@@ -27,16 +27,22 @@ Or download [pre-built binary](https://github.com/antonmedv/fx/releases).
 Start the interactive viewer via:
 
 ```bash
-$ fx data.json
+fx data.json
 ```
 
 Or
 
 ```bash
-$ curl ... | fx
+curl ... | fx
 ```
 
 Type `?` to see full list of key shortcuts.
+
+Pretty print:
+
+```bash
+curl ... | fx .
+```
 
 ### Reducers
 
