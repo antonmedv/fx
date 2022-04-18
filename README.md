@@ -1,8 +1,13 @@
-# fx
-
 <p align="center"><img src="https://medv.io/assets/fx.gif" width="562" alt="fx example"></p>
 
 _* Function eXecution_
+
+## Features
+
+- Interactive terminal UI,
+- Preserves key order,
+- Preserves big numbers,
+- Use JavaScript, Python or Ruby. 
 
 ## Install
 
