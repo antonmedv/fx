@@ -3,9 +3,15 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
+	"os"
+	"path"
+	"runtime/pprof"
+	"strings"
+
 	. "github.com/antonmedv/fx/pkg/dict"
 	. "github.com/antonmedv/fx/pkg/json"
-	"github.com/antonmedv/fx/pkg/reducer"
+	. "github.com/antonmedv/fx/pkg/reducer"
 	. "github.com/antonmedv/fx/pkg/theme"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -14,11 +20,6 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/muesli/termenv"
 	"golang.org/x/term"
-	"io/fs"
-	"os"
-	"path"
-	"runtime/pprof"
-	"strings"
 )
 
 func main() {
@@ -82,10 +83,10 @@ func main() {
 	tty := isatty.IsTerminal(os.Stdout.Fd())
 	if len(args) > 0 || !tty {
 		if len(args) > 0 && args[0] == "--print-code" {
-			fmt.Print(reducer.GenerateCode(args[1:]))
+			fmt.Print(GenerateCode(args[1:]))
 			return
 		}
-		reducer.Reduce(jsonObject, args, theme)
+		Reduce(jsonObject, args, theme)
 		return
 	}
 
