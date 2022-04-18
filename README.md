@@ -4,10 +4,10 @@ _* Function eXecution_
 
 ## Features
 
-- Interactive terminal UI
+- Interactive viewer
 - Preserves key order
 - Preserves big numbers
-- Use JavaScript, Python or Ruby 
+- Themes 🎁
 
 ## Install
 
@@ -41,11 +41,11 @@ Type `?` to see full list of key shortcuts.
 
 ### Reducers
 
-Write reducers in your favorite language: [JavaScript](docs/reducers.md#node),
+Write reducers in your favorite language: [JavaScript](docs/reducers.md#node) (default),
 [Python](docs/reducers.md#python), or [Ruby](docs/reducers.md#ruby).
 
 ```bash
-export FX_LANG=node # Default
+export FX_LANG=node
 fx data.json '.filter(x => x.startsWith("a"))'
 ```
 
