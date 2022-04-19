@@ -18,6 +18,8 @@ jobs:
         go-version: 1.18
 
     - name: Build and release
+      env:
+        FORCE_COLOR: 3
       run: |
         npx zx <<'EOF'
         await $`go build -o fx`
