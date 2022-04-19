@@ -1,0 +1,24 @@
+name: release
+
+on:
+  release:
+    types:
+      - created
+
+jobs:
+
+  release:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: 1.18
+
+    - name: Build and release
+      run: |
+        npx zx <<'EOF'
+        await $`go build -o fx`
+        EOF
