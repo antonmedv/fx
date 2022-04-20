@@ -23,5 +23,5 @@ jobs:
     - name: Build and Release
       env:
         FORCE_COLOR: 3
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.MY_TOKEN }}
       run: npx zx .github/workflows/release.mjs
