@@ -17,10 +17,10 @@ jobs:
       with:
         go-version: 1.18
 
-    - name: Build and release
+    - name: Version
+      run: echo "RELEASE_VERSION=${GITHUB_REF##*/}" >> $GITHUB_ENV
+
+    - name: Build and Release
       env:
         FORCE_COLOR: 3
-      run: |
-        npx zx <<'EOF'
-        await $`go build -o fx`
-        EOF
+      run: npx zx .github/workflows/release.mjs
