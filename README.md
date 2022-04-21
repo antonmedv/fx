@@ -26,6 +26,12 @@ Or MacOS via Homebrew
 brew install fx
 ```
 
+Or for Windows via Scoop:
+
+```powershell
+scoop install fx
+```
+
 Or download [pre-built binary](https://github.com/antonmedv/fx/releases).
 
 ## Usage
