@@ -10,17 +10,19 @@ _* Function eXecution_
 
 ## Install
 
+Using Golang to build & install from source:
+
 ```bash
 go install github.com/antonmedv/fx@latest
 ```
 
-Or for Arch Linux
+Or for Arch Linux:
 
 ```bash
 pacman -S fx
 ```
 
-Or MacOS via Homebrew
+Or for MacOS via Homebrew:
 
 ```bash
 brew install fx
