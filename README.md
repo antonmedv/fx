@@ -17,7 +17,7 @@ go install github.com/antonmedv/fx@latest
 Or via Homebrew
 
 ```bash
-TODO
+brew install fx
 ```
 
 Or download [pre-built binary](https://github.com/antonmedv/fx/releases).
