@@ -14,7 +14,13 @@ _* Function eXecution_
 go install github.com/antonmedv/fx@latest
 ```
 
-Or via Homebrew
+Or for Arch Linux
+
+```bash
+pacman -S fx
+```
+
+Or MacOS via Homebrew
 
 ```bash
 brew install fx
