@@ -18,9 +18,8 @@ func PrettyPrint(v interface{}, level int, theme theme.Theme) string {
 	case bool:
 		if v.(bool) {
 			return theme.Boolean("true")
-		} else {
-			return theme.Boolean("false")
 		}
+		return theme.Boolean("false")
 
 	case json.Number:
 		return theme.Number(v.(json.Number).String())

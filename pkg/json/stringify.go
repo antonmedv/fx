@@ -13,9 +13,8 @@ func Stringify(v interface{}) string {
 	case bool:
 		if v.(bool) {
 			return "true"
-		} else {
-			return "false"
 		}
+		return "false"
 
 	case Number:
 		return v.(Number).String()

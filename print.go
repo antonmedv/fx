@@ -35,9 +35,9 @@ func (m *model) print(v interface{}, level, lineNumber, keyEndPos int, path stri
 	case bool:
 		if v.(bool) {
 			return []string{merge(m.explode("true", searchValue, m.theme.Boolean, path, selectableValues))}
-		} else {
-			return []string{merge(m.explode("false", searchValue, m.theme.Boolean, path, selectableValues))}
 		}
+
+		return []string{merge(m.explode("false", searchValue, m.theme.Boolean, path, selectableValues))}
 
 	case Number:
 		return []string{merge(m.explode(v.(Number).String(), searchValue, m.theme.Number, path, selectableValues))}
@@ -202,12 +202,10 @@ func (m *model) printOpenBracket(line string, s *rangeGroup, path string, select
 	if s != nil && s.openBracket != nil {
 		if s.openBracket.parent.index == m.searchResultsCursor {
 			return m.theme.Cursor(line)
-		} else {
-			return m.theme.Search(line)
 		}
-	} else {
-		return m.theme.Syntax(line)
+		return m.theme.Search(line)
 	}
+	return m.theme.Syntax(line)
 }
 
 func (m *model) printCloseBracket(line string, s *rangeGroup, path string, selectableValues bool) string {
@@ -217,24 +215,20 @@ func (m *model) printCloseBracket(line string, s *rangeGroup, path string, selec
 	if s != nil && s.closeBracket != nil {
 		if s.closeBracket.parent.index == m.searchResultsCursor {
 			return m.theme.Cursor(line)
-		} else {
-			return m.theme.Search(line)
 		}
-	} else {
-		return m.theme.Syntax(line)
+		return m.theme.Search(line)
 	}
+	return m.theme.Syntax(line)
 }
 
 func (m *model) printComma(line string, s *rangeGroup) string {
 	if s != nil && s.comma != nil {
 		if s.comma.parent.index == m.searchResultsCursor {
 			return m.theme.Cursor(line)
-		} else {
-			return m.theme.Search(line)
 		}
-	} else {
-		return m.theme.Syntax(line)
+		return m.theme.Search(line)
 	}
+	return m.theme.Syntax(line)
 }
 
 type withStyle struct {
