@@ -70,6 +70,8 @@ func Reduce(object interface{}, args []string, theme Theme) {
 		status, ok := err.(*exec.ExitError)
 		if ok {
 			exitCode = status.ExitCode()
+		} else {
+			fmt.Println(err.Error())
 		}
 		fmt.Print(string(output))
 		os.Exit(exitCode)
