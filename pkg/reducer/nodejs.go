@@ -62,7 +62,7 @@ func nodejs(args []string) string {
     f = function () 
       { return %v }
     .call(x)
-    x = typeof f === 'function' ? f(x) : fn
+    x = typeof f === 'function' ? f(x) : f
 `, a)
 		}
 		// Generate a beautiful error message.
