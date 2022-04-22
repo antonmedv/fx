@@ -8,6 +8,7 @@ import (
 	"path"
 	"runtime/pprof"
 	"strings"
+	"time"
 
 	. "github.com/antonmedv/fx/pkg/dict"
 	. "github.com/antonmedv/fx/pkg/json"
@@ -55,6 +56,7 @@ func main() {
 	stdoutIsTty := isatty.IsTerminal(os.Stdout.Fd())
 
 	filePath := ""
+	fileName := ""
 	var args []string
 	var dec *json.Decoder
 	if stdinIsTty {
@@ -70,6 +72,7 @@ func main() {
 					panic(err)
 				}
 			}
+			fileName = path.Base(filePath)
 			dec = json.NewDecoder(f)
 			args = os.Args[2:]
 		}
@@ -84,7 +87,8 @@ func main() {
 	dec.UseNumber()
 	jsonObject, err := Parse(dec)
 	if err != nil {
-		panic(err)
+		fmt.Println("JSON Parse Error:", err.Error())
+		os.Exit(1)
 	}
 
 	if len(args) > 0 || !stdoutIsTty {
@@ -122,7 +126,7 @@ func main() {
 	input.Prompt = ""
 
 	m := &model{
-		fileName:        path.Base(filePath),
+		fileName:        fileName,
 		theme:           theme,
 		json:            jsonObject,
 		width:           80,
@@ -139,6 +143,10 @@ func main() {
 		searchInput:     input,
 	}
 	m.collectSiblings(m.json, "")
+
+	// TODO: delete after tea can reopen stdin.
+	// https://github.com/charmbracelet/bubbletea/issues/302
+	time.Sleep(100 * time.Millisecond)
 
 	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
 	if err := p.Start(); err != nil {
