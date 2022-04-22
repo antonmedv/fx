@@ -1,14 +1,16 @@
-const os = require('os')
-const fs = require('fs')
-const path = require('path')
+import os from 'node:os'
+import fs from 'node:fs'
+import path from 'node:path'
+import {createRequire} from 'node:module'
+const require = createRequire(process.cwd())
 
-try {
-  require(path.join(os.homedir(), '.fxrc'))
-} catch (err) {
-  if (err.code !== 'MODULE_NOT_FOUND') throw err
-}
+// .fxrc.js %v
 
 void async function () {
+  if (process.env.FX_CWD) {
+    process.chdir(process.env.FX_CWD)
+  }
+
   let buffer = ''
   process.stdin.setEncoding('utf8')
   for await (let chunk of process.stdin) {
