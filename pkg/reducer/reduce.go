@@ -47,23 +47,23 @@ func Reduce(object interface{}, args []string, theme Theme) {
 		panic("unknown lang")
 	}
 
-	var stdout, stderr bytes.Buffer
 	cmd.Stdin = strings.NewReader(Stringify(object))
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	err := cmd.Run()
+	output, err := cmd.CombinedOutput()
 	if err == nil {
-		dec := json.NewDecoder(&stdout)
+		dec := json.NewDecoder(bytes.NewReader(output))
 		dec.UseNumber()
 		jsonObject, err := Parse(dec)
-		if err == nil {
-			if str, ok := jsonObject.(string); ok {
-				fmt.Println(str)
-			} else {
-				fmt.Println(PrettyPrint(jsonObject, 1, theme))
-			}
+		if err != nil {
+			fmt.Print(string(output))
+			return
+		}
+		if str, ok := jsonObject.(string); ok {
+			fmt.Println(str)
 		} else {
-			_, _ = fmt.Fprint(os.Stderr, stderr.String())
+			fmt.Println(PrettyPrint(jsonObject, 1, theme))
+		}
+		if dec.InputOffset() < int64(len(output)) {
+			fmt.Print(string(output[dec.InputOffset():]))
 		}
 	} else {
 		exitCode := 1
@@ -71,7 +71,7 @@ func Reduce(object interface{}, args []string, theme Theme) {
 		if ok {
 			exitCode = status.ExitCode()
 		}
-		_, _ = fmt.Fprint(os.Stderr, stderr.String())
+		fmt.Print(string(output))
 		os.Exit(exitCode)
 	}
 }
