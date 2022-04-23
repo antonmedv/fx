@@ -10,28 +10,20 @@ _* Function eXecution_
 
 ## Install
 
-Using Golang to build & install from source:
-
-```bash
-go install github.com/antonmedv/fx@latest
-```
-
-Or for Arch Linux:
-
-```bash
-pacman -S fx
-```
-
-Or for MacOS via Homebrew:
-
 ```bash
 brew install fx
 ```
-
-Or for Windows via Scoop:
-
-```powershell
+```bash
+snap install fx
+```
+```bash
 scoop install fx
+```
+```bash
+pacman -S fx
+```
+```bash
+go install github.com/antonmedv/fx@latest
 ```
 
 Or download [pre-built binary](https://github.com/antonmedv/fx/releases).
