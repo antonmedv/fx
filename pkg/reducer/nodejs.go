@@ -20,7 +20,7 @@ func CreateNodejs(args []string) *exec.Cmd {
 	cmd.Env = append(cmd.Env, "NODE_OPTIONS=--max-old-space-size=8192")
 	workingDir, err := os.Getwd()
 	if err == nil {
-		cmd.Env = append(cmd.Env, "FX_CMD="+workingDir)
+		cmd.Env = append(cmd.Env, "FX_CWD="+workingDir)
 	}
 	return cmd
 }

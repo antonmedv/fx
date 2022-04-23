@@ -2,14 +2,14 @@ import os from 'node:os'
 import fs from 'node:fs'
 import path from 'node:path'
 import {createRequire} from 'node:module'
-const require = createRequire(process.cwd())
+
+const cwd = process.env.FX_CWD ? process.env.FX_CWD : process.cwd()
+const require = createRequire(cwd)
 
 // .fxrc.js %v
 
 void async function () {
-  if (process.env.FX_CWD) {
-    process.chdir(process.env.FX_CWD)
-  }
+  process.chdir(cwd)
 
   let buffer = ''
   process.stdin.setEncoding('utf8')
