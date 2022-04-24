@@ -1,0 +1,20 @@
+name: fx
+version: git
+summary: Terminal JSON viewer
+description: Terminal JSON viewer
+base: core18
+grade: stable
+confinement: strict
+
+apps:
+  fx:
+    command: fx
+    plugs: [home, network]
+
+parts:
+  fx:
+    plugin: go
+    go-channel: 1.18/stable
+    source: .
+    source-type: git
+    go-importpath: github.com/antonmedv/fx
