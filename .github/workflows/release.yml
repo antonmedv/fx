@@ -6,10 +6,12 @@ on:
       - created
 
 jobs:
-  release:
+  commit:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        ref: master
 
     - name: Set up Go
       uses: actions/setup-go@v3
@@ -25,9 +27,8 @@ jobs:
         set -x
         sed -i "s/version = .*/version = \"${RELEASE_VERSION}\"/" version.go
         sed -i "s/version: .*/version: ${RELEASE_VERSION}/" snap/snapcraft.yaml
-        git checkout master
         git add version.go snap/snapcraft.yaml
-        git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git config --global user.email "github-actions@github.com"
         git config --global user.name "github-actions"
         git commit -m "Release RELEASE_VERSION"
         git tag -a "$RELEASE_VERSION" -m "Release $RELEASE_VERSION" --force
@@ -37,7 +38,7 @@ jobs:
       run: go test -v ./...
 
   binary:
-    needs: [release]
+    needs: [commit]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -54,7 +55,7 @@ jobs:
         run: npx zx .github/workflows/release.mjs
 
   snap:
-    needs: [release]
+    needs: [commit]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
