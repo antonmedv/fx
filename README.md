@@ -1,10 +1,15 @@
-<p align="center"><img src="https://medv.io/assets/fx.gif" width="562" alt="fx example"></p>
+<p align="center">
+    <a href="https://asciinema.org/a/F7nHAFp0wbYSXvY29visvNy29">
+        <img src="docs/images/preview.png" width="759" alt="fx preview">
+    </a>
+</p>
 
 _* Function eXecution_
 
 ## Features
 
 - Interactive viewer
+- Mouse support
 - Preserves key order
 - Preserves big numbers
 
