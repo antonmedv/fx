@@ -50,6 +50,9 @@ jobs:
         with:
           go-version: 1.18
 
+      - name: Get Version
+        run: echo "RELEASE_VERSION=${GITHUB_REF##*/}" >> $GITHUB_ENV
+
       - name: Build and Upload
         env:
           FORCE_COLOR: 3
