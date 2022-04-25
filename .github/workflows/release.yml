@@ -46,11 +46,11 @@ jobs:
         with:
           go-version: 1.18
 
-    - name: Build and Upload
-      env:
-        FORCE_COLOR: 3
-        GITHUB_TOKEN: ${{ secrets.MY_TOKEN }}
-      run: npx zx .github/workflows/release.mjs
+      - name: Build and Upload
+        env:
+          FORCE_COLOR: 3
+          GITHUB_TOKEN: ${{ secrets.MY_TOKEN }}
+        run: npx zx .github/workflows/release.mjs
 
   snap:
     needs: [release]
@@ -63,11 +63,11 @@ jobs:
         with:
           go-version: 1.18
 
-    - uses: snapcore/action-build@v1
-      id: build
+      - uses: snapcore/action-build@v1
+        id: build
 
-    - uses: snapcore/action-publish@v1
-      with:
-        store_login: ${{ secrets.STORE_LOGIN }}
-        snap: ${{ steps.build.outputs.snap }}
-        release: stable
+      - uses: snapcore/action-publish@v1
+        with:
+          store_login: ${{ secrets.STORE_LOGIN }}
+          snap: ${{ steps.build.outputs.snap }}
+          release: stable
