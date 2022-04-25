@@ -1,6 +1,6 @@
 <p align="center">
     <a href="https://asciinema.org/a/F7nHAFp0wbYSXvY29visvNy29">
-        <img src="docs/images/preview.png" width="759" alt="fx preview">
+        <img src="docs/images/preview.png" width="506" alt="fx preview">
     </a>
 </p>
 
