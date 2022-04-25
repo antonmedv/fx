@@ -30,9 +30,9 @@ jobs:
         git add version.go snap/snapcraft.yaml
         git config --global user.email "github-actions@github.com"
         git config --global user.name "github-actions"
-        git commit -m "Release RELEASE_VERSION"
-        git tag -a "$RELEASE_VERSION" -m "Release $RELEASE_VERSION" --force
-        git push --follow-tags --force
+        git commit -m "Release $RELEASE_VERSION"
+        git tag "$RELEASE_VERSION" --force
+        git push --atomic --force origin master "$RELEASE_VERSION"
 
     - name: Test
       run: go test -v ./...
