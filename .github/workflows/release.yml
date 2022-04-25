@@ -25,12 +25,13 @@ jobs:
         set -x
         sed -i "s/version = .*/version = \"${RELEASE_VERSION}\"/" version.go
         sed -i "s/version: .*/version: ${RELEASE_VERSION}/" snap/snapcraft.yaml
+        git checkout master
         git add version.go snap/snapcraft.yaml
         git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
         git config --global user.name "github-actions"
         git commit -m "Release RELEASE_VERSION"
         git tag -a "$RELEASE_VERSION" -m "Release $RELEASE_VERSION" --force
-        git push origin HEAD:main --follow-tags --force
+        git push --follow-tags --force
 
     - name: Test
       run: go test -v ./...
