@@ -29,7 +29,7 @@ jobs:
         git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
         git config --global user.name "github-actions"
         git commit -m "Release RELEASE_VERSION"
-        git tag -a "$RELEASE_VERSION" --force
+        git tag -a "$RELEASE_VERSION" -m "Release $RELEASE_VERSION" --force
         git push --follow-tags --force
 
     - name: Test
