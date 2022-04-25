@@ -29,17 +29,39 @@ jobs:
         git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
         git config --global user.name "github-actions"
         git commit -m "Release RELEASE_VERSION"
-        git tag "$RELEASE_VERSION" --force
-        git push origin "$RELEASE_VERSION" --force
+        git tag -a "$RELEASE_VERSION" --force
+        git push --follow-tags --force
 
     - name: Test
       run: go test -v ./...
 
-    - name: Release
+  binary:
+    needs: [release]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.18
+
+    - name: Build and Upload
       env:
         FORCE_COLOR: 3
         GITHUB_TOKEN: ${{ secrets.MY_TOKEN }}
       run: npx zx .github/workflows/release.mjs
+
+  snap:
+    needs: [release]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.18
 
     - uses: snapcore/action-build@v1
       id: build
