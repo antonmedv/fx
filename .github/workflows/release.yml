@@ -30,7 +30,7 @@ jobs:
         git config --global user.name "github-actions"
         git commit -m "Release RELEASE_VERSION"
         git tag -a "$RELEASE_VERSION" -m "Release $RELEASE_VERSION" --force
-        git push --follow-tags --force
+        git push origin HEAD:main --follow-tags --force
 
     - name: Test
       run: go test -v ./...
