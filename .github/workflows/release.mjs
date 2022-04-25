@@ -8,8 +8,6 @@ let goarch = [
   'arm64',
 ]
 
-await $`go test ./...`
-
 let name = (GOOS, GOARCH) => `fx_${GOOS}_${GOARCH}` + (GOOS === 'windows' ? '.exe' : '')
 
 await Promise.all(
