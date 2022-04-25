@@ -10,6 +10,8 @@ let goarch = [
 
 let name = (GOOS, GOARCH) => `fx_${GOOS}_${GOARCH}` + (GOOS === 'windows' ? '.exe' : '')
 
+await $`go mod downloads`
+
 await Promise.all(
   goos.flatMap(GOOS =>
     goarch.map(GOARCH =>
