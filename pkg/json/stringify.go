@@ -6,28 +6,28 @@ import (
 )
 
 func Stringify(v interface{}) string {
-	switch v.(type) {
+	switch v := v.(type) {
 	case nil:
 		return "null"
 
 	case bool:
-		if v.(bool) {
+		if v {
 			return "true"
 		} else {
 			return "false"
 		}
 
 	case Number:
-		return v.(Number).String()
+		return v.String()
 
 	case string:
 		return fmt.Sprintf("%q", v)
 
 	case *Dict:
 		result := "{"
-		for i, key := range v.(*Dict).Keys {
-			line := fmt.Sprintf("%q", key) + ": " + Stringify(v.(*Dict).Values[key])
-			if i < len(v.(*Dict).Keys)-1 {
+		for i, key := range v.Keys {
+			line := fmt.Sprintf("%q", key) + ": " + Stringify(v.Values[key])
+			if i < len(v.Keys)-1 {
 				line += ","
 			}
 			result += line
@@ -36,9 +36,9 @@ func Stringify(v interface{}) string {
 
 	case Array:
 		result := "["
-		for i, value := range v.(Array) {
+		for i, value := range v {
 			line := Stringify(value)
-			if i < len(v.(Array))-1 {
+			if i < len(v)-1 {
 				line += ","
 			}
 			result += line
