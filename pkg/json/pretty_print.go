@@ -11,25 +11,25 @@ import (
 func PrettyPrint(v interface{}, level int, theme theme.Theme) string {
 	ident := strings.Repeat("  ", level)
 	subident := strings.Repeat("  ", level-1)
-	switch v.(type) {
+	switch v := v.(type) {
 	case nil:
 		return theme.Null("null")
 
 	case bool:
-		if v.(bool) {
+		if v {
 			return theme.Boolean("true")
 		} else {
 			return theme.Boolean("false")
 		}
 
 	case json.Number:
-		return theme.Number(v.(json.Number).String())
+		return theme.Number(v.String())
 
 	case string:
 		return theme.String(fmt.Sprintf("%q", v))
 
 	case *dict.Dict:
-		keys := v.(*dict.Dict).Keys
+		keys := v.Keys
 		if len(keys) == 0 {
 			return theme.Syntax("{}")
 		}
@@ -37,7 +37,7 @@ func PrettyPrint(v interface{}, level int, theme theme.Theme) string {
 		output += "\n"
 		for i, k := range keys {
 			key := theme.Key(i, len(keys))(fmt.Sprintf("%q", k))
-			value, _ := v.(*dict.Dict).Get(k)
+			value, _ := v.Get(k)
 			delim := theme.Syntax(": ")
 			line := ident + key + delim + PrettyPrint(value, level+1, theme)
 			if i < len(keys)-1 {
@@ -49,12 +49,12 @@ func PrettyPrint(v interface{}, level int, theme theme.Theme) string {
 		return output + subident + theme.Syntax("}")
 
 	case []interface{}:
-		slice := v.([]interface{})
+		slice := v
 		if len(slice) == 0 {
 			return theme.Syntax("[]")
 		}
 		output := theme.Syntax("[\n")
-		for i, value := range v.([]interface{}) {
+		for i, value := range v {
 			line := ident + PrettyPrint(value, level+1, theme)
 			if i < len(slice)-1 {
 				line += ",\n"
