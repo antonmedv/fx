@@ -5,7 +5,6 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 
@@ -13,11 +12,7 @@ import (
 	. "github.com/antonmedv/fx/pkg/theme"
 )
 
-func GenerateCode(args []string) string {
-	lang, ok := os.LookupEnv("FX_LANG")
-	if !ok {
-		lang = "node"
-	}
+func GenerateCode(lang string, args []string) string {
 	switch lang {
 	case "node":
 		return nodejs(args)
@@ -30,12 +25,13 @@ func GenerateCode(args []string) string {
 	}
 }
 
-func Reduce(object interface{}, args []string, theme Theme) {
-	var cmd *exec.Cmd
-	lang, ok := os.LookupEnv("FX_LANG")
-	if !ok {
-		lang = "node"
+func Reduce(object interface{}, lang string, args []string, theme Theme) int {
+	if len(args) == 0 {
+		echo(object, theme)
+		return 0
 	}
+
+	var cmd *exec.Cmd
 	switch lang {
 	case "node":
 		cmd = CreateNodejs(args)
@@ -49,23 +45,7 @@ func Reduce(object interface{}, args []string, theme Theme) {
 
 	cmd.Stdin = strings.NewReader(Stringify(object))
 	output, err := cmd.CombinedOutput()
-	if err == nil {
-		dec := json.NewDecoder(bytes.NewReader(output))
-		dec.UseNumber()
-		jsonObject, err := Parse(dec)
-		if err != nil {
-			fmt.Print(string(output))
-			return
-		}
-		if str, ok := jsonObject.(string); ok {
-			fmt.Println(str)
-		} else {
-			fmt.Println(PrettyPrint(jsonObject, 1, theme))
-		}
-		if dec.InputOffset() < int64(len(output)) {
-			fmt.Print(string(output[dec.InputOffset():]))
-		}
-	} else {
+	if err != nil {
 		exitCode := 1
 		status, ok := err.(*exec.ExitError)
 		if ok {
@@ -74,7 +54,28 @@ func Reduce(object interface{}, args []string, theme Theme) {
 			fmt.Println(err.Error())
 		}
 		fmt.Print(string(output))
-		os.Exit(exitCode)
+		return exitCode
+	}
+
+	dec := json.NewDecoder(bytes.NewReader(output))
+	dec.UseNumber()
+	jsonObject, err := Parse(dec)
+	if err != nil {
+		fmt.Print(string(output))
+		return 0
+	}
+	echo(jsonObject, theme)
+	if dec.InputOffset() < int64(len(output)) {
+		fmt.Print(string(output[dec.InputOffset():]))
+	}
+	return 0
+}
+
+func echo(object interface{}, theme Theme) {
+	if s, ok := object.(string); ok {
+		fmt.Println(s)
+	} else {
+		fmt.Println(PrettyPrint(object, 1, theme))
 	}
 }
 

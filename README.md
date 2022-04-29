@@ -8,8 +8,8 @@ _* Function eXecution_
 
 ## Features
 
-- Interactive viewer
 - Mouse support
+- Streaming support
 - Preserves key order
 - Preserves big numbers
 

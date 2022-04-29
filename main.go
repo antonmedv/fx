@@ -60,6 +60,7 @@ func main() {
 	var args []string
 	var dec *json.Decoder
 	if stdinIsTty {
+		// Nothing was piped, maybe file argument?
 		if len(os.Args) >= 2 {
 			filePath = os.Args[1]
 			f, err := os.Open(os.Args[1])
@@ -91,18 +92,26 @@ func main() {
 		os.Exit(1)
 	}
 
-	if len(args) > 0 || !stdoutIsTty {
-		if len(args) > 0 && args[0] == "--print-code" {
-			fmt.Print(GenerateCode(args[1:]))
-			return
-		}
-		Reduce(jsonObject, args, theme)
-		return
+	lang, ok := os.LookupEnv("FX_LANG")
+	if !ok {
+		lang = "node"
 	}
 
-	expand := map[string]bool{
-		"": true,
+	if dec.More() {
+		exitCode := stream(dec, jsonObject, lang, args, theme)
+		os.Exit(exitCode)
 	}
+
+	if len(args) > 0 || !stdoutIsTty {
+		if len(args) > 0 && args[0] == "--print-code" {
+			fmt.Print(GenerateCode(lang, args[1:]))
+			return
+		}
+		exitCode := Reduce(jsonObject, lang, args, theme)
+		os.Exit(exitCode)
+	}
+
+	expand := map[string]bool{"": true}
 	if array, ok := jsonObject.(Array); ok {
 		for i := range array {
 			expand[accessor("", i)] = true
