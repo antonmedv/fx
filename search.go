@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
+	"regexp"
+
 	. "github.com/antonmedv/fx/pkg/dict"
 	. "github.com/antonmedv/fx/pkg/json"
-	"regexp"
 )
 
 type searchResult struct {
@@ -87,6 +88,7 @@ func (m *model) remapSearchResult(object interface{}, path string, pos int, inde
 		return pos + len(s), id, current
 
 	case string:
+		// TODO: Wrap the string, save a line number according to current wrap or no wrap mode.
 		s := fmt.Sprintf("%q", object)
 		id, current = m.findRanges(valueRange, s, path, pos, indexes, id, current)
 		return pos + len(s), id, current
