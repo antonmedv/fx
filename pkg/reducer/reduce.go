@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
+	"strconv"
 	"strings"
 
+	. "github.com/antonmedv/fx/pkg/dict"
 	. "github.com/antonmedv/fx/pkg/json"
 	. "github.com/antonmedv/fx/pkg/theme"
 )
@@ -26,7 +28,38 @@ func GenerateCode(lang string, args []string) string {
 }
 
 func Reduce(object interface{}, lang string, args []string, theme Theme) int {
-	if len(args) == 0 {
+	path, ok := split(args)
+	if ok {
+		for _, get := range path {
+			switch get := get.(type) {
+			case string:
+				switch o := object.(type) {
+				case *Dict:
+					object = o.Values[get]
+				case string:
+					if get == "length" {
+						object = Number(strconv.Itoa(len([]rune(o))))
+					} else {
+						object = nil
+					}
+				case Array:
+					if get == "length" {
+						object = Number(strconv.Itoa(len(o)))
+					} else {
+						object = nil
+					}
+				default:
+					object = nil
+				}
+			case int:
+				switch o := object.(type) {
+				case Array:
+					object = o[get]
+				default:
+					object = nil
+				}
+			}
+		}
 		echo(object, theme)
 		return 0
 	}
