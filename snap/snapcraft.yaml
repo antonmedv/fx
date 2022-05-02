@@ -1,5 +1,5 @@
 name: fx
-version: 23.0.0
+version: 23.0.1
 summary: Terminal JSON viewer
 description: Terminal JSON viewer
 base: core18
