@@ -80,3 +80,13 @@ jobs:
           store_login: ${{ secrets.STORE_LOGIN }}
           snap: ${{ steps.build.outputs.snap }}
           release: stable
+
+  brew:
+    needs: [commit]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Bump formulae
+        uses: Homebrew/actions/bump-formulae@master
+        with:
+          token: ${{ secrets.MY_TOKEN }}
+          formulae: fx
