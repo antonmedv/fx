@@ -31,6 +31,7 @@ func GenerateCode(lang string, args []string) string {
 }
 
 func Reduce(input interface{}, lang string, args []string, theme Theme) int {
+	// TODO: Move to separate function.
 	path, ok := split(args)
 	if ok {
 		for _, get := range path {
@@ -67,6 +68,7 @@ func Reduce(input interface{}, lang string, args []string, theme Theme) int {
 		return 0
 	}
 
+	// TODO: Remove switch and this Reduce function.
 	var cmd *exec.Cmd
 	switch lang {
 	case "js":
@@ -76,6 +78,7 @@ func Reduce(input interface{}, lang string, args []string, theme Theme) int {
 			fmt.Println(err)
 			return 1
 		}
+		// TODO: Do not evaluate reduce function on every message in stream.
 		sum, ok := goja.AssertFunction(vm.Get("reduce"))
 		if !ok {
 			panic("Not a function")
