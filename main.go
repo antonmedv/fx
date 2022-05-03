@@ -405,6 +405,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.Type {
 		case tea.MouseLeft:
 			m.showCursor = true
+			if msg.Y >= m.height {
+				// Clicked on status bar or search input.
+				break
+			}
 			clickedPath, ok := m.lineNumberToPath[m.offset+msg.Y]
 			if ok {
 				if m.canBeExpanded[clickedPath] {
