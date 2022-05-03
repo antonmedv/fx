@@ -1,6 +1,4 @@
-<p align="center">
-    <img src="https://user-images.githubusercontent.com/141232/166411036-7ef15570-c50f-4639-ba73-458ec0968b00.gif" width="500" alt="fx preview">
-</p>
+<p align="center"><a href="https://fx.wtf"><img src="https://medv.io/assets/fx/fx-preview.gif" width="500" alt="fx preview"></a></p>
 
 _* Function eXecution_
 
