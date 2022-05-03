@@ -76,6 +76,7 @@ func Reduce(object interface{}, lang string, args []string, theme Theme) int {
 		panic("unknown lang")
 	}
 
+	// TODO: Reimplement stringify with io.Reader.
 	cmd.Stdin = strings.NewReader(Stringify(object))
 	output, err := cmd.CombinedOutput()
 	if err != nil {
