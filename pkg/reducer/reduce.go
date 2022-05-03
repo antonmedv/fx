@@ -12,10 +12,13 @@ import (
 	. "github.com/antonmedv/fx/pkg/dict"
 	. "github.com/antonmedv/fx/pkg/json"
 	. "github.com/antonmedv/fx/pkg/theme"
+	"github.com/dop251/goja"
 )
 
 func GenerateCode(lang string, args []string) string {
 	switch lang {
+	case "js":
+		return js(args)
 	case "node":
 		return nodejs(args)
 	case "python", "python3":
@@ -27,45 +30,71 @@ func GenerateCode(lang string, args []string) string {
 	}
 }
 
-func Reduce(object interface{}, lang string, args []string, theme Theme) int {
+func Reduce(input interface{}, lang string, args []string, theme Theme) int {
 	path, ok := split(args)
 	if ok {
 		for _, get := range path {
 			switch get := get.(type) {
 			case string:
-				switch o := object.(type) {
+				switch o := input.(type) {
 				case *Dict:
-					object = o.Values[get]
+					input = o.Values[get]
 				case string:
 					if get == "length" {
-						object = Number(strconv.Itoa(len([]rune(o))))
+						input = Number(strconv.Itoa(len([]rune(o))))
 					} else {
-						object = nil
+						input = nil
 					}
 				case Array:
 					if get == "length" {
-						object = Number(strconv.Itoa(len(o)))
+						input = Number(strconv.Itoa(len(o)))
 					} else {
-						object = nil
+						input = nil
 					}
 				default:
-					object = nil
+					input = nil
 				}
 			case int:
-				switch o := object.(type) {
+				switch o := input.(type) {
 				case Array:
-					object = o[get]
+					input = o[get]
 				default:
-					object = nil
+					input = nil
 				}
 			}
 		}
-		echo(object, theme)
+		echo(input, theme)
 		return 0
 	}
 
 	var cmd *exec.Cmd
 	switch lang {
+	case "js":
+		vm := goja.New()
+		_, err := vm.RunString(js(args))
+		if err != nil {
+			fmt.Println(err)
+			return 1
+		}
+		sum, ok := goja.AssertFunction(vm.Get("reduce"))
+		if !ok {
+			panic("Not a function")
+		}
+		res, err := sum(goja.Undefined(), vm.ToValue(Stringify(input)))
+		if err != nil {
+			fmt.Println(err)
+			return 1
+		}
+		output := res.String()
+		dec := json.NewDecoder(strings.NewReader(output))
+		dec.UseNumber()
+		jsonObject, err := Parse(dec)
+		if err != nil {
+			fmt.Print(output)
+			return 0
+		}
+		echo(jsonObject, theme)
+		return 0
 	case "node":
 		cmd = CreateNodejs(args)
 	case "python", "python3":
@@ -77,7 +106,7 @@ func Reduce(object interface{}, lang string, args []string, theme Theme) int {
 	}
 
 	// TODO: Reimplement stringify with io.Reader.
-	cmd.Stdin = strings.NewReader(Stringify(object))
+	cmd.Stdin = strings.NewReader(Stringify(input))
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		exitCode := 1
@@ -103,30 +132,4 @@ func Reduce(object interface{}, lang string, args []string, theme Theme) int {
 		fmt.Print(string(output[dec.InputOffset():]))
 	}
 	return 0
-}
-
-func echo(object interface{}, theme Theme) {
-	if s, ok := object.(string); ok {
-		fmt.Println(s)
-	} else {
-		fmt.Println(PrettyPrint(object, 1, theme))
-	}
-}
-
-func trace(args []string, i int) (pre, post, pointer string) {
-	pre = strings.Join(args[:i], " ")
-	if len(pre) > 20 {
-		pre = "..." + pre[len(pre)-20:]
-	}
-	post = strings.Join(args[i+1:], " ")
-	if len(post) > 20 {
-		post = post[:20] + "..."
-	}
-	pointer = fmt.Sprintf(
-		"%v %v %v",
-		strings.Repeat(" ", len(pre)),
-		strings.Repeat("^", len(args[i])),
-		strings.Repeat(" ", len(post)),
-	)
-	return
 }

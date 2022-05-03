@@ -94,7 +94,7 @@ func main() {
 
 	lang, ok := os.LookupEnv("FX_LANG")
 	if !ok {
-		lang = "node"
+		lang = "js"
 	}
 
 	if dec.More() {
