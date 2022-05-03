@@ -1,7 +1,5 @@
 <p align="center">
-    <a href="https://asciinema.org/a/F7nHAFp0wbYSXvY29visvNy29">
-        <img src="docs/images/preview.png" width="506" alt="fx preview">
-    </a>
+    <img src="https://user-images.githubusercontent.com/141232/166411036-7ef15570-c50f-4639-ba73-458ec0968b00.gif" width="500" alt="fx preview">
 </p>
 
 _* Function eXecution_
