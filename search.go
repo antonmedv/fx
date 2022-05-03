@@ -208,10 +208,10 @@ func (m *model) jumpToSearchResult(at int) {
 	m.showCursor = false
 	m.searchResultsCursor = at % len(m.searchResults)
 	desiredPath := m.searchResults[m.searchResultsCursor].path
-	lineNumber, ok := m.pathToLineNumber[desiredPath]
+	_, ok := m.pathToLineNumber[desiredPath]
 	if ok {
 		m.cursor = m.pathToIndex[desiredPath]
-		m.SetOffset(lineNumber)
+		m.scrollDownToCursor()
 		m.render()
 	} else {
 		m.expandToPath(desiredPath)
