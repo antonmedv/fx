@@ -24,6 +24,9 @@ scoop install fx
 pacman -S fx
 ```
 ```bash
+pkg install fx
+```
+```bash
 go install github.com/antonmedv/fx@latest
 ```
 
