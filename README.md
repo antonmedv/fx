@@ -60,17 +60,14 @@ Write reducers in your favorite language: [JavaScript](doc/doc.md#reducers) (def
 [Python](doc/doc.md#python), or [Ruby](doc/doc.md#ruby).
 
 ```bash
-export FX_LANG=node
 fx data.json '.filter(x => x.startsWith("a"))'
 ```
 
 ```bash
-export FX_LANG=python
 fx data.json '[x["age"] + i for i in range(10)]'
 ```
 
 ```bash
-export FX_LANG=ruby
 fx data.json 'x.to_a.map {|x| x[1]}'
 ```
 
