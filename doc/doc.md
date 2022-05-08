@@ -96,7 +96,7 @@ Use any npm package by installing it globally. Create _.fxrc.js_ file in `$HOME`
 directory, and require any packages or define global functions. For example, 
 access all lodash methods without `_` prefix. 
 
-Put next line your _.fxrc.js_ file:
+Put next line into your _.fxrc.js_ file:
 
 ```js
 Object.assign(global, require('lodash/fp'))
