@@ -56,8 +56,8 @@ curl ... | fx .
 
 ### Reducers
 
-Write reducers in your favorite language: [JavaScript](docs/reducers.md#node) (default),
-[Python](docs/reducers.md#python), or [Ruby](docs/reducers.md#ruby).
+Write reducers in your favorite language: [JavaScript](doc/doc.md#reducers) (default),
+[Python](doc/doc.md#python), or [Ruby](doc/doc.md#ruby).
 
 ```bash
 export FX_LANG=node
@@ -76,7 +76,7 @@ fx data.json 'x.to_a.map {|x| x[1]}'
 
 ## Documentation
 
-See full [documentation](https://github.com/antonmedv/fx/blob/master/DOCS.md).
+See full [documentation](doc/doc.md).
 
 ## Themes
 
@@ -87,8 +87,8 @@ to `9`:
 export FX_THEME=9
 ```
 
-<img width="1214" alt="themes" src="docs/images/themes.png">
+<img width="1214" alt="themes" src="doc/images/themes.png">
 
 ## License
 
-[MIT](https://github.com/antonmedv/fx/blob/master/LICENSE)
+[MIT](LICENSE)
