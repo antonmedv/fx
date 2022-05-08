@@ -92,12 +92,9 @@ ANTON
 export FX_LANG=node
 ```
 
-### NPM Packages
-
 Use any npm package by installing it globally. Create _.fxrc.js_ file in `$HOME` 
-directory, and require any packages or define global functions.
-
-For example, access all lodash methods without `_` prefix. 
+directory, and require any packages or define global functions. For example, 
+access all lodash methods without `_` prefix. 
 
 Put next line your _.fxrc.js_ file:
 
@@ -120,13 +117,15 @@ curl 'https://api.github.com/repos/facebook/react/commits?per_page=100' \
 The _.fxrc.js_ file supports both: import and require.
 
 ```js
+// .fxrc.js
 import 'zx/globals'
 const _ = require('lodash')
 ```
 
-> With you want to use _.fxrc.js_ for both `FX_LANG=js` and `FX_LANG=node`,
+> If you want to use _.fxrc.js_ for both `FX_LANG=js` and `FX_LANG=node`,
 > separate parts by `// nodejs:` comment:
 > ```js
+> // .fxrc.js
 > function upper(s) {
 >   return s.toUpperCase()
 > }
