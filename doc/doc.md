@@ -1,7 +1,8 @@
 # Documentation
 
-`fx` can work in two modes: as reducer or interactive. 
-To start interactive mode pipe any JSON into `fx`:
+The **fx** can work in two modes: as a reducer or an interactive viewer.
+
+To start the interactive mode pipe a JSON into **fx**:
 
 ```sh
 $ curl ... | fx
@@ -15,19 +16,19 @@ $ fx data.json
 
 ## Reducers
 
-If any additional arguments was passed, fx converts it to a function which takes
-JSON as argument named `x`.
+If any additional arguments was passed, **fx** converts it to a function which 
+takes the JSON as an argument named `x`.
 
-By default, fx uses builtin JavaScript VM ([goja](https://github.com/dop251/goja)), 
-but fx also can be used with [node](#node), [python](#python), or [ruby](#ruby).
+By default, **fx** uses builtin JavaScript VM ([goja](https://github.com/dop251/goja)), 
+but **fx** also can be used with [node](#node), [python](#python), or [ruby](#ruby).
 
 ### JavaScript
 
 ```sh
-FX_LANG=js
+export FX_LANG=js
 ```
 
-An example of anonymous function used as reducer:
+An example of anonymous function used as a reducer:
 ```sh
 $ echo '{"foo": [{"bar": "value"}]}' | fx 'x => x.foo[0].bar'
 value
@@ -56,6 +57,8 @@ $ echo '{"name": "fx", "count": 0}' | fx '{...this, count: 1}'
   "count": 1
 }
 ```
+
+Get the list 
 
 ### Dot
 
@@ -86,10 +89,10 @@ ANTON
 ### Node
 
 ```sh
-FX_LANG=node
+export FX_LANG=node
 ```
 
-### Npm packages
+### NPM Packages
 
 Use any npm package by installing it globally. Create _.fxrc.js_ file in `$HOME` 
 directory, and require any packages or define global functions.
@@ -135,11 +138,11 @@ const _ = require('lodash')
 ### Python
 
 ```sh
-FX_LANG=python
+export FX_LANG=python
 ```
 Or 
 ```sh
-FX_LANG=python3
+export FX_LANG=python3
 ```
 
 Example:
@@ -151,7 +154,7 @@ fx data.json '[x["age"] + i for i in range(10)]'
 ### Ruby
 
 ```sh
-FX_LANG=ruby
+export FX_LANG=ruby
 ```
 
 Example:
@@ -162,7 +165,7 @@ fx data.json 'x.to_a.map {|x| x[1]}'
 
 ## Streaming mode
 
-`fx` supports line-delimited JSON streaming and concatenated JSON streaming.
+The **fx** supports line-delimited JSON streaming and concatenated JSON streaming.
 
 ```sh
 $ kubectl logs ... | fx .message
