@@ -8,7 +8,6 @@ import (
 	"path"
 	"runtime/pprof"
 	"strings"
-	"time"
 
 	. "github.com/antonmedv/fx/pkg/dict"
 	. "github.com/antonmedv/fx/pkg/json"
@@ -22,12 +21,28 @@ import (
 	"github.com/muesli/termenv"
 )
 
+var (
+	flagVersion   bool
+	flagPrintCode bool
+)
+
 func main() {
-	if len(os.Args) == 2 && (os.Args[1] == "-v" || os.Args[1] == "-V" || os.Args[1] == "--version") {
+	var args []string
+	for _, arg := range os.Args[1:] {
+		switch arg {
+		case "-v", "-V", "--version":
+			flagVersion = true
+		case "--print-code":
+			flagPrintCode = true
+		default:
+			args = append(args, arg)
+		}
+
+	}
+	if flagVersion && len(args) == 0 {
 		fmt.Println(version)
 		return
 	}
-
 	cpuProfile := os.Getenv("CPU_PROFILE")
 	if cpuProfile != "" {
 		f, err := os.Create(cpuProfile)
@@ -39,7 +54,6 @@ func main() {
 			panic(err)
 		}
 	}
-
 	themeId, ok := os.LookupEnv("FX_THEME")
 	if !ok {
 		themeId = "1"
@@ -51,19 +65,16 @@ func main() {
 	if termenv.ColorProfile() == termenv.Ascii {
 		theme = Themes["0"]
 	}
-
 	stdinIsTty := isatty.IsTerminal(os.Stdin.Fd())
 	stdoutIsTty := isatty.IsTerminal(os.Stdout.Fd())
-
 	filePath := ""
 	fileName := ""
-	var args []string
 	var dec *json.Decoder
 	if stdinIsTty {
 		// Nothing was piped, maybe file argument?
-		if len(os.Args) >= 2 {
-			filePath = os.Args[1]
-			f, err := os.Open(os.Args[1])
+		if len(args) >= 1 {
+			filePath = args[0]
+			f, err := os.Open(filePath)
 			if err != nil {
 				switch err.(type) {
 				case *fs.PathError:
@@ -75,11 +86,10 @@ func main() {
 			}
 			fileName = path.Base(filePath)
 			dec = json.NewDecoder(f)
-			args = os.Args[2:]
+			args = args[1:]
 		}
 	} else {
 		dec = json.NewDecoder(os.Stdin)
-		args = os.Args[1:]
 	}
 	if dec == nil {
 		fmt.Println(usage(DefaultKeyMap()))
@@ -91,26 +101,24 @@ func main() {
 		fmt.Println("JSON Parse Error:", err.Error())
 		os.Exit(1)
 	}
-
 	lang, ok := os.LookupEnv("FX_LANG")
 	if !ok {
 		lang = "js"
 	}
-
 	if dec.More() {
 		exitCode := stream(dec, jsonObject, lang, args, theme)
 		os.Exit(exitCode)
 	}
-
 	if len(args) > 0 || !stdoutIsTty {
-		if len(args) > 0 && args[0] == "--print-code" {
-			fmt.Print(GenerateCode(lang, args[1:]))
+		if len(args) > 0 && flagPrintCode {
+			fmt.Print(GenerateCode(lang, args))
 			return
 		}
 		exitCode := Reduce(jsonObject, lang, args, theme)
 		os.Exit(exitCode)
 	}
 
+	// Start interactive mode.
 	expand := map[string]bool{"": true}
 	if array, ok := jsonObject.(Array); ok {
 		for i := range array {
@@ -130,10 +138,8 @@ func main() {
 			canBeExpanded[it.Path] = len(it.Object.(Array)) > 0
 		}
 	})
-
 	input := textinput.New()
 	input.Prompt = ""
-
 	m := &model{
 		fileName:        fileName,
 		theme:           theme,
@@ -152,11 +158,6 @@ func main() {
 		searchInput:     input,
 	}
 	m.collectSiblings(m.json, "")
-
-	// TODO: delete after tea can reopen stdin.
-	// https://github.com/charmbracelet/bubbletea/issues/302
-	time.Sleep(100 * time.Millisecond)
-
 	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
 	if err := p.Start(); err != nil {
 		panic(err)

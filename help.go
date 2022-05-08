@@ -2,36 +2,40 @@ package main
 
 import (
 	"fmt"
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/lipgloss"
 	"reflect"
 	"strings"
+
+	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/lipgloss"
 )
 
 func usage(keyMap KeyMap) string {
 	title := lipgloss.NewStyle().Bold(true)
-	return fmt.Sprintf(`fx - terminal JSON viewer
+	pad := lipgloss.NewStyle().PaddingLeft(4)
+	return fmt.Sprintf(`
+  %v
+    Terminal JSON viewer
 
-%v  
-  fx data.json
-  fx data.json .field
-  curl ... | fx
+  %v
+    fx data.json
+    fx data.json .field
+    curl ... | fx
 
-%v
+  %v
+    -v, --version       print version
+    --print-code        print code of the reducer
+
+  %v
 %v
 
-%v
-  [https://fx.wtf]
+  %v
+    [https://fx.wtf]
 `,
+		title.Render("fx "+version),
 		title.Render("Usage"),
+		title.Render("Flags"),
 		title.Render("Key Bindings"),
-		strings.Join(
-			keyMapInfo(
-				keyMap,
-				lipgloss.NewStyle().PaddingLeft(2),
-			),
-			"\n",
-		),
+		strings.Join(keyMapInfo(keyMap, pad), "\n"),
 		title.Render("More info"),
 	)
 }
