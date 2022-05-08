@@ -197,10 +197,10 @@ not to do it. This can be done by holding special keys while selecting:
 
 ## Configs
 
-Next configs available for fx via environment variables.
+Next configs available for **fx** via environment variables.
 
-| Name           | Values                                    | Description                                           |
-|----------------|-------------------------------------------|-------------------------------------------------------|
-| `FX_LANG`      | `js`, `node`, `python`, `python3`, `ruby` | Reducer type.                                         |
-| `FX_THEME`     | `0..9`                                    | Color theme.                                          |
-| `FX_SHOW_SIZE` | `true` or `false`                         | Show size of arrays and object in collapsed previews. |
+| Name           | Values                                              | Description                                           |
+|----------------|-----------------------------------------------------|-------------------------------------------------------|
+| `FX_LANG`      | `js` (default), `node`, `python`, `python3`, `ruby` | Reducer type.                                         |
+| `FX_THEME`     | `0` for disable colors, `1` (default), `2..9`       | Color theme.                                          |
+| `FX_SHOW_SIZE` | `true` or `false` (default)                         | Show size of arrays and object in collapsed previews. |
