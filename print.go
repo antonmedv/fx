@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
+	"strings"
+
 	. "github.com/antonmedv/fx/pkg/dict"
 	. "github.com/antonmedv/fx/pkg/json"
 	"github.com/antonmedv/fx/pkg/theme"
-	"strings"
 )
 
 func (m *model) connect(path string, lineNumber int) {
@@ -117,46 +118,61 @@ func (m *model) preview(v interface{}, path string, selectableValues bool) strin
 	if selectableValues && m.cursorPath() == path {
 		previewStyle = m.theme.Cursor
 	}
-	printValue := func(value interface{}) string {
-		switch value.(type) {
+	printValue := func(v interface{}) string {
+		switch v := v.(type) {
 		case nil, bool, Number:
-			return previewStyle(fmt.Sprintf("%v", value))
+			return previewStyle(fmt.Sprintf("%v", v))
 		case string:
-			return previewStyle(fmt.Sprintf("%q", value))
+			return previewStyle(fmt.Sprintf("%q", v))
 		case *Dict:
-			return previewStyle("{\u2026}")
+			if m.showSize {
+				return previewStyle(toLowerNumber(fmt.Sprintf("{\u2026%v\u2026}", len(v.Keys))))
+			} else {
+				return previewStyle("{\u2026}")
+			}
 		case Array:
-			return previewStyle("[\u2026]")
+			if m.showSize {
+				return previewStyle(toLowerNumber(fmt.Sprintf("[\u2026%v\u2026]", len(v))))
+			} else {
+				return previewStyle("[\u2026]")
+			}
 		}
 		return "..."
 	}
 
-	switch v.(type) {
+	switch v := v.(type) {
 	case *Dict:
 		output := m.printOpenBracket("{", searchResult, path, selectableValues)
-		keys := v.(*Dict).Keys
+		keys := v.Keys
 		for _, k := range keys {
 			key := fmt.Sprintf("%q", k)
 			output += previewStyle(key + ": ")
-			value, _ := v.(*Dict).Get(k)
+			value, _ := v.Get(k)
 			output += printValue(value)
 			break
 		}
 		if len(keys) > 1 {
-			output += previewStyle(", \u2026")
+			if m.showSize {
+				output += previewStyle(toLowerNumber(fmt.Sprintf(", \u2026%v\u2026", len(v.Keys)-1)))
+			} else {
+				output += previewStyle(", \u2026")
+			}
 		}
 		output += m.printCloseBracket("}", searchResult, path, selectableValues)
 		return output
 
 	case Array:
 		output := m.printOpenBracket("[", searchResult, path, selectableValues)
-		slice := v.(Array)
-		for _, value := range slice {
+		for _, value := range v {
 			output += printValue(value)
 			break
 		}
-		if len(slice) > 1 {
-			output += previewStyle(", \u2026")
+		if len(v) > 1 {
+			if m.showSize {
+				output += previewStyle(toLowerNumber(fmt.Sprintf(", \u2026%v\u2026", len(v)-1)))
+			} else {
+				output += previewStyle(", \u2026")
+			}
 		}
 		output += m.printCloseBracket("]", searchResult, path, selectableValues)
 		return output
