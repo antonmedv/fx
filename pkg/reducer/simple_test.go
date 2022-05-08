@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_split(t *testing.T) {
+func Test_splitPath(t *testing.T) {
 	tests := []struct {
 		args []string
 		want []interface{}
@@ -83,14 +83,14 @@ func Test_split(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(strings.Join(tt.args, " "), func(t *testing.T) {
-			path, ok := split(tt.args)
+			path, ok := splitPath(tt.args)
 			require.Equal(t, tt.want, path)
 			require.True(t, ok)
 		})
 	}
 }
 
-func Test_split_negative(t *testing.T) {
+func Test_splitPath_negative(t *testing.T) {
 	tests := []struct {
 		args []string
 	}{
@@ -130,7 +130,7 @@ func Test_split_negative(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(strings.Join(tt.args, " "), func(t *testing.T) {
-			path, ok := split(tt.args)
+			path, ok := splitPath(tt.args)
 			require.False(t, ok, path)
 		})
 	}

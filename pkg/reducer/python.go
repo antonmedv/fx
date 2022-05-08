@@ -11,7 +11,7 @@ func CreatePython(bin string, args []string) *exec.Cmd {
 	return cmd
 }
 
-//go:embed reduce.py
+//go:embed python.py
 var templatePython string
 
 func python(args []string) string {

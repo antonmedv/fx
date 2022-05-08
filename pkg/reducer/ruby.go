@@ -11,7 +11,7 @@ func CreateRuby(args []string) *exec.Cmd {
 	return cmd
 }
 
-//go:embed reduce.rb
+//go:embed ruby.rb
 var templateRuby string
 
 func ruby(args []string) string {

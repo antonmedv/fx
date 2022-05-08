@@ -39,7 +39,7 @@ func main() {
 		}
 
 	}
-	if flagVersion && len(args) == 0 {
+	if flagVersion {
 		fmt.Println(version)
 		return
 	}
@@ -96,7 +96,7 @@ func main() {
 		os.Exit(1)
 	}
 	dec.UseNumber()
-	jsonObject, err := Parse(dec)
+	object, err := Parse(dec)
 	if err != nil {
 		fmt.Println("JSON Parse Error:", err.Error())
 		os.Exit(1)
@@ -105,22 +105,43 @@ func main() {
 	if !ok {
 		lang = "js"
 	}
+	var fxrc string
+	if lang == "js" || lang == "node" {
+		home, err := os.UserHomeDir()
+		if err == nil {
+			b, err := os.ReadFile(path.Join(home, ".fxrc.js"))
+			if err == nil {
+				fxrc = "\n" + string(b)
+				if lang == "js" {
+					parts := strings.SplitN(fxrc, "// nodejs:", 2)
+					fxrc = parts[0]
+				}
+			}
+		}
+	}
 	if dec.More() {
-		exitCode := stream(dec, jsonObject, lang, args, theme)
-		os.Exit(exitCode)
+		os.Exit(stream(dec, object, lang, args, theme, fxrc))
 	}
 	if len(args) > 0 || !stdoutIsTty {
 		if len(args) > 0 && flagPrintCode {
-			fmt.Print(GenerateCode(lang, args))
+			fmt.Print(GenerateCode(lang, args, fxrc))
 			return
 		}
-		exitCode := Reduce(jsonObject, lang, args, theme)
-		os.Exit(exitCode)
+		if lang == "js" {
+			vm, fn, err := CreateJS(args, fxrc)
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+			os.Exit(ReduceJS(vm, fn, object, theme))
+		} else {
+			os.Exit(Reduce(object, lang, args, theme, fxrc))
+		}
 	}
 
 	// Start interactive mode.
 	expand := map[string]bool{"": true}
-	if array, ok := jsonObject.(Array); ok {
+	if array, ok := object.(Array); ok {
 		for i := range array {
 			expand[accessor("", i)] = true
 		}
@@ -128,7 +149,7 @@ func main() {
 	parents := map[string]string{}
 	children := map[string][]string{}
 	canBeExpanded := map[string]bool{}
-	Dfs(jsonObject, func(it Iterator) {
+	Dfs(object, func(it Iterator) {
 		parents[it.Path] = it.Parent
 		children[it.Parent] = append(children[it.Parent], it.Path)
 		switch it.Object.(type) {
@@ -143,7 +164,7 @@ func main() {
 	m := &model{
 		fileName:        fileName,
 		theme:           theme,
-		json:            jsonObject,
+		json:            object,
 		width:           80,
 		height:          60,
 		mouseWheelDelta: 3,

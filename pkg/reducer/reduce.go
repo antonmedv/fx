@@ -6,21 +6,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
-	"strconv"
 	"strings"
 
-	. "github.com/antonmedv/fx/pkg/dict"
 	. "github.com/antonmedv/fx/pkg/json"
 	. "github.com/antonmedv/fx/pkg/theme"
-	"github.com/dop251/goja"
 )
 
-func GenerateCode(lang string, args []string) string {
+func GenerateCode(lang string, args []string, fxrc string) string {
 	switch lang {
 	case "js":
-		return js(args)
+		return js(args, fxrc)
 	case "node":
-		return nodejs(args)
+		return nodejs(args, fxrc)
 	case "python", "python3":
 		return python(args)
 	case "ruby":
@@ -30,76 +27,17 @@ func GenerateCode(lang string, args []string) string {
 	}
 }
 
-func Reduce(input interface{}, lang string, args []string, theme Theme) int {
-	// TODO: Move to separate function.
-	path, ok := split(args)
+func Reduce(input interface{}, lang string, args []string, theme Theme, fxrc string) int {
+	path, ok := splitPath(args)
 	if ok {
-		for _, get := range path {
-			switch get := get.(type) {
-			case string:
-				switch o := input.(type) {
-				case *Dict:
-					input = o.Values[get]
-				case string:
-					if get == "length" {
-						input = Number(strconv.Itoa(len([]rune(o))))
-					} else {
-						input = nil
-					}
-				case Array:
-					if get == "length" {
-						input = Number(strconv.Itoa(len(o)))
-					} else {
-						input = nil
-					}
-				default:
-					input = nil
-				}
-			case int:
-				switch o := input.(type) {
-				case Array:
-					input = o[get]
-				default:
-					input = nil
-				}
-			}
-		}
-		echo(input, theme)
+		output := getByPath(input, path)
+		echo(output, theme)
 		return 0
 	}
-
-	// TODO: Remove switch and this Reduce function.
 	var cmd *exec.Cmd
 	switch lang {
-	case "js":
-		vm := goja.New()
-		_, err := vm.RunString(js(args))
-		if err != nil {
-			fmt.Println(err)
-			return 1
-		}
-		// TODO: Do not evaluate reduce function on every message in stream.
-		sum, ok := goja.AssertFunction(vm.Get("reduce"))
-		if !ok {
-			panic("Not a function")
-		}
-		res, err := sum(goja.Undefined(), vm.ToValue(Stringify(input)))
-		if err != nil {
-			fmt.Println(err)
-			return 1
-		}
-		output := res.String()
-		dec := json.NewDecoder(strings.NewReader(output))
-		dec.UseNumber()
-		jsonObject, err := Parse(dec)
-		if err != nil {
-			fmt.Print(output)
-			return 0
-		}
-		echo(jsonObject, theme)
-		return 0
 	case "node":
-		cmd = CreateNodejs(args)
+		cmd = CreateNodejs(args, fxrc)
 	case "python", "python3":
 		cmd = CreatePython(lang, args)
 	case "ruby":
@@ -125,12 +63,12 @@ func Reduce(input interface{}, lang string, args []string, theme Theme) int {
 
 	dec := json.NewDecoder(bytes.NewReader(output))
 	dec.UseNumber()
-	jsonObject, err := Parse(dec)
+	object, err := Parse(dec)
 	if err != nil {
 		fmt.Print(string(output))
 		return 0
 	}
-	echo(jsonObject, theme)
+	echo(object, theme)
 	if dec.InputOffset() < int64(len(output)) {
 		fmt.Print(string(output[dec.InputOffset():]))
 	}

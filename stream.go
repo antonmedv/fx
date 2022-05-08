@@ -8,15 +8,29 @@ import (
 	. "github.com/antonmedv/fx/pkg/json"
 	. "github.com/antonmedv/fx/pkg/reducer"
 	. "github.com/antonmedv/fx/pkg/theme"
+	"github.com/dop251/goja"
 )
 
-func stream(dec *json.Decoder, jsonObject interface{}, lang string, args []string, theme Theme) int {
+func stream(dec *json.Decoder, object interface{}, lang string, args []string, theme Theme, fxrc string) int {
+	var vm *goja.Runtime
+	var fn goja.Callable
 	var err error
-	for {
-		if jsonObject != nil {
-			Reduce(jsonObject, lang, args, theme)
+	if lang == "js" {
+		vm, fn, err = CreateJS(args, fxrc)
+		if err != nil {
+			fmt.Println(err)
+			return 1
 		}
-		jsonObject, err = Parse(dec)
+	}
+	for {
+		if object != nil {
+			if lang == "js" {
+				ReduceJS(vm, fn, object, theme)
+			} else {
+				Reduce(object, lang, args, theme, fxrc)
+			}
+		}
+		object, err = Parse(dec)
 		if err == io.EOF {
 			return 0
 		}

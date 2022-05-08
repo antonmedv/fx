@@ -3,6 +3,9 @@ package reducer
 import (
 	"strconv"
 	"unicode"
+
+	. "github.com/antonmedv/fx/pkg/dict"
+	. "github.com/antonmedv/fx/pkg/json"
 )
 
 type state int
@@ -21,7 +24,7 @@ const (
 	singleQuoteEscape
 )
 
-func split(args []string) ([]interface{}, bool) {
+func splitPath(args []string) ([]interface{}, bool) {
 	path := make([]interface{}, 0)
 	for _, arg := range args {
 		s := ""
@@ -175,4 +178,38 @@ func split(args []string) ([]interface{}, bool) {
 
 func isProp(ch rune) bool {
 	return unicode.IsLetter(ch) || unicode.IsDigit(ch) || ch == '_' || ch == '$'
+}
+
+func getByPath(object interface{}, path []interface{}) interface{} {
+	for _, get := range path {
+		switch get := get.(type) {
+		case string:
+			switch o := object.(type) {
+			case *Dict:
+				object = o.Values[get]
+			case string:
+				if get == "length" {
+					object = Number(strconv.Itoa(len([]rune(o))))
+				} else {
+					object = nil
+				}
+			case Array:
+				if get == "length" {
+					object = Number(strconv.Itoa(len(o)))
+				} else {
+					object = nil
+				}
+			default:
+				object = nil
+			}
+		case int:
+			switch o := object.(type) {
+			case Array:
+				object = o[get]
+			default:
+				object = nil
+			}
+		}
+	}
+	return object
 }

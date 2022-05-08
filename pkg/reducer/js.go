@@ -2,11 +2,19 @@ package reducer
 
 import (
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"strings"
+
+	. "github.com/antonmedv/fx/pkg/json"
+	. "github.com/antonmedv/fx/pkg/theme"
+	"github.com/dop251/goja"
 )
 
-func js(args []string) string {
+//go:embed js.js
+var templateJs string
+
+func js(args []string, fxrc string) string {
 	rs := "\n"
 	for i, a := range args {
 		rs += "  try {"
@@ -62,16 +70,36 @@ func js(args []string) string {
 		rs += "  }\n"
 	}
 
-	fn := `function reduce(input) {
-  let x = JSON.parse(input)
-
-  // Reducers %v
-  if (typeof x === 'undefined') {
-    return 'null'
-  } else {
-    return JSON.stringify(x)
-  }
+	return fmt.Sprintf(templateJs, fxrc, rs)
 }
-`
-	return fmt.Sprintf(fn, rs)
+
+func CreateJS(args []string, fxrc string) (*goja.Runtime, goja.Callable, error) {
+	vm := goja.New()
+	_, err := vm.RunString(js(args, fxrc))
+	if err != nil {
+		return nil, nil, err
+	}
+	fn, ok := goja.AssertFunction(vm.Get("reduce"))
+	if !ok {
+		panic("Not a function")
+	}
+	return vm, fn, nil
+}
+
+func ReduceJS(vm *goja.Runtime, reduce goja.Callable, input interface{}, theme Theme) int {
+	value, err := reduce(goja.Undefined(), vm.ToValue(Stringify(input)))
+	if err != nil {
+		fmt.Println(err)
+		return 1
+	}
+	output := value.String()
+	dec := json.NewDecoder(strings.NewReader(output))
+	dec.UseNumber()
+	object, err := Parse(dec)
+	if err != nil {
+		fmt.Print(output)
+		return 0
+	}
+	echo(object, theme)
+	return 0
 }

@@ -9,8 +9,8 @@ import (
 	"strings"
 )
 
-func CreateNodejs(args []string) *exec.Cmd {
-	cmd := exec.Command("node", "--input-type=module", "-e", nodejs(args))
+func CreateNodejs(args []string, fxrc string) *exec.Cmd {
+	cmd := exec.Command("node", "--input-type=module", "-e", nodejs(args, fxrc))
 	nodePath, exist := os.LookupEnv("NODE_PATH")
 	if exist {
 		cmd.Dir = path.Dir(nodePath)
@@ -24,10 +24,10 @@ func CreateNodejs(args []string) *exec.Cmd {
 	return cmd
 }
 
-//go:embed reduce.js
-var templateJs string
+//go:embed node.js
+var templateNode string
 
-func nodejs(args []string) string {
+func nodejs(args []string, fxrc string) string {
 	rs := "\n"
 	for i, a := range args {
 		rs += "  try {"
@@ -86,13 +86,5 @@ func nodejs(args []string) string {
 		rs += "  }\n"
 	}
 
-	fxrc := ""
-	home, err := os.UserHomeDir()
-	if err == nil {
-		b, err := os.ReadFile(path.Join(home, ".fxrc.js"))
-		if err == nil {
-			fxrc = "\n" + string(b)
-		}
-	}
-	return fmt.Sprintf(templateJs, fxrc, rs)
+	return fmt.Sprintf(templateNode, fxrc, rs)
 }
