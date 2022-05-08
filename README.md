@@ -89,6 +89,8 @@ export FX_THEME=9
 
 <img width="1214" alt="themes" src="doc/images/themes.png">
 
+Add your own themes in [theme.go](pkg/theme/theme.go) file.
+
 ## License
 
 [MIT](LICENSE)
