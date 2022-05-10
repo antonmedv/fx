@@ -56,8 +56,8 @@ curl ... | fx .
 
 ### Reducers
 
-Write reducers in your favorite language: [JavaScript](doc/doc.md#reducers) (default),
-[Python](doc/doc.md#python), or [Ruby](doc/doc.md#ruby).
+Write reducers in your favorite language: [JavaScript](doc/js.md) (default),
+[Python](doc/python.md), or [Ruby](doc/ruby.md).
 
 ```bash
 fx data.json '.filter(x => x.startsWith("a"))'
