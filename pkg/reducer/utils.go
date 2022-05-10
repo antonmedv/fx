@@ -9,7 +9,7 @@ import (
 	. "github.com/antonmedv/fx/pkg/theme"
 )
 
-func echo(object interface{}, theme Theme) {
+func Echo(object interface{}, theme Theme) {
 	if s, ok := object.(string); ok {
 		fmt.Println(s)
 	} else {

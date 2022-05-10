@@ -17,20 +17,12 @@ var templatePython string
 func python(args []string) string {
 	rs := "\n"
 	for i, a := range args {
-		rs += "try:"
-		switch {
-		case a == ".":
-			rs += `
-    x = x
-`
-
-		default:
-			rs += fmt.Sprintf(
-				`
+		rs += fmt.Sprintf(
+			`try:
     f = (lambda x: (%v))(x)
     x = f(x) if callable(f) else f
 `, a)
-		}
+
 		// Generate a beautiful error message.
 		rs += "except Exception as e:\n"
 		pre, post, pointer := trace(args, i)

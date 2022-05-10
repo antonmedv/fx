@@ -32,13 +32,6 @@ func nodejs(args []string, fxrc string) string {
 	for i, a := range args {
 		rs += "  try {"
 		switch {
-		case a == ".":
-			rs += `
-    x = function () 
-      { return this }
-    .call(x)
-`
-
 		case flatMapRegex.MatchString(a):
 			code := fold(strings.Split(a, "[]"))
 			rs += fmt.Sprintf(

@@ -135,6 +135,12 @@ func main() {
 			return
 		}
 		if lang == "js" {
+			simplePath, ok := SplitSimplePath(args)
+			if ok {
+				output := GetBySimplePath(object, simplePath)
+				Echo(output, theme)
+				os.Exit(0)
+			}
 			vm, fn, err := CreateJS(args, fxrc)
 			if err != nil {
 				fmt.Println(err)

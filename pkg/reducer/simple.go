@@ -24,7 +24,7 @@ const (
 	singleQuoteEscape
 )
 
-func splitPath(args []string) ([]interface{}, bool) {
+func SplitSimplePath(args []string) ([]interface{}, bool) {
 	path := make([]interface{}, 0)
 	for _, arg := range args {
 		s := ""
@@ -180,7 +180,7 @@ func isProp(ch rune) bool {
 	return unicode.IsLetter(ch) || unicode.IsDigit(ch) || ch == '_' || ch == '$'
 }
 
-func getByPath(object interface{}, path []interface{}) interface{} {
+func GetBySimplePath(object interface{}, path []interface{}) interface{} {
 	for _, get := range path {
 		switch get := get.(type) {
 		case string:

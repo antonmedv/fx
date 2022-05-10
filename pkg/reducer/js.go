@@ -19,13 +19,6 @@ func js(args []string, fxrc string) string {
 	for i, a := range args {
 		rs += "  try {"
 		switch {
-		case a == ".":
-			rs += `
-    x = function () 
-      { return this }
-    .call(x)
-`
-
 		case flatMapRegex.MatchString(a):
 			code := fold(strings.Split(a, "[]"))
 			rs += fmt.Sprintf(
@@ -100,6 +93,6 @@ func ReduceJS(vm *goja.Runtime, reduce goja.Callable, input interface{}, theme T
 		fmt.Print(output)
 		return 0
 	}
-	echo(object, theme)
+	Echo(object, theme)
 	return 0
 }

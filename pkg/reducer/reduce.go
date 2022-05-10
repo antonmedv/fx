@@ -28,10 +28,10 @@ func GenerateCode(lang string, args []string, fxrc string) string {
 }
 
 func Reduce(input interface{}, lang string, args []string, theme Theme, fxrc string) int {
-	path, ok := splitPath(args)
+	path, ok := SplitSimplePath(args)
 	if ok {
-		output := getByPath(input, path)
-		echo(output, theme)
+		output := GetBySimplePath(input, path)
+		Echo(output, theme)
 		return 0
 	}
 	var cmd *exec.Cmd
@@ -68,7 +68,7 @@ func Reduce(input interface{}, lang string, args []string, theme Theme, fxrc str
 		fmt.Print(string(output))
 		return 0
 	}
-	echo(object, theme)
+	Echo(object, theme)
 	if dec.InputOffset() < int64(len(output)) {
 		fmt.Print(string(output[dec.InputOffset():]))
 	}

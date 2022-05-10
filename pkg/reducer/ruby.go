@@ -17,19 +17,10 @@ var templateRuby string
 func ruby(args []string) string {
 	rs := "\n"
 	for i, a := range args {
-		rs += "begin"
-		switch {
-		case a == ".":
-			rs += `
-    x = x
-`
-
-		default:
-			rs += fmt.Sprintf(
-				`
+		rs += fmt.Sprintf(
+			`begin
     x = lambda {|x| %v }.call(x)
 `, a)
-		}
 		// Generate a beautiful error message.
 		rs += "rescue Exception => e\n"
 		pre, post, pointer := trace(args, i)
