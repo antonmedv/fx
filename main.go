@@ -22,6 +22,7 @@ import (
 )
 
 var (
+	flagHelp      bool
 	flagVersion   bool
 	flagPrintCode bool
 )
@@ -30,6 +31,8 @@ func main() {
 	var args []string
 	for _, arg := range os.Args[1:] {
 		switch arg {
+		case "-h", "--help":
+			flagHelp = true
 		case "-v", "-V", "--version":
 			flagVersion = true
 		case "--print-code":
@@ -38,6 +41,10 @@ func main() {
 			args = append(args, arg)
 		}
 
+	}
+	if flagHelp {
+		fmt.Println(usage(DefaultKeyMap()))
+		return
 	}
 	if flagVersion {
 		fmt.Println(version)

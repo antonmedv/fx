@@ -22,6 +22,7 @@ func usage(keyMap KeyMap) string {
     curl ... | fx
 
   %v
+    -h, --help          print help
     -v, --version       print version
     --print-code        print code of the reducer
 
