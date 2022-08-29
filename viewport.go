@@ -44,12 +44,50 @@ func (m *model) SetOffset(n int) {
 	m.offset = clamp(n, 0, m.maxYOffset())
 }
 
+func (m *model) moveCursor(plus int) {
+	path := m.paths[m.cursor]
+	lineNo, ok := m.pathToLineNumber[path]
+	if !ok {
+		return
+	}
+	lineNo += plus
+	if lineNo < 0 {
+		lineNo = 0
+	} else if lineNo > len(m.lines)-3 {
+		lineNo = m.height - 1
+	}
+
+	setNewCursor := func(startLineNo int, direction int) {
+		count := m.height / 2
+		for i := 0; i < count; i++ {
+			lineNo := startLineNo + i*direction
+			path, ok := m.lineNumberToPath[lineNo]
+			if ok {
+				cursor, ok := m.pathToIndex[path]
+				if ok {
+					m.cursor = cursor
+					m.showCursor = true
+					return
+				}
+			}
+		}
+	}
+
+	if lineNo <= m.offset+m.height/2 {
+		setNewCursor(lineNo, 1)
+	} else {
+		setNewCursor(lineNo, -1)
+	}
+}
+
 func (m *model) ViewDown() {
 	if m.AtBottom() {
 		return
 	}
 
 	m.SetOffset(m.offset + m.height)
+	m.moveCursor(m.height)
+	m.render()
 }
 
 func (m *model) ViewUp() {
@@ -58,6 +96,8 @@ func (m *model) ViewUp() {
 	}
 
 	m.SetOffset(m.offset - m.height)
+	m.moveCursor(-m.height)
+	m.render()
 }
 
 func (m *model) HalfViewDown() {
