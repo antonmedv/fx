@@ -169,7 +169,7 @@ func (m *model) preview(v interface{}, path string, selectableValues bool) strin
 		}
 		if len(v) > 1 {
 			if m.showSize {
-				output += previewStyle(toLowerNumber(fmt.Sprintf(", \u2026%v\u2026", len(v)-1)))
+				output += previewStyle(toLowerNumber(fmt.Sprintf(", \u2026%v\u2026", len(v))))
 			} else {
 				output += previewStyle(", \u2026")
 			}
