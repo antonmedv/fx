@@ -10,11 +10,7 @@ import (
 )
 
 func Echo(object interface{}, theme Theme) {
-	if s, ok := object.(string); ok {
-		fmt.Println(s)
-	} else {
-		fmt.Println(PrettyPrint(object, 1, theme))
-	}
+	fmt.Println(PrettyPrint(object, 1, theme))
 }
 
 func trace(args []string, i int) (pre, post, pointer string) {

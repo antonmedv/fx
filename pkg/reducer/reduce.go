@@ -46,31 +46,43 @@ func Reduce(input interface{}, lang string, args []string, theme Theme, fxrc str
 		panic("unknown lang")
 	}
 
+	var stdout, stderr bytes.Buffer
+
 	// TODO: Reimplement stringify with io.Reader.
 	cmd.Stdin = strings.NewReader(Stringify(input))
-	output, err := cmd.CombinedOutput()
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
 	if err != nil {
 		exitCode := 1
 		status, ok := err.(*exec.ExitError)
 		if ok {
 			exitCode = status.ExitCode()
-		} else {
-			fmt.Println(err.Error())
 		}
-		fmt.Print(string(output))
+		fmt.Print(string(stderr.Bytes()))
 		return exitCode
 	}
 
-	dec := json.NewDecoder(bytes.NewReader(output))
-	dec.UseNumber()
-	object, err := Parse(dec)
-	if err != nil {
-		fmt.Print(string(output))
-		return 0
+	output := stdout.Bytes()
+
+	lastLineIdx := bytes.LastIndexByte(output, byte('\n'))
+	customOutput := output[:lastLineIdx]
+	objectOutput := output[lastLineIdx+1:]
+
+	fmt.Print(string(customOutput))
+
+	if len(objectOutput) > 0 {
+		dec := json.NewDecoder(bytes.NewReader(objectOutput))
+		dec.UseNumber()
+
+		object, err := Parse(dec)
+		if err != nil {
+			fmt.Println(string(objectOutput))
+		} else {
+			Echo(object, theme)
+		}
 	}
-	Echo(object, theme)
-	if dec.InputOffset() < int64(len(output)) {
-		fmt.Print(string(output[dec.InputOffset():]))
-	}
+
 	return 0
 }

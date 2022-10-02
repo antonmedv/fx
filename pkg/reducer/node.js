@@ -20,8 +20,12 @@ void async function () {
 
   // Reducers %v
 
+  // Adding a line break to easily differentiate the reduced object in the output.
+  // No matter what reducers write to stdout, the reduced object will always be on the last line.
+  process.stdout.write('\n')
+
   if (typeof x === 'undefined') {
-    process.stderr.write('undefined')
+    process.stderr.write('Reducer returned undefined')
   } else {
     process.stdout.write(JSON.stringify(x))
   }

@@ -2,6 +2,7 @@ package json
 
 import (
 	"encoding/json"
+
 	. "github.com/antonmedv/fx/pkg/dict"
 )
 
