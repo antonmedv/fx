@@ -59,6 +59,8 @@ func Reduce(input interface{}, lang string, args []string, theme Theme, fxrc str
 		status, ok := err.(*exec.ExitError)
 		if ok {
 			exitCode = status.ExitCode()
+		} else {
+			fmt.Println(err.Error())
 		}
 		fmt.Print(string(stderr.Bytes()))
 		return exitCode
