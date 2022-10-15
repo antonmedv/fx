@@ -72,10 +72,21 @@ func main() {
 	if termenv.ColorProfile() == termenv.Ascii {
 		theme = Themes["0"]
 	}
-	var showSize bool
+    var showSizeT int = 0
 	if s, ok := os.LookupEnv("FX_SHOW_SIZE"); ok {
-		if s == "true" {
-			showSize = true
+        switch s {
+        case "subscript":
+            showSizeT = 2
+        case "mono":
+            showSizeT = 3
+        case "bold":
+            showSizeT = 4
+        case "sans":
+            showSizeT = 5
+        case "doublestruck":
+            showSizeT = 6
+        default:
+            showSizeT = 1
 		}
 	}
 
@@ -185,7 +196,7 @@ func main() {
 		fileName:        fileName,
 		theme:           theme,
 		json:            object,
-		showSize:        showSize,
+		showSize:        showSizeT,
 		width:           80,
 		height:          60,
 		mouseWheelDelta: 3,
@@ -217,7 +228,7 @@ type model struct {
 	footerHeight  int
 	wrap          bool
 	theme         Theme
-	showSize      bool // Show number of elements in preview
+	showSize      int // Show number of elements in preview (> 0)
 
 	fileName string
 	json     interface{}

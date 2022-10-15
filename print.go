@@ -125,19 +125,19 @@ func (m *model) preview(v interface{}, path string, selectableValues bool) strin
 		case string:
 			return previewStyle(fmt.Sprintf("%q", v))
 		case *Dict:
-			if m.showSize {
-				return previewStyle(toLowerNumber(fmt.Sprintf("{\u2026%v\u2026}", len(v.Keys))))
+			if m.showSize > 0 {
+				return previewStyle(toLowerNumber(fmt.Sprintf("{\u2026%v\u2026}", len(v.Keys)), m.showSize))
 			} else {
 				return previewStyle("{\u2026}")
 			}
 		case Array:
-			if m.showSize {
-				return previewStyle(toLowerNumber(fmt.Sprintf("[\u2026%v\u2026]", len(v))))
+			if m.showSize > 0 {
+				return previewStyle(toLowerNumber(fmt.Sprintf("[\u2026%v\u2026]", len(v)), m.showSize))
 			} else {
 				return previewStyle("[\u2026]")
 			}
 		}
-		return "..."
+		return ".-.-."
 	}
 
 	switch v := v.(type) {
@@ -152,8 +152,8 @@ func (m *model) preview(v interface{}, path string, selectableValues bool) strin
 			break
 		}
 		if len(keys) > 1 {
-			if m.showSize {
-				output += previewStyle(toLowerNumber(fmt.Sprintf(", \u2026%v\u2026", len(v.Keys)-1)))
+			if m.showSize > 0 {
+				output += previewStyle(toLowerNumber(fmt.Sprintf(", \u2026%v\u2026", len(v.Keys)-1), m.showSize))
 			} else {
 				output += previewStyle(", \u2026")
 			}
@@ -168,8 +168,8 @@ func (m *model) preview(v interface{}, path string, selectableValues bool) strin
 			break
 		}
 		if len(v) > 1 {
-			if m.showSize {
-				output += previewStyle(toLowerNumber(fmt.Sprintf(", \u2026%v\u2026", len(v)-1)))
+			if m.showSize > 0 {
+				output += previewStyle(toLowerNumber(fmt.Sprintf(", \u2026%v\u2026", len(v)-1), m.showSize))
 			} else {
 				output += previewStyle(", \u2026")
 			}
