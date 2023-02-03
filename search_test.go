@@ -1,11 +1,12 @@
 package main
 
 import (
+	"regexp"
+	"testing"
+
 	. "github.com/antonmedv/fx/pkg/dict"
 	. "github.com/antonmedv/fx/pkg/json"
 	"github.com/stretchr/testify/require"
-	"regexp"
-	"testing"
 )
 
 func Test_search_values(t *testing.T) {

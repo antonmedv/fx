@@ -23,6 +23,7 @@ type KeyMap struct {
 	PrevSibling         key.Binding
 	ToggleWrap          key.Binding
 	Search              key.Binding
+	Yank                key.Binding
 	Next                key.Binding
 	Prev                key.Binding
 }
@@ -108,6 +109,10 @@ func DefaultKeyMap() KeyMap {
 		Search: key.NewBinding(
 			key.WithKeys("/"),
 			key.WithHelp("", "search regexp"),
+		),
+		Yank: key.NewBinding(
+			key.WithKeys("y"),
+			key.WithHelp("", "yank value"),
 		),
 		Next: key.NewBinding(
 			key.WithKeys("n"),

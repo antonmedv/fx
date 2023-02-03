@@ -247,6 +247,7 @@ type model struct {
 	searchResults           []*searchResult
 	searchResultsCursor     int
 	highlightIndex          map[string]*rangeGroup
+	register                bool
 }
 
 func (m *model) Init() tea.Cmd {
@@ -427,6 +428,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.render()
 
+		case key.Matches(msg, m.keyMap.Yank):
+			m.showSearchResults = false
+			m.yank()
+			m.render()
 		case key.Matches(msg, m.keyMap.Search):
 			m.showSearchResults = false
 			m.searchRegexCompileError = ""
@@ -483,6 +488,11 @@ func (m *model) View() string {
 	statusBar += m.fileName
 	statusBar = m.theme.StatusBar(statusBar)
 	output := strings.Join(lines, "\n") + extraLines + "\n" + statusBar
+	if m.register == true {
+		s := "THE YANKED VALUE"
+		output += fmt.Sprintf("%v", s)
+		return output
+	}
 	if m.searchInput.Focused() {
 		output += "\n/" + m.searchInput.View()
 	}
@@ -491,9 +501,9 @@ func (m *model) View() string {
 	}
 	if m.showSearchResults {
 		if len(m.searchResults) == 0 {
-			output += fmt.Sprintf("\n/%v/i  not found", m.searchInput.Value())
+			output += fmt.Sprintf("\n/%v/i  was not found", m.searchInput.Value())
 		} else {
-			output += fmt.Sprintf("\n/%v/i  found: [%v/%v]", m.searchInput.Value(), m.searchResultsCursor+1, len(m.searchResults))
+			output += fmt.Sprintf("\n/%v/i  found: [%v/%v] %v", m.searchInput.Value(), m.searchResultsCursor+1, len(m.searchResults), m.register)
 		}
 	}
 	return output
@@ -513,6 +523,10 @@ func (m *model) recalculateViewportHeight() {
 			m.height--
 		}
 	}
+}
+
+func (m *model) yank() {
+	m.register = true
 }
 
 func (m *model) render() {
@@ -563,7 +577,7 @@ func (m *model) expandRecursively(path string) {
 	if m.canBeExpanded[path] {
 		m.expandedPaths[path] = true
 		for _, childPath := range m.children[path] {
-			if childPath != "" {
+			if childPath == "" {
 				m.expandRecursively(childPath)
 			}
 		}
