@@ -1,9 +1,6 @@
 name: release
 
-on:
-  release:
-    types:
-      - created
+on: [release, workflow_dispatch]
 
 jobs:
   snap:
