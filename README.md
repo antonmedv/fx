@@ -47,7 +47,7 @@ fx data.json
 Or
 
 ```bash
-curl ... | fx
+curl https://dummyjson.com/products/1 | fx
 ```
 
 Type `?` to see full list of key shortcuts.
@@ -55,7 +55,7 @@ Type `?` to see full list of key shortcuts.
 Pretty print:
 
 ```bash
-curl ... | fx .
+curl https://dummyjson.com/products/1 | fx .
 ```
 
 ### Reducers
