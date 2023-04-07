@@ -51,6 +51,10 @@ jobs:
       - name: Update brew
         run: brew update
 
+      - uses: actions/checkout@v3
+        with:
+          ref: master
+
       - name: Get Version
         run: echo "RELEASE_VERSION=$(go run . -v)" >> $GITHUB_ENV
 
