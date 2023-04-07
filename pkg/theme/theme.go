@@ -18,7 +18,7 @@ type Theme struct {
 	Boolean   Color
 	Number    Color
 }
-type Color func(s string) string
+type Color func(s ...string) string
 
 var (
 	defaultCursor    = lipgloss.NewStyle().Reverse(true).Render
@@ -151,8 +151,8 @@ var Themes = map[string]Theme{
 	},
 }
 
-func noColor(s string) string {
-	return s
+func noColor(s ...string) string {
+	return s[0]
 }
 
 func fg(color string) Color {
@@ -165,8 +165,8 @@ func boldFg(color string) Color {
 
 func gradient(colors ...string) Color {
 	grad, _ := colorgrad.NewGradient().HtmlColors(colors...).Build()
-	return func(s string) string {
-		runes := []rune(s)
+	return func(s ...string) string {
+		runes := []rune(s[0])
 		colors := grad.ColorfulColors(uint(len(runes)))
 		var out strings.Builder
 		for i, r := range runes {
