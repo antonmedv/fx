@@ -293,16 +293,28 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, m.keyMap.PageDown):
 			m.ViewDown()
+			m.moveCursorToView()
+			m.render()
 		case key.Matches(msg, m.keyMap.PageUp):
 			m.ViewUp()
+			m.moveCursorToView()
+			m.render()
 		case key.Matches(msg, m.keyMap.HalfPageDown):
 			m.HalfViewDown()
+			m.moveCursorToView()
+			m.render()
 		case key.Matches(msg, m.keyMap.HalfPageUp):
 			m.HalfViewUp()
+			m.moveCursorToView()
+			m.render()
 		case key.Matches(msg, m.keyMap.GotoTop):
 			m.GotoTop()
+			m.moveCursorToTop()
+			m.render()
 		case key.Matches(msg, m.keyMap.GotoBottom):
 			m.GotoBottom()
+			m.moveCursorToBottom()
+			m.render()
 		}
 	}
 
@@ -631,4 +643,32 @@ func (m *model) up() {
 	if m.cursor >= len(m.paths) {
 		m.cursor = len(m.paths) - 1
 	}
+}
+
+func (m *model) moveCursorToView() {
+	top := 0
+	bottom := 0
+
+	// find the first path in the viewport
+	for i := 0; i < m.height && top == 0; i++ {
+		top = m.pathToIndex[m.lineNumberToPath[m.offset+i]]
+	}
+
+	// find the last path in the viewport
+	for i := 1; i < m.height && bottom == 0; i++ {
+		bottom = m.pathToIndex[m.lineNumberToPath[m.offset+m.height-i]]
+	}
+
+	m.showCursor = true
+	m.cursor = clamp(m.cursor, bottom, top)
+}
+
+func (m *model) moveCursorToTop() {
+	m.showCursor = true
+	m.cursor = 0
+}
+
+func (m *model) moveCursorToBottom() {
+	m.showCursor = true
+	m.cursor = len(m.paths) - 1
 }
