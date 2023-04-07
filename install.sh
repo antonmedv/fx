@@ -2,7 +2,7 @@
 
 curl -sAx "https://bit.ly/fx-download-counter" > /dev/null
 
-version='24.0.0'
+version='24.1.0'
 os=$(uname -s | tr '[:upper:]' '[:lower:]')
 machine=$(uname -m)
 
