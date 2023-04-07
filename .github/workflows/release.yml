@@ -51,8 +51,11 @@ jobs:
       - name: Update brew
         run: brew update
 
+      - name: Get Version
+        run: echo "RELEASE_VERSION=$(go run . -v)" >> $GITHUB_ENV
+
       - name: Bump formulae
-        run: brew bump-formula-pr --no-fork --no-browse fx
+        run: brew bump-formula-pr --no-fork --no-browse --url "https://github.com/antonmedv/fx/archive/refs/tags/${RELEASE_VERSION}.tar.gz" fx
         env:
           HOMEBREW_DEVELOPER: "1"
           HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.MY_GITHUB_TOKEN_FOR_BREW_BUMP_FORMULAE }}
