@@ -30,7 +30,11 @@ pkg install fx
 go install github.com/antonmedv/fx@latest
 ```
 
-Or download [pre-built binary](https://github.com/antonmedv/fx/releases).
+Or download [pre-built binary](https://github.com/antonmedv/fx/releases) via:
+
+```sh
+curl https://fx.wtf | sh
+```
 
 ## Usage
 
