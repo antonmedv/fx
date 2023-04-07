@@ -6,61 +6,7 @@ on:
       - created
 
 jobs:
-  commit:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        ref: master
-
-    - name: Set up Go
-      uses: actions/setup-go@v3
-      with:
-        go-version: 1.18
-
-    - name: Get Version
-      run: echo "RELEASE_VERSION=${GITHUB_REF##*/}" >> $GITHUB_ENV
-
-    - name: Update Version
-      shell: bash
-      run: |
-        set -x
-        sed -i "s/version = .*/version = \"${RELEASE_VERSION}\"/" version.go
-        sed -i "s/version: .*/version: ${RELEASE_VERSION}/" snap/snapcraft.yaml
-        git add version.go snap/snapcraft.yaml
-        git config --global user.email "github-actions@github.com"
-        git config --global user.name "github-actions"
-        git commit -m "Release $RELEASE_VERSION"
-        git tag "$RELEASE_VERSION" --force
-        git push --atomic --force origin master "$RELEASE_VERSION"
-
-    - name: Test
-      run: go test -v ./...
-
-  binary:
-    needs: [commit]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          ref: master
-
-      - name: Set up Go
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.18
-
-      - name: Get Version
-        run: echo "RELEASE_VERSION=${GITHUB_REF##*/}" >> $GITHUB_ENV
-
-      - name: Build and Upload
-        env:
-          FORCE_COLOR: 3
-          GITHUB_TOKEN: ${{ secrets.MY_TOKEN }}
-        run: npx zx .github/workflows/release.mjs
-
   snap:
-    needs: [commit]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -82,7 +28,6 @@ jobs:
           release: stable
 
   brew:
-    needs: [commit]
     runs-on: macos-latest
     steps:
       - name: Set up Homebrew
@@ -112,5 +57,5 @@ jobs:
       - name: Bump formulae
         uses: Homebrew/actions/bump-formulae@master
         with:
-          token: ${{ secrets.MY_TOKEN }}
+          token: ${{ secrets.MY_GITHUB_TOKEN_FOR_BREW_BUMP_FORMULAE }}
           formulae: fx
