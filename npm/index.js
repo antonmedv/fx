@@ -54,7 +54,9 @@ function transform(json, code) {
     return Object.keys(json)
 
   if (/^(\.\w*)+\[]/.test(code))
-    code = fold(code.split('[]'))
+    return eval(`(function () {
+      return (${fold(code.split('[]'))})(this)
+    })`).call(json)
 
   if (/^\.\[/.test(code))
     return eval(`(function () {
@@ -89,4 +91,12 @@ function fold(s) {
   let obj = s.shift()
   obj = obj === '.' ? 'x' : 'x' + obj
   return `x => Object.values(${obj}).flatMap(${fold(s)})`
+}
+
+function uniq(array) {
+  return [...new Set(array)]
+}
+
+function sort(array) {
+  return array.sort()
 }
