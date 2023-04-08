@@ -1,6 +1,6 @@
 #!/bin/sh
 
-curl -sAx "https://bit.ly/fx-download-counter" > /dev/null
+curl -sAx "https://bit.ly/fx-download-counter" >/dev/null
 
 version='24.1.0'
 os=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -33,9 +33,15 @@ arm64 | aarch64)
   ;;
 esac
 
+temp_dir=$(mktemp -d) || {
+  echo "temp dir error" >&2
+  exit 1
+}
+trap 'rm -rf $temp_dir' EXIT INT TERM HUP
+
 asset="fx_${os}_${arch}${ext}"
 echo "Installing fx ${version} (${asset})"
-curl -Lfs "https://github.com/antonmedv/fx/releases/download/${version}/${asset}" -o fx
+curl -Lfs "https://github.com/antonmedv/fx/releases/download/${version}/${asset}" -o "$temp_dir/fx"
 
-chmod +x fx
-mv fx /usr/local/bin/fx
+chmod +x "$temp_dir/fx"
+mv "$temp_dir/fx" /usr/local/bin/fx
