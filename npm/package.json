@@ -1,0 +1,18 @@
+{
+  "name": "fx",
+  "version": "24.1.0",
+  "bin": {
+    "fx": "index.js"
+  },
+  "files": [
+    "index.js"
+  ],
+  "scripts": {
+    "test": "node test.js"
+  },
+  "repository": "antonmedv/fx",
+  "homepage": "https://fx.wtf",
+  "description": "Command-line JSON viewer",
+  "author": "Anton Medvedev <anton@medv.io>",
+  "license": "MIT"
+}
