@@ -33,8 +33,10 @@ go install github.com/antonmedv/fx@latest
 Or download [pre-built binary](https://github.com/antonmedv/fx/releases) via:
 
 ```sh
-curl https://fx.wtf | sh
+curl https://fx.wtf/install.sh | sh
 ```
+
+Take a look at the JavaScript version of the fx: [npm i fx](npm/README.md).
 
 ## Usage
 
