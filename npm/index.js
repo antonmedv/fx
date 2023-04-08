@@ -11,7 +11,7 @@ void async function main() {
     json = JSON.parse(input)
   } catch (err) {
     try {
-      json = eval(input)
+      json = eval(`(${input})`)
     } catch (_) {
       process.stderr.write(`Invalid JSON: ${err.message}\n`)
       process.exit(1)
