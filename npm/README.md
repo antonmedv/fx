@@ -57,7 +57,7 @@ curl https://api.github.com/repos/antonmedv/fx/commits | fx 'map(x.commit.messag
 ```
 
 Fx has a special syntax for the flatMap function. Fox example,
-`.flatMap(x => x.labels.flatMap(x => x.name))` can be written in the next way.
+`.flatMap(x => x.labels.flatMap(x => x.name))` can be rewritten in the next way.
 
 ```sh
 curl https://api.github.com/repos/kubernetes/kubernetes/issues | fx '.[].labels[].name'
