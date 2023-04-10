@@ -49,8 +49,8 @@ echo `{"name": "world"}` | fx 'Object.keys'
 
 ## Advanced Usage
 
-Fx has a shortcut for the map function. Fox example `this.map(x => x.commit.message)`
-can be written without leading dot and without `x => x` parts.  
+Fx has a shortcut for the map function. Fox example, `this.map(x => x.commit.message)`
+can be rewritten without leading dot and without `x => x` parts.  
 
 ```sh
 curl https://api.github.com/repos/antonmedv/fx/commits | fx 'map(.commit.message)'
