@@ -1,10 +1,10 @@
 void async function main() {
   const process = await import('node:process')
+  const args = process.argv.slice(2)
   let input = ''
   process.stdin.setEncoding('utf8')
   for await (const chunk of process.stdin)
     input += chunk
-  const args = process.argv.slice(2)
 
   let json
   try {
