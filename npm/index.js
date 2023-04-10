@@ -10,12 +10,8 @@ void async function main() {
   try {
     json = JSON.parse(input)
   } catch (err) {
-    try {
-      json = eval(`(${input})`)
-    } catch (_) {
-      process.stderr.write(`Invalid JSON: ${err.message}\n`)
-      process.exit(1)
-    }
+    process.stderr.write(`Invalid JSON: ${err.message}\n`)
+    process.exit(1)
   }
 
   let i, code, output = json
