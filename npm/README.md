@@ -49,7 +49,7 @@ echo `{"name": "world"}` | fx 'Object.keys'
 
 ## Advanced Usage
 
-Fx has a shortcut for the map function. Fox example `.map(x => x.commit.message)`
+Fx has a shortcut for the map function. Fox example `this.map(x => x.commit.message)`
 can be written without leading dot and without `x => x` parts.  
 
 ```sh
