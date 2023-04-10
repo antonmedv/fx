@@ -64,10 +64,13 @@ function transform(json, code) {
       return this${code}
     })`).call(json)
 
-  if (/^map\(.+?\)$/.test(code))
+  if (/^map\(.+?\)$/.test(code)) {
+    let s = code.substring(4, code.length - 1)
+    if (s[0] === '.') s = 'x' + s
     return eval(`(function () {
-      return this.map(x => apply(x, ${code.substring(4, code.length - 1)}))
+      return this.map(x => apply(x, ${s}))
     })`).call(json)
+  }
 
   const fn = eval(`(function () {
     return ${code}

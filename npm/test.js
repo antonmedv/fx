@@ -34,18 +34,33 @@ void async function main() {
   })
 
   await test('works with arrow func with param brackets', async t => {
-    const {stdout} = await run({'key': 'value'}, '\'(x) => x.key\'')
+    const {stdout} = await run({'key': 'value'}, `'(x) => x.key'`)
     t.equal(stdout, 'value\n')
   })
 
   await test('this is json', async t => {
-    const {stdout} = await run([1, 2, 3, 4, 5], '\'this.map(x => x * this.length)\'')
+    const {stdout} = await run([1, 2, 3, 4, 5], `'this.map(x => x * this.length)'`)
     t.deepEqual(JSON.parse(stdout), [5, 10, 15, 20, 25])
   })
 
   await test('args chain works', async t => {
-    const {stdout} = await run({'items': ['foo', 'bar']}, '\'this.items\' \'.\' \'x => x[1]\'')
+    const {stdout} = await run({'items': ['foo', 'bar']}, `'this.items' '.' 'x => x[1]'`)
     t.equal(stdout, 'bar\n')
+  })
+
+  await test('map works', async t => {
+    const {stdout} = await run([1, 2, 3], `'map(x * 2)'`)
+    t.deepEqual(JSON.parse(stdout), [2, 4, 6])
+  })
+
+  await test('map works with dot', async t => {
+    const {stdout} = await run([{foo: 'bar'}], `'map(.foo)'`)
+    t.deepEqual(JSON.parse(stdout), ['bar'])
+  })
+
+  await test('map works with func', async t => {
+    const {stdout} = await run([{foo: 'bar'}], `'map(x => x.foo)'`)
+    t.deepEqual(JSON.parse(stdout), ['bar'])
   })
 
   await test('flat map works', async t => {
@@ -62,7 +77,7 @@ void async function main() {
     const json = {foo: 'bar'}
     const code = '".foo.toUpperCase("'
     const {stderr, status} = await run(json, code)
-    t.strictEqual(status, 1)
+    t.equal(status, 1)
     t.ok(stderr.includes(`SyntaxError: Unexpected token '}'`))
   })
 }()
