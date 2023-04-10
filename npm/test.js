@@ -73,6 +73,11 @@ void async function main() {
     t.deepEqual(JSON.parse(stdout), [1, 2])
   })
 
+  await test('sort & uniq', async t => {
+    const {stdout} = await run([2, 2, 3, 1], `sort uniq`)
+    t.deepEqual(JSON.parse(stdout), [1, 2, 3])
+  })
+
   await test('invalid code argument', async t => {
     const json = {foo: 'bar'}
     const code = '".foo.toUpperCase("'
