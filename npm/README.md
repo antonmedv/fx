@@ -38,10 +38,14 @@ Use `this` to access the input data. Use `.` at the start of the expression to
 access the input data without a `x => x` part.
 
 ```sh
-echo '{"name": "world"}' | fx '.name' '`Hello, ${this}!`'
+echo '{"name": "world"}' | fx .name '`Hello, ${this}!`'
 ```
 
-That's it! 
+Use other JS functions to process the data.
+
+```sh
+echo `{"name": "world"}` | fx Object.keys
+```
 
 ## Advanced Usage
 
