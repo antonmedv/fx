@@ -41,6 +41,10 @@ access the input data without a `x => x` part.
 echo '{"name": "world"}' | fx '.name' '`Hello, ${this}!`'
 ```
 
+That's it! 
+
+## Advanced Usage
+
 Fx has a shortcut for the map function. Fox example `.map(x => x.commit.message)`
 can be written without leading dot and without `x =>` parts.  
 
