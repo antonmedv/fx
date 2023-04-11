@@ -68,7 +68,7 @@ function transform(json, code) {
     let s = code.substring(4, code.length - 1)
     if (s[0] === '.') s = 'x' + s
     return eval(`(function () {
-      return this.map(x => apply(x, ${s}))
+      return this.map((x, i) => apply(${s}, x, i))
     })`).call(json)
   }
 
@@ -76,11 +76,11 @@ function transform(json, code) {
     return ${code}
   })`).call(json)
 
-  return apply(json, fn)
+  return apply(fn, json)
 }
 
-function apply(json, fn) {
-  if (typeof fn === 'function') return fn(json)
+function apply(fn, ...args) {
+  if (typeof fn === 'function') return fn(...args)
   return fn
 }
 

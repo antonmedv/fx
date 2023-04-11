@@ -63,6 +63,11 @@ void async function main() {
     t.deepEqual(JSON.parse(stdout), ['bar'])
   })
 
+  await test('map passes index', async t => {
+    const {stdout} = await run([1, 2, 3], `'map((x, i) => x * i)'`)
+    t.deepEqual(JSON.parse(stdout), [0, 2, 6])
+  })
+
   await test('flat map works', async t => {
     const {stdout} = await run({master: {foo: [{bar: [{val: 1}]}]}}, '.master.foo[].bar[].val')
     t.deepEqual(JSON.parse(stdout), [1])
