@@ -67,6 +67,12 @@ Fx has a special syntax for the flatMap function. Fox example,
 curl https://api.github.com/repos/kubernetes/kubernetes/issues | fx '.[].labels[].name'
 ```
 
+Fx works with promises.
+
+```sh
+echo '"https://medv.io/*"' | fx 'fetch' '.text()'
+```
+
 ## License
 
 [MIT](../LICENSE)
