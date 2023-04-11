@@ -18,22 +18,22 @@ async function run(json, code = '') {
 }
 
 void async function main() {
-  await test('passes json as is', async t => {
+  await test('as is', async t => {
     const {stdout} = await run([{'greeting': 'hello world'}])
     t.deepEqual(JSON.parse(stdout), [{'greeting': 'hello world'}])
   })
 
-  await test('works with anon func', async t => {
+  await test('anonymous function', async t => {
     const {stdout} = await run({'key': 'value'}, '\'function (x) { return x.key }\'')
     t.equal(stdout, 'value\n')
   })
 
-  await test('works with arrow func', async t => {
+  await test('arrow function', async t => {
     const {stdout} = await run({'key': 'value'}, '\'x => x.key\'')
     t.equal(stdout, 'value\n')
   })
 
-  await test('works with arrow func with param brackets', async t => {
+  await test('arrow function with param brackets', async t => {
     const {stdout} = await run({'key': 'value'}, `'(x) => x.key'`)
     t.equal(stdout, 'value\n')
   })
@@ -43,7 +43,7 @@ void async function main() {
     t.deepEqual(JSON.parse(stdout), [5, 10, 15, 20, 25])
   })
 
-  await test('args chain works', async t => {
+  await test('chain works', async t => {
     const {stdout} = await run({'items': ['foo', 'bar']}, `'this.items' '.' 'x => x[1]'`)
     t.equal(stdout, 'bar\n')
   })
