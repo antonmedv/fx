@@ -99,3 +99,18 @@ function uniq(array) {
 function sort(array) {
   return array.sort()
 }
+
+function groupBy(keyOrFunction) {
+  return array => {
+    const grouped = {}
+    for (const item of array) {
+      const key = typeof keyOrFunction === 'function'
+        ? keyOrFunction(item)
+        : item[keyOrFunction]
+      if (!grouped.hasOwnProperty(key))
+        grouped[key] = []
+      grouped[key].push(item)
+    }
+    return grouped
+  }
+}
