@@ -16,7 +16,7 @@ void async function main() {
 
   let i, code, output = json
   for ([i, code] of args.entries()) try {
-    output = transform(output, code)
+    output = await transform(output, code)
   } catch (err) {
     printErr(err)
     process.exit(1)
@@ -42,7 +42,7 @@ void async function main() {
   }
 }()
 
-function transform(json, code) {
+async function transform(json, code) {
   if ('.' === code)
     return json
 
