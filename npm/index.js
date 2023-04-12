@@ -1,13 +1,23 @@
+#!/usr/bin/env node
 void async function main() {
   const process = await import('node:process')
   const args = process.argv.slice(2)
+  if ((args.length === 0 && process.stdin.isTTY)
+    || (args.length === 1 && ['-h', '--help'].includes(args[0]))) {
+    printUsage()
+    return
+  }
+
   let input = ''
   process.stdin.setEncoding('utf8')
   for await (const chunk of process.stdin)
     input += chunk
 
   let json
-  try {
+  if (['-r', '--raw'].includes(args[0])) {
+    args.shift()
+    json = input
+  } else try {
     json = JSON.parse(input)
   } catch (err) {
     process.stderr.write(`Invalid JSON: ${err.message}\n`)
@@ -113,4 +123,14 @@ function groupBy(keyOrFunction) {
     }
     return grouped
   }
+}
+
+function printUsage() {
+  const usage = `Usage
+  fx [flags] [code...]
+
+Flags
+  -h, --help    Display this help message
+  -r, --raw     Treat input as raw string`
+  console.log(usage)
 }
