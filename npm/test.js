@@ -90,4 +90,9 @@ void async function main() {
     t.equal(status, 1)
     t.ok(stderr.includes(`SyntaxError: Unexpected token '}'`))
   })
+
+  await test('raw flag', async t => {
+    const {stdout} = await run(123, `-r 'x => typeof x'`)
+    t.equal(stdout, 'string\n')
+  })
 }()
