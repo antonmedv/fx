@@ -9,19 +9,19 @@ npm i -g fx
 Or use **npx**:
 
 ```sh
-cat file.json | npx fx .param
+cat file.json | npx fx .field
 ```
 
 Or use **node**:
 
 ```sh
-cat file.json | node <(curl -s https://fx.wtf) .param
+cat file.json | node <(curl -s https://fx.wtf) .field
 ```
 
 Or use **deno**:
 
 ```sh
-cat file.json | deno run https://fx.wtf .param
+cat file.json | deno run https://fx.wtf .field
 ```
 
 ## Usage
@@ -71,6 +71,14 @@ Fx works with promises.
 
 ```sh
 echo '"https://medv.io/*"' | fx 'fetch' '.text()'
+```
+
+When using the **-r** or **--raw** flag, the input will be treated as a raw string
+instead of JSON. This can be useful when working with non-JSON input data, such as
+plain text or CSV data.
+
+```sh
+ls | fx -r '.trim().split("\n")'
 ```
 
 ## License
