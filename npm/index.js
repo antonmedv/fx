@@ -21,7 +21,7 @@ void async function main() {
     json = JSON.parse(input)
   } catch (err) {
     process.stderr.write(`Invalid JSON: ${err.message}\n`)
-    process.exit(1)
+    return process.exitCode = 1
   }
 
   let i, code, output = json
@@ -29,7 +29,7 @@ void async function main() {
     output = await transform(output, code)
   } catch (err) {
     printErr(err)
-    process.exit(1)
+    return process.exitCode = 1
   }
 
   if (typeof output === 'undefined')
