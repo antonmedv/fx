@@ -1,6 +1,7 @@
 # fx
 
-The JavaScript version of the **fx**. Short for _Function eXecution_ or _f(x)_.
+A non-interactive, JavaScript version of the [**fx**](https://fx.wtf). 
+Short for _Function eXecution_ or _f(x)_.
 
 ```sh
 npm i -g fx
