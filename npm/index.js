@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+'use strict'
+
 void async function main() {
   const process = await import('node:process')
   const args = process.argv.slice(2)
@@ -8,9 +10,8 @@ void async function main() {
     return
   }
 
-  JSON.stringify = value => stringify(value)
-
-  for await (const json of parseJson()) {
+  const stdin = await createStdinGenerator()
+  for (const json of parseJson(stdin)) {
     // let json
     // if (['-r', '--raw'].includes(args[0])) {
     //   args.shift()
@@ -26,7 +27,7 @@ void async function main() {
       output = await transform(output, code)
     } catch (err) {
       printErr(err)
-      return 1
+      process.exit(1)
     }
 
     if (typeof output === 'undefined')
@@ -34,7 +35,7 @@ void async function main() {
     else if (typeof output === 'string')
       console.log(output)
     else
-      console.log(stringify(output, true))
+      console.log(stringify(output, process.stdout.isTTY))
 
     function printErr(err) {
       let pre = args.slice(0, i).join(' ')
@@ -48,7 +49,7 @@ void async function main() {
       )
     }
   }
-}().then(exitCode => process.exitCode = exitCode)
+}()
 
 async function transform(json, code) {
   if ('.' === code)
@@ -123,66 +124,89 @@ function groupBy(keyOrFunction) {
   }
 }
 
-async function* stdin() {
-  const process = await import('node:process')
-  process.stdin.setEncoding('utf8')
-  for await (const chunk of process.stdin)
-    for (const ch of chunk)
+async function createStdinGenerator() {
+  const fs = await import('node:fs')
+  const {Buffer} = await import('node:buffer')
+  const {StringDecoder} = await import('node:string_decoder')
+  const decoder = new StringDecoder('utf8')
+  return function* () {
+    while (true) {
+      const buffer = Buffer.alloc(4_096)
+      let bytesRead
+      try {
+        bytesRead = fs.readSync(0, buffer, 0, buffer.length, null)
+      } catch (e) {
+        if (e.code === 'EAGAIN' || e.code === 'EWOULDBLOCK') {
+          sleepSync(10)
+          continue
+        }
+        if (e.code === 'EOF') break
+        throw e
+      }
+      if (bytesRead === 0) break
+      for (const ch of decoder.write(buffer.subarray(0, bytesRead)))
+        yield ch
+    }
+    for (const ch of decoder.end())
       yield ch
+  }()
 }
 
-async function* parseJson() {
-  const gen = stdin()
-  let pos = 0, buffer = '', lastChar, done
+function sleepSync(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)
+}
 
-  async function next() {
-    ({value: lastChar, done: done} = await gen.next())
+function* parseJson(stdin) {
+  let pos = 0, buffer = '', lastChar, done = false
+
+  function next() {
+    ({value: lastChar, done} = stdin.next())
     pos++
     buffer = buffer.slice(-10) + lastChar
   }
 
-  function printErrorSnippet() {
-    const snippet = buffer + lastChar
+  function errorSnippet() {
     let nextChars = ''
     for (let i = 0; i < 10; i++) {
-      const {value: ch} = gen.next()
+      const {value: ch} = stdin.next()
+      if (ch === '\n') break
       nextChars += ch || ''
     }
-    return `Error snippet: ${snippet}${nextChars}`
+    return `\n\n    ${buffer}${nextChars}\n    ${'.'.repeat(buffer.length - 1)}^\n`
   }
 
-  await next()
+  next()
   while (!done) {
-    const value = await parseValue()
+    const value = parseValue()
     expectValue(value)
     yield value
   }
 
-  async function parseValue() {
-    await skipWhitespace()
+  function parseValue() {
+    skipWhitespace()
     const value =
-      await parseString() ??
-      await parseNumber() ??
-      await parseObject() ??
-      await parseArray() ??
-      await parseKeyword('true', true) ??
-      await parseKeyword('false', false) ??
-      await parseKeyword('null', null)
-    await skipWhitespace()
+      parseString() ??
+      parseNumber() ??
+      parseObject() ??
+      parseArray() ??
+      parseKeyword('true', true) ??
+      parseKeyword('false', false) ??
+      parseKeyword('null', null)
+    skipWhitespace()
     return value
   }
 
-  async function parseString() {
+  function parseString() {
     if (lastChar !== '"') return
     let str = ''
     let escaped = false
     while (true) {
-      await next()
+      next()
       if (escaped) {
         if (lastChar === 'u') {
           let unicode = ''
           for (let i = 0; i < 4; i++) {
-            await next()
+            next()
             if (!isHexDigit(lastChar)) {
               throw new SyntaxError(`Invalid Unicode escape sequence '\\u${unicode}${lastChar}' at position ${pos}`)
             }
@@ -216,137 +240,137 @@ async function* parseJson() {
         str += lastChar
       }
     }
-    await next()
+    next()
     return str
   }
 
-  async function parseNumber() {
+  function parseNumber() {
     if (!isDigit(lastChar) && lastChar !== '-') return
     let numStr = ''
     if (lastChar === '-') {
       numStr += lastChar
-      await next()
+      next()
       if (!isDigit(lastChar)) {
         throw new SyntaxError(`Invalid number format at position ${pos}.`)
       }
     }
     if (lastChar === '0') {
       numStr += lastChar
-      await next()
+      next()
     } else {
       while (isDigit(lastChar)) {
         numStr += lastChar
-        await next()
+        next()
       }
     }
     if (lastChar === '.') {
       numStr += lastChar
-      await next()
+      next()
       if (!isDigit(lastChar)) {
         throw new SyntaxError(`Invalid number format at position ${pos}.`)
       }
       while (isDigit(lastChar)) {
         numStr += lastChar
-        await next()
+        next()
       }
     }
     if (lastChar === 'e' || lastChar === 'E') {
       numStr += lastChar
-      await next()
+      next()
       if (lastChar === '+' || lastChar === '-') {
         numStr += lastChar
-        await next()
+        next()
       }
       if (!isDigit(lastChar)) {
         throw new SyntaxError(`Invalid number format at position ${pos}.`)
       }
       while (isDigit(lastChar)) {
         numStr += lastChar
-        await next()
+        next()
       }
     }
     return isInteger(numStr) ? toSafeNumber(numStr) : parseFloat(numStr)
   }
 
-  async function parseObject() {
+  function parseObject() {
     if (lastChar !== '{') return
-    await next()
-    await skipWhitespace()
+    next()
+    skipWhitespace()
     const obj = {}
     if (lastChar === '}') {
-      await next()
+      next()
       return obj
     }
     while (true) {
       if (lastChar !== '"') {
-        throw new SyntaxError(`Unexpected character '${lastChar}' at position ${pos}. Expected a property name enclosed in double quotes.`)
+        throw new SyntaxError(errorSnippet())
       }
-      const key = await parseString()
-      await skipWhitespace()
+      const key = parseString()
+      skipWhitespace()
       if (lastChar !== ':') {
         throw new SyntaxError(`Unexpected character '${lastChar}' at position ${pos}. Expected ':'.`)
       }
-      await next()
-      const value = await parseValue()
+      next()
+      const value = parseValue()
       expectValue(value)
       obj[key] = value
-      await skipWhitespace()
+      skipWhitespace()
       if (lastChar === '}') {
-        await next()
+        next()
         return obj
       } else if (lastChar === ',') {
-        await next()
-        await skipWhitespace()
+        next()
+        skipWhitespace()
       } else {
         throw new SyntaxError(`Unexpected character '${lastChar}' at position ${pos}. Expected ',' or '}'.`)
       }
     }
   }
 
-  async function parseArray() {
+  function parseArray() {
     if (lastChar !== '[') return
-    await next()
-    await skipWhitespace()
+    next()
+    skipWhitespace()
     const array = []
     if (lastChar === ']') {
-      await next()
+      next()
       return array
     }
     while (true) {
-      const value = await parseValue()
+      const value = parseValue()
       expectValue(value)
       array.push(value)
-      await skipWhitespace()
+      skipWhitespace()
       if (lastChar === ']') {
-        await next()
+        next()
         return array
       } else if (lastChar === ',') {
-        await next()
-        await skipWhitespace()
+        next()
+        skipWhitespace()
       } else {
         throw new SyntaxError(`Unexpected character '${lastChar}' at position ${pos}. Expected ',' or ']'.`)
       }
     }
   }
 
-  async function parseKeyword(name, value) {
+  function parseKeyword(name, value) {
     if (lastChar !== name[0]) return
     for (let i = 1; i < name.length; i++) {
-      await next()
+      next()
       if (lastChar !== name[i]) {
         throw new SyntaxError(`Unexpected character '${lastChar}' at position ${pos}.`)
       }
     }
-    await next()
+    next()
     if (isWhitespace(lastChar) || lastChar === ',' || lastChar === '}' || lastChar === ']' || lastChar === undefined) {
       return value
     }
     throw new SyntaxError(`Unexpected character '${lastChar}' at position ${pos}.`)
   }
 
-  async function skipWhitespace() {
+  function skipWhitespace() {
     while (isWhitespace(lastChar)) {
-      await next()
+      next()
     }
   }
 
@@ -375,26 +399,23 @@ async function* parseJson() {
 
   function expectValue(value) {
     if (value === undefined) {
-      throw new SyntaxError(`JSON value expected but got '${value}' at position ${pos}. ${printErrorSnippet()}`)
+      throw new SyntaxError(`JSON value expected but got '${value}' at position ${pos}. ${errorSnippet()}`)
     }
   }
 }
 
 function stringify(value, isPretty = false) {
   const colors = {
+    key: isPretty ? '\x1b[1;34m' : '',
     string: isPretty ? '\x1b[32m' : '',
-    number: isPretty ? '\x1b[33m' : '',
+    number: isPretty ? '\x1b[36m' : '',
     boolean: isPretty ? '\x1b[35m' : '',
-    null: isPretty ? '\x1b[36m' : '',
+    null: isPretty ? '\x1b[2m' : '',
     reset: isPretty ? '\x1b[0m' : '',
-    key: isPretty ? '\x1b[1m' : '',
-    brace: isPretty ? '\x1b[1m' : '',
   }
 
-  const indent = 2
-
   function getIndent(level) {
-    return ' '.repeat(indent * level)
+    return ' '.repeat(2 * level)
   }
 
   function stringifyValue(value, level = 0) {
@@ -406,25 +427,21 @@ function stringify(value, isPretty = false) {
       return `${colors.number}${value}${colors.reset}`
     } else if (typeof value === 'boolean') {
       return `${colors.boolean}${value}${colors.reset}`
-    } else if (value === null) {
+    } else if (value === null || typeof value === 'undefined') {
       return `${colors.null}null${colors.reset}`
     } else if (Array.isArray(value)) {
       if (value.length === 0) {
-        return `${colors.brace}[]${colors.reset}`
+        return `[]`
       }
-
       const items = value
         .map((v) => `${getIndent(level + 1)}${stringifyValue(v, level + 1)}`)
         .join(',\n')
-
-      return `${colors.brace}[\n${items}\n${getIndent(level)}]${colors.reset}`
+      return `[\n${items}\n${getIndent(level)}]`
     } else if (typeof value === 'object') {
       const keys = Object.keys(value)
-
       if (keys.length === 0) {
-        return `${colors.brace}{${colors.reset}}`
+        return `{}`
       }
-
       const entries = keys
         .map(
           (key) =>
@@ -434,10 +451,8 @@ function stringify(value, isPretty = false) {
             )}`
         )
         .join(',\n')
-
-      return `${colors.brace}{\n${entries}\n${getIndent(level)}}${colors.reset}`
+      return `{\n${entries}\n${getIndent(level)}}`
     }
-
     throw new Error(`Unsupported value type: ${typeof value}`)
   }
 

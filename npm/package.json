@@ -12,7 +12,7 @@
   },
   "repository": "antonmedv/fx",
   "homepage": "https://fx.wtf",
-  "description": "Command-line JSON viewer",
+  "description": Command-line JSON viewer",
   "author": "Anton Medvedev <anton@medv.io>",
   "license": "MIT"
 }
