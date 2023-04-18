@@ -177,7 +177,8 @@ function* parseJson(stdin) {
   function next() {
     ({value: lastChar, done} = stdin.next())
     if (lastChar === '\n') lineNumber++
-    buffer = buffer.slice(-40) + (lastChar || '')
+    buffer += (lastChar || '')
+    if (buffer.length > 100) buffer = buffer.slice(-40)
   }
 
   next()
@@ -412,7 +413,7 @@ function* parseJson(stdin) {
     if (!lastChar) {
       message = 'Unexpected end of input'
     }
-    const lines = buffer.split('\n')
+    const lines = buffer.slice(-40).split('\n')
     const lastLine = lines.pop()
     const source =
       lines.map(line => `    ${line}\n`).join('')
