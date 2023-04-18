@@ -128,13 +128,17 @@ void async function main() {
     t.ok(stderr.includes(`SyntaxError: Unexpected token '}'`))
   })
 
-  await test('stream - json objects', async t => {
+  await test('stream - objects', async t => {
     const {stdout} = await run('{"foo": "bar"}\n{"foo": "baz"}')
     t.equal(stdout, '{\n  "foo": "bar"\n}\n{\n  "foo": "baz"\n}\n')
   })
+  await test('stream - strings', async t => {
+    const {stdout} = await run('"foo"\n"bar"')
+    t.equal(stdout, 'foo\nbar\n')
+  })
 
-  // await test('raw flag', async t => {
-  //   const {stdout} = await run(123, `-r 'x => typeof x'`)
-  //   t.equal(stdout, 'string\n')
-  // })
+  await test('flags - raw flag', async t => {
+    const {stdout} = await run(123, `-r 'x => typeof x'`)
+    t.equal(stdout, 'string\n')
+  })
 }()

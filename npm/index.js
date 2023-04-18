@@ -3,25 +3,23 @@
 
 void async function main() {
   const process = await import('node:process')
-  const args = process.argv.slice(2)
-  if ((args.length === 0 && process.stdin.isTTY)
-    || (args.length === 1 && ['-h', '--help'].includes(args[0]))) {
-    printUsage()
-    return
+  let flagHelp = false
+  let flagRaw = false
+  let flagSlurp = false
+  const args = []
+  for (const arg of process.argv.slice(2)) {
+    if (arg === '--help' || arg === '-h') flagHelp = true
+    else if (arg === '--raw' || arg === '-r') flagRaw = true
+    else if (arg === '--slurp' || arg === '-s') flagSlurp = true
+    else if (arg === '-rs' || arg === '-sr') flagRaw = flagSlurp = true
+    else args.push(arg)
   }
+  if (flagHelp || (args.length === 0 && process.stdin.isTTY))
+    return printUsage()
 
-  const stdin = await createStdinGenerator()
-  for (const json of parseJson(stdin)) {
-    // let json
-    // if (['-r', '--raw'].includes(args[0])) {
-    //   args.shift()
-    //   json = input
-    // } else try {
-    //   json = JSON.parse(input)
-    // } catch (err) {
-    //   process.stderr.write(`Invalid JSON: ${err.message}\n`)
-    //   return process.exitCode = 1
-    // }
+  const stdin = await readStdinGenerator()
+  const input = flagRaw ? readLine(stdin) : parseJson(stdin)
+  for (const json of input) {
     let i, code, output = json
     for ([i, code] of args.entries()) try {
       output = await transform(output, code)
@@ -34,6 +32,8 @@ void async function main() {
       process.stderr.write('undefined\n')
     else if (typeof output === 'string')
       console.log(output)
+    else if (output === skip)
+      continue
     else
       console.log(stringify(output, process.stdout.isTTY))
 
@@ -52,6 +52,7 @@ void async function main() {
 }()
 
 async function transform(json, code) {
+
   if ('.' === code)
     return json
 
@@ -124,7 +125,9 @@ function groupBy(keyOrFunction) {
   }
 }
 
-async function createStdinGenerator() {
+const skip = Symbol('skip')
+
+async function readStdinGenerator() {
   const fs = await import('node:fs')
   const {Buffer} = await import('node:buffer')
   const {StringDecoder} = await import('node:string_decoder')
@@ -154,6 +157,19 @@ async function createStdinGenerator() {
 
 function sleepSync(ms) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)
+}
+
+function* readLine(stdin) {
+  let buffer = ''
+  for (const ch of stdin) {
+    if (ch === '\n') {
+      yield buffer
+      buffer = ''
+    } else {
+      buffer += ch
+    }
+  }
+  return buffer
 }
 
 function* parseJson(stdin) {
@@ -477,6 +493,7 @@ function printUsage() {
 
 Flags
   -h, --help    Display this help message
-  -r, --raw     Treat input as raw string`
+  -r, --raw     Treat input as a raw string
+  -s, --slurp   Read all inputs into an array`
   console.log(usage)
 }
