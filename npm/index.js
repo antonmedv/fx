@@ -52,7 +52,6 @@ void async function main() {
 }()
 
 async function transform(json, code) {
-
   if ('.' === code)
     return json
 

@@ -132,6 +132,7 @@ void async function main() {
     const {stdout} = await run('{"foo": "bar"}\n{"foo": "baz"}')
     t.equal(stdout, '{\n  "foo": "bar"\n}\n{\n  "foo": "baz"\n}\n')
   })
+
   await test('stream - strings', async t => {
     const {stdout} = await run('"foo"\n"bar"')
     t.equal(stdout, 'foo\nbar\n')
