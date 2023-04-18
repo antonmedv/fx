@@ -157,22 +157,12 @@ function sleepSync(ms) {
 }
 
 function* parseJson(stdin) {
-  let pos = 0, buffer = '', lastChar, done = false
+  let lineNumber = 1, buffer = '', lastChar, done = false
 
   function next() {
     ({value: lastChar, done} = stdin.next())
-    pos++
-    buffer = buffer.slice(-10) + lastChar
-  }
-
-  function errorSnippet() {
-    let nextChars = ''
-    for (let i = 0; i < 10; i++) {
-      const {value: ch} = stdin.next()
-      if (ch === '\n') break
-      nextChars += ch || ''
-    }
-    return `\n\n    ${buffer}${nextChars}\n    ${'.'.repeat(buffer.length - 1)}^\n`
+    if (lastChar === '\n') lineNumber++
+    buffer = buffer.slice(-40) + (lastChar || '')
   }
 
   next()
@@ -208,7 +198,7 @@ function* parseJson(stdin) {
           for (let i = 0; i < 4; i++) {
             next()
             if (!isHexDigit(lastChar)) {
-              throw new SyntaxError(`Invalid Unicode escape sequence '\\u${unicode}${lastChar}' at position ${pos}`)
+              throw new SyntaxError(errorSnippet(`Invalid Unicode escape sequence '\\u${unicode}${lastChar}'`))
             }
             unicode += lastChar
           }
@@ -225,7 +215,7 @@ function* parseJson(stdin) {
             't': '\t'
           }[lastChar]
           if (!escapedChar) {
-            throw new SyntaxError(`Invalid escape sequence '\\${lastChar}' at position ${pos}`)
+            throw new SyntaxError(errorSnippet())
           }
           str += escapedChar
         }
@@ -235,7 +225,7 @@ function* parseJson(stdin) {
       } else if (lastChar === '"') {
         break
       } else if (lastChar === undefined) {
-        throw new SyntaxError(`Unterminated string literal at position ${pos}`)
+        throw new SyntaxError(errorSnippet())
       } else {
         str += lastChar
       }
@@ -251,7 +241,7 @@ function* parseJson(stdin) {
       numStr += lastChar
       next()
       if (!isDigit(lastChar)) {
-        throw new SyntaxError(`Invalid number format at position ${pos}.`)
+        throw new SyntaxError(errorSnippet())
       }
     }
     if (lastChar === '0') {
@@ -267,7 +257,7 @@ function* parseJson(stdin) {
       numStr += lastChar
       next()
       if (!isDigit(lastChar)) {
-        throw new SyntaxError(`Invalid number format at position ${pos}.`)
+        throw new SyntaxError(errorSnippet())
       }
       while (isDigit(lastChar)) {
         numStr += lastChar
@@ -282,7 +272,7 @@ function* parseJson(stdin) {
         next()
       }
       if (!isDigit(lastChar)) {
-        throw new SyntaxError(`Invalid number format at position ${pos}.`)
+        throw new SyntaxError(errorSnippet())
       }
       while (isDigit(lastChar)) {
         numStr += lastChar
@@ -308,7 +298,7 @@ function* parseJson(stdin) {
       const key = parseString()
       skipWhitespace()
       if (lastChar !== ':') {
-        throw new SyntaxError(`Unexpected character '${lastChar}' at position ${pos}. Expected ':'.`)
+        throw new SyntaxError(errorSnippet())
       }
       next()
       const value = parseValue()
@@ -322,7 +312,7 @@ function* parseJson(stdin) {
         next()
         skipWhitespace()
       } else {
-        throw new SyntaxError(`Unexpected character '${lastChar}' at position ${pos}. Expected ',' or '}'.`)
+        throw new SyntaxError(errorSnippet())
       }
     }
   }
@@ -348,7 +338,7 @@ function* parseJson(stdin) {
         next()
         skipWhitespace()
       } else {
-        throw new SyntaxError(`Unexpected character '${lastChar}' at position ${pos}. Expected ',' or ']'.`)
+        throw new SyntaxError(errorSnippet())
       }
     }
   }
@@ -358,14 +348,14 @@ function* parseJson(stdin) {
     for (let i = 1; i < name.length; i++) {
       next()
       if (lastChar !== name[i]) {
-        throw new SyntaxError(`Unexpected character '${lastChar}' at position ${pos}.`)
+        throw new SyntaxError(errorSnippet())
       }
     }
     next()
     if (isWhitespace(lastChar) || lastChar === ',' || lastChar === '}' || lastChar === ']' || lastChar === undefined) {
       return value
     }
-    throw new SyntaxError(`Unexpected character '${lastChar}' at position ${pos}.`)
+    throw new SyntaxError(errorSnippet())
   }
 
   function skipWhitespace() {
@@ -399,8 +389,30 @@ function* parseJson(stdin) {
 
   function expectValue(value) {
     if (value === undefined) {
-      throw new SyntaxError(`JSON value expected but got '${value}' at position ${pos}. ${errorSnippet()}`)
+      throw new SyntaxError(errorSnippet(`JSON value expected`))
     }
+  }
+
+  function errorSnippet(message = `Unexpected character '${lastChar}'`) {
+    if (!lastChar) {
+      message = 'Unexpected end of input'
+    }
+    const lines = buffer.split('\n')
+    const lastLine = lines.pop()
+    const source =
+      lines.map(line => `    ${line}\n`).join('')
+      + `    ${lastLine}${readEOL()}\n`
+    const p = `    ${'.'.repeat(Math.max(0, lastLine.length - 1))}^\n`
+    return `${message} on line ${lineNumber}.\n\n${source}${p}`
+  }
+
+  function readEOL() {
+    let line = ''
+    for (const ch of stdin) {
+      if (!ch || ch === '\n' || line.length >= 60) break
+      line += ch
+    }
+    return line
   }
 }
 
