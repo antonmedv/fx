@@ -120,6 +120,11 @@ void async function main() {
     t.deepEqual(JSON.parse(stdout), [1, 2, 3])
   })
 
+  await test('transform - skip', async t => {
+    const {stdout} = await run(42, `skip`)
+    t.equal(stdout, '')
+  })
+
   await test('transform - invalid code argument', async t => {
     const json = {foo: 'bar'}
     const code = '".foo.toUpperCase("'

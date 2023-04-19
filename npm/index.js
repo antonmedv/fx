@@ -32,6 +32,8 @@ void async function main() {
   }
 }()
 
+const skip = Symbol('skip')
+
 async function runTransforms(json, args) {
   const process = await import('node:process')
   let i, code, output = json
@@ -136,8 +138,6 @@ async function transform(json, code) {
     }
   }
 }
-
-const skip = Symbol('skip')
 
 async function readStdinGenerator() {
   const fs = await import('node:fs')
