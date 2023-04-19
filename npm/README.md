@@ -110,7 +110,7 @@ Fx has a special syntax for the flatMap function. Fox example,
 `.flatMap(x => x.labels.flatMap(x => x.name))` can be rewritten in the next way.
 
 ```sh
-curl https://api.github.com/repos/kubernetes/kubernetes/issues | fx '.[].labels[].name'
+curl https://api.github.com/repos/kubernetes/kubernetes/issues | fx '.[].labels[].name' 'sort' 'uniq' 'groupBy(x => x.split("/")[0])'
 ```
 
 ## License
