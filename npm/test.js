@@ -69,6 +69,11 @@ void async function main() {
     t.equal(stdout, '[\n  1\n]\n')
   })
 
+  await test('parseJson - comments', async t => {
+    const {stdout} = await run('/* comment */ [1 // comment\n]')
+    t.equal(stdout, '[\n  1\n]\n')
+  })
+
   await test('transform - anonymous function', async t => {
     const {stdout} = await run({'key': 'value'}, '\'function (x) { return x.key }\'')
     t.equal(stdout, 'value\n')

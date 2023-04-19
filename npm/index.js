@@ -399,6 +399,33 @@ function* parseJson(stdin) {
     while (isWhitespace(lastChar)) {
       next()
     }
+    skipComment()
+  }
+
+  function skipComment() {
+    if (lastChar === '/') {
+      next()
+      if (lastChar === '/') {
+        while (!done && lastChar !== '\n') {
+          next()
+        }
+        skipWhitespace()
+      } else if (lastChar === '*') {
+        while (!done) {
+          next()
+          if (lastChar === '*') {
+            next()
+            if (lastChar === '/') {
+              next()
+              break
+            }
+          }
+        }
+        skipWhitespace()
+      } else {
+        throw new SyntaxError(errorSnippet())
+      }
+    }
   }
 
   function isWhitespace(ch) {
