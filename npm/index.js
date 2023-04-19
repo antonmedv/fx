@@ -19,37 +19,50 @@ void async function main() {
 
   const stdin = await readStdinGenerator()
   const input = flagRaw ? readLine(stdin) : parseJson(stdin)
-  for (const json of input) {
-    let i, code, output = json
-    for ([i, code] of args.entries()) try {
-      output = await transform(output, code)
-    } catch (err) {
-      printErr(err)
-      process.exit(1)
+  if (flagSlurp) {
+    const array = []
+    for (const json of input) {
+      array.push(json)
     }
-
-    if (typeof output === 'undefined')
-      process.stderr.write('undefined\n')
-    else if (typeof output === 'string')
-      console.log(output)
-    else if (output === skip)
-      continue
-    else
-      console.log(stringify(output, process.stdout.isTTY))
-
-    function printErr(err) {
-      let pre = args.slice(0, i).join(' ')
-      let post = args.slice(i + 1).join(' ')
-      if (pre.length > 20) pre = '...' + pre.substring(pre.length - 20)
-      if (post.length > 20) post = post.substring(0, 20) + '...'
-      process.stderr.write(
-        `\n  ${pre} ${code} ${post}\n` +
-        `  ${' '.repeat(pre.length + 1)}${'^'.repeat(code.length)}\n` +
-        `\n${err.stack || err}\n`
-      )
+    await runTransforms(array, args)
+  } else {
+    for (const json of input) {
+      await runTransforms(json, args)
     }
   }
 }()
+
+async function runTransforms(json, args) {
+  const process = await import('node:process')
+  let i, code, output = json
+  for ([i, code] of args.entries()) try {
+    output = await transform(output, code)
+  } catch (err) {
+    printErr(err)
+    process.exit(1)
+  }
+
+  if (typeof output === 'undefined')
+    console.error('undefined')
+  else if (typeof output === 'string')
+    console.log(output)
+  else if (output === skip)
+    return
+  else
+    console.log(stringify(output, process.stdout.isTTY))
+
+  function printErr(err) {
+    let pre = args.slice(0, i).join(' ')
+    let post = args.slice(i + 1).join(' ')
+    if (pre.length > 20) pre = '...' + pre.substring(pre.length - 20)
+    if (post.length > 20) post = post.substring(0, 20) + '...'
+    console.error(
+      `\n  ${pre} ${code} ${post}\n` +
+      `  ${' '.repeat(pre.length + 1)}${'^'.repeat(code.length)}\n` +
+      `\n${err.stack || err}`
+    )
+  }
+}
 
 async function transform(json, code) {
   if ('.' === code)
@@ -86,41 +99,41 @@ async function transform(json, code) {
   })`).call(json)
 
   return apply(fn, json)
-}
 
-function apply(fn, ...args) {
-  if (typeof fn === 'function') return fn(...args)
-  return fn
-}
+  function apply(fn, ...args) {
+    if (typeof fn === 'function') return fn(...args)
+    return fn
+  }
 
-function fold(s) {
-  if (s.length === 1)
-    return 'x => x' + s[0]
-  let obj = s.shift()
-  obj = obj === '.' ? 'x' : 'x' + obj
-  return `x => Object.values(${obj}).flatMap(${fold(s)})`
-}
+  function fold(s) {
+    if (s.length === 1)
+      return 'x => x' + s[0]
+    let obj = s.shift()
+    obj = obj === '.' ? 'x' : 'x' + obj
+    return `x => Object.values(${obj}).flatMap(${fold(s)})`
+  }
 
-function uniq(array) {
-  return [...new Set(array)]
-}
+  function uniq(array) {
+    return [...new Set(array)]
+  }
 
-function sort(array) {
-  return array.sort()
-}
+  function sort(array) {
+    return array.sort()
+  }
 
-function groupBy(keyOrFunction) {
-  return array => {
-    const grouped = {}
-    for (const item of array) {
-      const key = typeof keyOrFunction === 'function'
-        ? keyOrFunction(item)
-        : item[keyOrFunction]
-      if (!grouped.hasOwnProperty(key))
-        grouped[key] = []
-      grouped[key].push(item)
+  function groupBy(keyOrFunction) {
+    return array => {
+      const grouped = {}
+      for (const item of array) {
+        const key = typeof keyOrFunction === 'function'
+          ? keyOrFunction(item)
+          : item[keyOrFunction]
+        if (!grouped.hasOwnProperty(key))
+          grouped[key] = []
+        grouped[key].push(item)
+      }
+      return grouped
     }
-    return grouped
   }
 }
 

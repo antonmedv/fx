@@ -142,4 +142,14 @@ void async function main() {
     const {stdout} = await run(123, `-r 'x => typeof x'`)
     t.equal(stdout, 'string\n')
   })
+
+  await test('flags - slurp flag', async t => {
+    const {stdout} = await run('{"foo": "bar"}\n{"foo": "baz"}', `-s '.[1].foo'`)
+    t.equal(stdout, 'baz\n')
+  })
+
+  await test('flags - slurp raw', async t => {
+    const {stdout} = await run('hello,\nworld!', `-rs '.join(" ")'`)
+    t.equal(stdout, 'hello, world!\n')
+  })
 }()
