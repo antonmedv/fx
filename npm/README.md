@@ -45,7 +45,7 @@ echo '{"name": "world"}' | fx '.name' '`Hello, ${this}!`'
 Use other JS functions to process the data.
 
 ```sh
-echo `{"name": "world"}` | fx 'Object.keys'
+echo '{"name": "world"}' | fx 'Object.keys'
 ```
 
 ## Advanced Usage
