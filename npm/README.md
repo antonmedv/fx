@@ -93,9 +93,6 @@ Fx works with promises.
 echo '"https://medv.io/*"' | fx 'fetch' '.text()'
 ```
 
-echo 'https://medv.io/*\nhttps://medv.io/(.)(.)' | fx -rs 'map(fetch)' 'map(.text())'
-
-
 ### Syntactic Sugar
 
 Fx has a shortcut for the map function. Fox example, `this.map(x => x.commit.message)`
