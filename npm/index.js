@@ -340,6 +340,10 @@ function* parseJson(stdin) {
       } else if (lastChar === ',') {
         next()
         skipWhitespace()
+        if (lastChar === '}') {
+          next()
+          return obj
+        }
       } else {
         throw new SyntaxError(errorSnippet())
       }
@@ -366,6 +370,10 @@ function* parseJson(stdin) {
       } else if (lastChar === ',') {
         next()
         skipWhitespace()
+        if (lastChar === ']') {
+          next()
+          return array
+        }
       } else {
         throw new SyntaxError(errorSnippet())
       }

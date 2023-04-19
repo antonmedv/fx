@@ -23,7 +23,6 @@ void async function main() {
     t.deepEqual(stdout, '[\n  {\n    "greeting": "hello world"\n  }\n]\n')
   })
 
-
   await test('parseJson - valid json', async t => {
     const obj = {a: 2.3e100, b: 'str', c: null, d: false, e: [1, 2, 3]}
     const {stdout, stderr} = await run(obj)
@@ -58,6 +57,16 @@ void async function main() {
     t.equal((await run('-2')).stdout, '-2\n')
     t.equal((await run('2e-3')).stdout, '0.002\n')
     t.equal((await run('2.3e-3')).stdout, '0.0023\n')
+  })
+
+  await test('parseJson - object tailing comma', async t => {
+    const {stdout} = await run('{"a": 1,}')
+    t.equal(stdout, '{\n  "a": 1\n}\n')
+  })
+
+  await test('parseJson - array tailing comma', async t => {
+    const {stdout} = await run('[1,]')
+    t.equal(stdout, '[\n  1\n]\n')
   })
 
   await test('transform - anonymous function', async t => {
