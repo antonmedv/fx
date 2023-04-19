@@ -50,6 +50,54 @@ echo `{"name": "world"}` | fx 'Object.keys'
 
 ## Advanced Usage
 
+Fx can process a stream of json objects. Fx will apply arguments to each object.
+
+```sh
+echo '{"name": "hello"}\n{"name": "world"}' | fx '.name'
+```
+
+If you want to process a stream of json objects as a single array, 
+use the **--slurp** or **-s** flag.
+
+```sh
+echo '{"name": "hello"}\n{"name": "world"}' | fx --slurp '.map(x => x.name)' '.join(", ")'
+```
+
+If you want to process non-JSON data, use the **--raw** or **-r** flag.
+
+```sh
+ls | fx -r '[this, this.includes(".md")]'
+```
+
+You can use **--raw** and **--slurp** (or **-rs**) together to get a single array of strings.
+
+```sh
+ls | fx -rs '.filter(x => x.includes(".md"))'
+```
+
+Fx has a special symbol **skip** for skipping the printing of the result.
+
+```sh
+ls | fx -r '.includes(".md") ? this : skip'
+```
+
+Fx comes with a set of useful functions: **uniq**, **sort**, **groupBy**.
+
+```sh
+cat file.json | fx 'uniq' 'sort' 'groupBy(x => x.name)'
+```
+
+Fx works with promises.
+
+```sh
+echo '"https://medv.io/*"' | fx 'fetch' '.text()'
+```
+
+echo 'https://medv.io/*\nhttps://medv.io/(.)(.)' | fx -rs 'map(fetch)' 'map(.text())'
+
+
+### Syntactic Sugar
+
 Fx has a shortcut for the map function. Fox example, `this.map(x => x.commit.message)`
 can be rewritten without leading dot and without `x => x` parts.  
 
@@ -66,20 +114,6 @@ Fx has a special syntax for the flatMap function. Fox example,
 
 ```sh
 curl https://api.github.com/repos/kubernetes/kubernetes/issues | fx '.[].labels[].name'
-```
-
-Fx works with promises.
-
-```sh
-echo '"https://medv.io/*"' | fx 'fetch' '.text()'
-```
-
-When using the **-r** or **--raw** flag, the input will be treated as a raw string
-instead of JSON. This can be useful when working with non-JSON input data, such as
-plain text or CSV data.
-
-```sh
-ls | fx -r '.trim().split("\n")'
 ```
 
 ## License
