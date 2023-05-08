@@ -139,6 +139,26 @@ async function transform(json, code) {
       return grouped
     }
   }
+
+  function chunk(size) {
+    return function (arr) {
+      const res = []
+      let i = 0
+      while (i < arr.length) {
+        res.push(arr.slice(i, i += size))
+      }
+      return res
+    }
+  }
+
+  function zip(...arrays) {
+    const length = Math.min(...arrays.map(a => a.length))
+    const res = []
+    for (let i = 0; i < length; i++) {
+      res.push(arrays.map(a => a[i]))
+    }
+    return res
+  }
 }
 
 async function readStdinGenerator() {
