@@ -2,6 +2,7 @@
 'use strict'
 
 void async function main() {
+  const os = await import('node:os')
   const process = await import('node:process')
   let flagHelp = false
   let flagRaw = false
@@ -16,7 +17,8 @@ void async function main() {
   }
   if (flagHelp || (args.length === 0 && process.stdin.isTTY))
     return printUsage()
-
+  await importFxrc(process.cwd())
+  await importFxrc(os.homedir())
   const stdin = await readStdinGenerator()
   const input = flagRaw ? readLine(stdin) : parseJson(stdin)
   if (flagSlurp) {
@@ -533,6 +535,15 @@ function stringify(value, isPretty = false) {
   }
 
   return stringifyValue(value)
+}
+
+async function importFxrc(path) {
+  const {join} = await import('node:path')
+  try {
+    await import(join(path, '.fxrc.js'))
+  } catch (err) {
+    if (err.code !== 'ERR_MODULE_NOT_FOUND') throw err
+  }
 }
 
 function printUsage() {
