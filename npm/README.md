@@ -81,7 +81,7 @@ Fx has a special symbol **skip** for skipping the printing of the result.
 ls | fx -r '.includes(".md") ? this : skip'
 ```
 
-Fx comes with a set of useful functions: **uniq**, **sort**, **groupBy**.
+Fx comes with a set of useful functions: **uniq**, **sort**, **groupBy**, **chunk**, **zip**.
 
 ```sh
 cat file.json | fx 'uniq' 'sort' 'groupBy(x => x.name)'
@@ -111,6 +111,22 @@ Fx has a special syntax for the flatMap function. Fox example,
 
 ```sh
 curl https://api.github.com/repos/kubernetes/kubernetes/issues | fx '.[].labels[].name'
+```
+
+### .fxrc.js
+
+Fx supports `.fxrc.js` file in the current directory or in the home directory.
+
+Put the next code in the `.fxrc.js` file to make `myFunction` available in the fx.
+
+```js
+global.myFunction = x => x + 1
+```
+
+Now you can use `myFunction` in the fx.
+
+```sh
+echo '1' | fx 'myFunction'
 ```
 
 ## License
