@@ -2,7 +2,7 @@ name: fx
 version: 24.1.0
 summary: Terminal JSON viewer
 description: Terminal JSON viewer
-base: core18
+base: core22
 grade: stable
 confinement: strict
 
@@ -14,7 +14,6 @@ apps:
 parts:
   fx:
     plugin: go
-    go-channel: 1.18/stable
+    build-snaps:
+      - go    
     source: .
-    source-type: git
-    go-importpath: github.com/antonmedv/fx
