@@ -1,4 +1,4 @@
-<a href="https://webpod.dev/?from=deployer"><img src="https://webpod.dev/img/banner.png" alt="Webpod - deploy JavaScript apps" width="190" align="right"></a>
+<a href="https://webpod.dev/?from=fx"><img src="https://webpod.dev/img/banner.png" alt="Webpod - deploy JavaScript apps" width="190" align="right"></a>
 
 <p align="center"><a href="https://fx.wtf"><img src="https://medv.io/assets/fx/fx-preview.gif" width="500" alt="fx preview"></a></p>
 
