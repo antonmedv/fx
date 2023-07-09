@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path"
@@ -17,6 +18,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/hedhyw/jsoncjson"
 	"github.com/mattn/go-isatty"
 	"github.com/muesli/termenv"
 )
@@ -84,6 +86,7 @@ func main() {
 	filePath := ""
 	fileName := ""
 	var dec *json.Decoder
+	var data string = ""
 	if stdinIsTty {
 		// Nothing was piped, maybe file argument?
 		if len(args) >= 1 {
@@ -99,18 +102,35 @@ func main() {
 				}
 			}
 			fileName = path.Base(filePath)
-			dec = json.NewDecoder(f)
+
+			// Read from the file
+			fileContent, err := io.ReadAll(f)
+			if err == nil {
+				data = string(fileContent)
+			}
+			// Reset the file pointer
+			f.Seek(0, 0)
+			reader := jsoncjson.NewReader(f)
+			dec = json.NewDecoder(reader)
 			args = args[1:]
 		}
 	} else {
-		dec = json.NewDecoder(os.Stdin)
+		// Read from the file
+		fileContent, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			data = string(fileContent)
+		}
+		// Reset the file pointer
+		os.Stdin.Seek(0, 0)
+		reader := jsoncjson.NewReader(os.Stdin)
+		dec = json.NewDecoder(reader)
 	}
 	if dec == nil {
 		fmt.Println(usage(DefaultKeyMap()))
 		os.Exit(1)
 	}
 	dec.UseNumber()
-	object, err := Parse(dec)
+	object, comments, err := Parse(dec, data)
 	if err != nil {
 		fmt.Println("JSON Parse Error:", err.Error())
 		os.Exit(1)
@@ -185,6 +205,7 @@ func main() {
 		fileName:        fileName,
 		theme:           theme,
 		json:            object,
+		comments:        comments,
 		showSize:        showSize,
 		width:           80,
 		height:          60,
@@ -198,6 +219,7 @@ func main() {
 		prevSiblings:    map[string]string{},
 		wrap:            true,
 		searchInput:     input,
+		showComments:    true,
 	}
 	m.collectSiblings(m.json, "")
 	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
@@ -221,7 +243,9 @@ type model struct {
 
 	fileName string
 	json     interface{}
-	lines    []string
+	comments CommentsData
+
+	lines []string
 
 	mouseWheelDelta int // Number of lines the mouse wheel will scroll
 	offset          int // offset is the vertical scroll position
@@ -240,6 +264,8 @@ type model struct {
 	nextSiblings, prevSiblings map[string]string   // map of path => sibling path
 	cursor                     int                 // cursor in [0, len(m.paths)]
 	showCursor                 bool
+
+	showComments bool
 
 	searchInput             textinput.Model
 	searchRegexCompileError string
@@ -547,7 +573,7 @@ func (m *model) render() {
 	} else {
 		m.lineNumberToPath = make(map[int]string, len(m.lineNumberToPath))
 	}
-	m.lines = m.print(m.json, 1, 0, 0, "", true)
+	m.lines = m.print(m.json, m.comments, 1, 1, 0, "", false)
 
 	if m.offset > len(m.lines)-1 {
 		m.GotoBottom()

@@ -88,7 +88,8 @@ func ReduceJS(vm *goja.Runtime, reduce goja.Callable, input interface{}, theme T
 	output := value.String()
 	dec := json.NewDecoder(strings.NewReader(output))
 	dec.UseNumber()
-	object, err := Parse(dec)
+	// We don't need comments when reducing.
+	object, _, err := Parse(dec, "")
 	if err != nil {
 		fmt.Print(output)
 		return 0

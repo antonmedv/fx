@@ -19,8 +19,185 @@ func (m *model) connect(path string, lineNumber int) {
 	m.lineNumberToPath[lineNumber] = path
 }
 
-func (m *model) print(v interface{}, level, lineNumber, keyEndPos int, path string, selectableValues bool) []string {
+// func (m *model) printWithComments(v interface{}, comments CommentsData) []string {
+// 	lines := m.print(v, 1, 1, 0, "", false)
+
+// 	newLines := []string{}
+
+// 	totalAddedLines := 0
+
+// 	for i, line := range lines {
+// 		const (
+// 			Opening = iota
+// 			Closing = iota
+// 			None    = iota
+// 		)
+
+// 		lineType := None
+// 		if strings.LastIndex(line, "{") > len(line)-2 {
+// 			lineType = Opening
+// 		}
+// 		if strings.LastIndex(line, "[") > len(line)-2 {
+// 			lineType = Opening
+// 		}
+// 		if strings.LastIndex(line, "}") > len(line)-2 {
+// 			lineType = Closing
+// 		}
+// 		if strings.LastIndex(line, "]") > len(line)-2 {
+// 			lineType = Closing
+// 		}
+
+// 		path := m.lineNumberToPath[i+1]
+
+// 		commentData := comments[path]
+// 		if commentData == nil {
+// 			newLines = append(newLines, line)
+// 			continue
+// 		}
+
+// 		indent := 0
+// 		for _, c := range line {
+// 			if c == ' ' {
+// 				indent++
+// 			} else {
+// 				break
+// 			}
+// 		}
+
+// 		if lineType == Opening || lineType == None {
+// 			// Comments before
+// 			commentsBefore := (*commentData).CommentsBefore
+// 			for _, comment := range commentsBefore {
+// 				comment := formatComment(comment, indent, true)
+// 				totalAddedLines += len(comment)
+// 				for _, line := range comment {
+// 					newLines = append(newLines, merge(m.explode(line, nil, m.theme.Comment, "", false)))
+// 				}
+// 			}
+// 		}
+
+// 		// Update pathToLineNumber
+// 		m.pathToLineNumber[path] += totalAddedLines + 1
+
+// 		// Gets the length, excluding formatting characters and ANSI escape codes, of a string
+// 		visibleLen := func(s string) int {
+// 			visibleLen := 0
+// 			escape := false
+// 			for _, c := range s {
+// 				if escape {
+// 					if c == 'm' {
+// 						escape = false
+// 					}
+// 					continue
+// 				}
+// 				if c == '\033' {
+// 					escape = true
+// 					continue
+// 				}
+// 				visibleLen++
+// 			}
+// 			return visibleLen
+// 		}
+
+// 		// Inline comments
+// 		commentAt := (*commentData).CommentAt
+
+// 		if commentAt.Comment != "" {
+// 			comment := formatComment(commentAt, visibleLen(line)+1, false)
+// 			totalAddedLines += len(comment) - 1
+// 			commentString := merge(m.explode(" "+comment[0], nil, m.theme.Comment, "", false))
+
+// 			newLines = append(newLines, line+commentString)
+
+// 			for _, line := range comment[1:] {
+// 				newLines = append(newLines, merge(m.explode(line, nil, m.theme.Comment, "", false)))
+// 			}
+// 		} else {
+// 			newLines = append(newLines, line)
+// 		}
+
+// 		if lineType == Closing || lineType == None {
+// 			// Comments after
+// 			commentsAfter := (*commentData).CommentsAfter
+// 			for _, comment := range commentsAfter {
+// 				comment := formatComment(comment, indent, true)
+// 				totalAddedLines += len(comment)
+// 				for _, line := range comment {
+// 					newLines = append(newLines, merge(m.explode(line, nil, m.theme.Comment, "", false)))
+// 				}
+// 			}
+// 		}
+// 	}
+
+// 	return newLines
+// }
+
+// Gets the length, excluding formatting characters and ANSI escape codes, of a string
+func visibleLen(s string) int {
+	visibleLen := 0
+	escape := false
+	for _, c := range s {
+		if escape {
+			if c == 'm' {
+				escape = false
+			}
+			continue
+		}
+		if c == '\033' {
+			escape = true
+			continue
+		}
+		visibleLen++
+	}
+	return visibleLen
+}
+
+func formatComment(comment Comment, indent int, indentStart bool) []string {
+	commentString := ""
+	if indentStart {
+		commentString = strings.Repeat(" ", indent)
+	}
+
+	compactBlockComment := true
+	if strings.Contains(comment.Comment, "\n") {
+		compactBlockComment = false
+	}
+
+	switch comment.Type {
+	case InlineComment:
+		commentString += "// " + comment.Comment
+	case BlockComment:
+		if compactBlockComment {
+			commentString += "/* " + comment.Comment + " */"
+		} else {
+			commentString += "/*\n" + comment.Comment + "\n*/"
+		}
+	}
+
+	lines := strings.Split(commentString, "\n")
+	for i, line := range lines {
+		if i == 0 {
+			continue
+		}
+		lines[i] = strings.Repeat(" ", indent) + line
+		if i == len(lines)-1 {
+			continue
+		}
+		if comment.Type == BlockComment {
+			if compactBlockComment {
+				lines[i] = "   " + lines[i]
+			} else {
+				lines[i] = "  " + lines[i]
+			}
+		}
+	}
+
+	return lines
+}
+
+func (m *model) print(v interface{}, comments CommentsData, level, lineNumber, keyEndPos int, path string, selectableValues bool) []string {
 	m.connect(path, lineNumber)
+
 	ident := strings.Repeat("  ", level)
 	subident := strings.Repeat("  ", level-1)
 	highlight := m.highlightIndex[path]
@@ -29,34 +206,82 @@ func (m *model) print(v interface{}, level, lineNumber, keyEndPos int, path stri
 		searchValue = highlight.value
 	}
 
+	outputLines := []string{}
+
+	commentData := CommentData{}
+	if comments[path] != nil {
+		commentData = *comments[path]
+	}
+
+	addCommentsBefore := func(level int) {
+		commentsBefore := commentData.CommentsBefore
+		for _, comment := range commentsBefore {
+			comment := formatComment(comment, level*2, true)
+			for _, line := range comment {
+				outputLines = append(outputLines, merge(m.explode(line, nil, m.theme.Comment, "", false)))
+				lineNumber++
+			}
+		}
+	}
+	addCommentsInline := func() string {
+		commentAt := commentData.CommentAt
+		if commentAt.Comment != "" {
+			lastLine := outputLines[len(outputLines)-1]
+			comment := formatComment(commentAt, visibleLen(lastLine)+1, false)
+			commentString := merge(m.explode(" "+comment[0], nil, m.theme.Comment, "", false))
+			for _, line := range comment[1:] {
+				outputLines = append(outputLines, merge(m.explode(line, nil, m.theme.Comment, "", false)))
+				lineNumber++
+			}
+			return commentString
+		}
+		return ""
+	}
+	addCommentsAfter := func(level int) {
+		commentsAfter := commentData.CommentsAfter
+		for _, comment := range commentsAfter {
+			comment := formatComment(comment, level*2, true)
+			for _, line := range comment {
+				outputLines = append(outputLines, merge(m.explode(line, nil, m.theme.Comment, "", false)))
+				lineNumber++
+			}
+		}
+	}
+
+	// Add comments before only if this is top level; otherwise, the parent will add them so the comment goes before keys, commas, etc.
+	if level == 1 {
+		addCommentsBefore(0)
+	}
+
 	switch v.(type) {
 	case nil:
-		return []string{merge(m.explode("null", searchValue, m.theme.Null, path, selectableValues))}
+		outputLines = append(outputLines, []string{merge(m.explode("null", searchValue, m.theme.Null, path, selectableValues))}...)
 
 	case bool:
 		if v.(bool) {
-			return []string{merge(m.explode("true", searchValue, m.theme.Boolean, path, selectableValues))}
+			outputLines = append(outputLines, []string{merge(m.explode("true", searchValue, m.theme.Boolean, path, selectableValues))}...)
 		} else {
-			return []string{merge(m.explode("false", searchValue, m.theme.Boolean, path, selectableValues))}
+			outputLines = append(outputLines, []string{merge(m.explode("false", searchValue, m.theme.Boolean, path, selectableValues))}...)
 		}
 
 	case Number:
-		return []string{merge(m.explode(v.(Number).String(), searchValue, m.theme.Number, path, selectableValues))}
+		outputLines = append(outputLines, []string{merge(m.explode(v.(Number).String(), searchValue, m.theme.Number, path, selectableValues))}...)
 
 	case string:
 		line := fmt.Sprintf("%q", v)
 		chunks := m.explode(line, searchValue, m.theme.String, path, selectableValues)
 		if m.wrap && keyEndPos+width(line) > m.width {
-			return wrapLines(chunks, keyEndPos, m.width, subident)
+			outputLines = append(outputLines, wrapLines(chunks, keyEndPos, m.width, subident)...)
+		} else {
+			// No wrap
+			outputLines = append(outputLines, []string{merge(chunks)}...)
 		}
-		// No wrap
-		return []string{merge(chunks)}
 
 	case *Dict:
 		if !m.expandedPaths[path] {
 			return []string{m.preview(v, path, selectableValues)}
 		}
-		output := []string{m.printOpenBracket("{", highlight, path, selectableValues)}
+		outputLines = append(outputLines, m.printOpenBracket("{", highlight, path, selectableValues))
 		lineNumber++ // bracket is on separate line
 		keys := v.(*Dict).Keys
 		for i, k := range keys {
@@ -67,6 +292,9 @@ func (m *model) print(v interface{}, level, lineNumber, keyEndPos int, path stri
 				keyRanges = highlight.key
 				delimRanges = highlight.delim
 			}
+
+			addCommentsBefore(level)
+
 			m.connect(subpath, lineNumber)
 			key := fmt.Sprintf("%q", k)
 			keyTheme := m.theme.Key(i, len(keys))
@@ -74,42 +302,57 @@ func (m *model) print(v interface{}, level, lineNumber, keyEndPos int, path stri
 			value, _ := v.(*Dict).Get(k)
 			delim := merge(m.explode(": ", delimRanges, m.theme.Syntax, subpath, false))
 			keyEndPos := width(ident) + width(key) + width(delim)
-			lines := m.print(value, level+1, lineNumber, keyEndPos, subpath, false)
+			lines := m.print(value, comments, level+1, lineNumber, keyEndPos, subpath, false)
 			lines[0] = ident + key + delim + lines[0]
 			if i < len(keys)-1 {
 				lines[len(lines)-1] += m.printComma(",", highlight)
 			}
-			output = append(output, lines...)
+
 			lineNumber += len(lines)
+			outputLines = append(outputLines, lines...)
+			outputLines[len(outputLines)-1] += addCommentsInline()
+
+			addCommentsAfter(level)
+
 		}
-		output = append(output, subident+m.printCloseBracket("}", highlight, path, false))
-		return output
+		outputLines = append(outputLines, subident+m.printCloseBracket("}", highlight, path, false))
 
 	case Array:
 		if !m.expandedPaths[path] {
 			return []string{m.preview(v, path, selectableValues)}
 		}
-		output := []string{m.printOpenBracket("[", highlight, path, selectableValues)}
+		outputLines = append(outputLines, m.printOpenBracket("[", highlight, path, selectableValues))
 		lineNumber++ // bracket is on separate line
 		slice := v.(Array)
 		for i, value := range slice {
 			subpath := fmt.Sprintf("%v[%v]", path, i)
 			s := m.highlightIndex[subpath]
+			addCommentsBefore(level)
 			m.connect(subpath, lineNumber)
-			lines := m.print(value, level+1, lineNumber, width(ident), subpath, true)
+			lines := m.print(value, comments, level+1, lineNumber, width(ident), subpath, true)
 			lines[0] = ident + lines[0]
 			if i < len(slice)-1 {
 				lines[len(lines)-1] += m.printComma(",", s)
 			}
 			lineNumber += len(lines)
-			output = append(output, lines...)
+			outputLines = append(outputLines, lines...)
+			outputLines[len(outputLines)-1] += addCommentsInline()
+
+			addCommentsAfter(level)
 		}
-		output = append(output, subident+m.printCloseBracket("]", highlight, path, false))
-		return output
+		outputLines = append(outputLines, subident+m.printCloseBracket("]", highlight, path, false))
 
 	default:
 		return []string{"unknown type"}
 	}
+
+	// Add inline and after comments only if this is top level; otherwise, the parent will add them so the comment goes after keys, commas, etc.
+	if level == 1 {
+		outputLines[len(outputLines)-1] += addCommentsInline()
+		addCommentsAfter(0)
+	}
+
+	return outputLines
 }
 
 func (m *model) preview(v interface{}, path string, selectableValues bool) string {

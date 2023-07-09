@@ -121,7 +121,7 @@ func (m *model) scrollDownToCursor() {
 func (m *model) scrollUpToCursor() {
 	at := m.cursorLineNumber()
 	if at < m.offset+m.height { // cursor is above
-		m.LineUp(max(0, m.offset-at))
+		m.LineUp(max(0, m.offset-at+2))
 	} else {
 		m.SetOffset(at)
 	}

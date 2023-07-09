@@ -30,7 +30,8 @@ func stream(dec *json.Decoder, object interface{}, lang string, args []string, t
 				Reduce(object, lang, args, theme, fxrc)
 			}
 		}
-		object, err = Parse(dec)
+		// Streaming doesn't support interactive mode (and thus comments), so we pass an empty string ignore them.
+		object, _, err = Parse(dec, "")
 		if err == io.EOF {
 			return 0
 		}

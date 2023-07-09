@@ -1,9 +1,10 @@
 package theme
 
 import (
+	"strings"
+
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mazznoer/colorgrad"
-	"strings"
 )
 
 type Theme struct {
@@ -17,6 +18,7 @@ type Theme struct {
 	Null      Color
 	Boolean   Color
 	Number    Color
+	Comment   Color
 }
 type Color func(s ...string) string
 
@@ -40,6 +42,7 @@ var Themes = map[string]Theme{
 		Null:      noColor,
 		Boolean:   noColor,
 		Number:    noColor,
+		Comment:   noColor,
 	},
 	"1": {
 		Cursor:    defaultCursor,
@@ -52,6 +55,7 @@ var Themes = map[string]Theme{
 		Null:      defaultNull,
 		Boolean:   boldFg("3"),
 		Number:    boldFg("6"),
+		Comment:   boldFg("8"),
 	},
 	"2": {
 		Cursor:    defaultCursor,
@@ -64,6 +68,7 @@ var Themes = map[string]Theme{
 		Null:      defaultNull,
 		Boolean:   fg("#F15BB5"),
 		Number:    fg("#9B5DE5"),
+		Comment:   fg("#8c8c8c"),
 	},
 	"3": {
 		Cursor:    defaultCursor,
@@ -76,6 +81,7 @@ var Themes = map[string]Theme{
 		Null:      defaultNull,
 		Boolean:   fg("#ee964b"),
 		Number:    fg("#ee964b"),
+		Comment:   fg("#8c8c8c"),
 	},
 	"4": {
 		Cursor:    defaultCursor,
@@ -88,6 +94,7 @@ var Themes = map[string]Theme{
 		Null:      defaultNull,
 		Boolean:   fg("#FF6B6B"),
 		Number:    fg("#FFD93D"),
+		Comment:   fg("#8c8c8c"),
 	},
 	"5": {
 		Cursor:    defaultCursor,
@@ -100,6 +107,7 @@ var Themes = map[string]Theme{
 		Null:      defaultNull,
 		Boolean:   boldFg("201"),
 		Number:    boldFg("201"),
+		Comment:   boldFg("244"),
 	},
 	"6": {
 		Cursor:    defaultCursor,
@@ -112,6 +120,7 @@ var Themes = map[string]Theme{
 		Null:      defaultNull,
 		Boolean:   fg("195"),
 		Number:    fg("195"),
+		Comment:   fg("244"),
 	},
 	"7": {
 		Cursor:    defaultCursor,
@@ -124,6 +133,7 @@ var Themes = map[string]Theme{
 		Null:      defaultNull,
 		Boolean:   noColor,
 		Number:    noColor,
+		Comment:   noColor,
 	},
 	"8": {
 		Cursor:    defaultCursor,
@@ -136,6 +146,7 @@ var Themes = map[string]Theme{
 		Null:      defaultNull,
 		Boolean:   noColor,
 		Number:    noColor,
+		Comment:   noColor,
 	},
 	"9": {
 		Cursor:    defaultCursor,
@@ -148,6 +159,7 @@ var Themes = map[string]Theme{
 		Null:      defaultNull,
 		Boolean:   noColor,
 		Number:    noColor,
+		Comment:   noColor,
 	},
 }
 

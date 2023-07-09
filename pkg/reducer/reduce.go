@@ -63,7 +63,8 @@ func Reduce(input interface{}, lang string, args []string, theme Theme, fxrc str
 
 	dec := json.NewDecoder(bytes.NewReader(output))
 	dec.UseNumber()
-	object, err := Parse(dec)
+	// We don't need comments when reducing.
+	object, _, err := Parse(dec, "")
 	if err != nil {
 		fmt.Print(string(output))
 		return 0

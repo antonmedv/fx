@@ -2,9 +2,10 @@ package json
 
 import (
 	"encoding/json"
-	. "github.com/antonmedv/fx/pkg/dict"
 	"strings"
 	"testing"
+
+	. "github.com/antonmedv/fx/pkg/dict"
 )
 
 func Test_parse(t *testing.T) {
@@ -14,8 +15,8 @@ func Test_parse(t *testing.T) {
 	"a": 3,
 	"slice": [{"z": "z", "1": "1"}]
 }`
-
-	p, err := Parse(json.NewDecoder(strings.NewReader(input)))
+	// TODO: Test comments
+	p, _, err := Parse(json.NewDecoder(strings.NewReader(input)), "")
 	if err != nil {
 		t.Error("JSON parse error", err)
 	}
