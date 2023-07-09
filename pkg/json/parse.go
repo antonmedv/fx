@@ -2,6 +2,8 @@ package json
 
 import (
 	"encoding/json"
+	"os"
+	"strings"
 
 	. "github.com/antonmedv/fx/pkg/dict"
 )
@@ -44,78 +46,82 @@ func Parse(dec *json.Decoder, data string) (interface{}, CommentsData, error) {
 func getComments(data string) CommentsData {
 	comments := make(CommentsData)
 
-	// // Loop until we find something that isn't a comment
-	// takeUntil := func(until ...string) string {
-	// 	takenData := ""
-	// 	for {
-	// 		if len(data) == 0 {
-	// 			break
-	// 		}
-	// 		// Check if any of the until strings are at the start of the data
-	// 		for _, u := range until {
-	// 			if strings.HasPrefix(data, u) {
-	// 				data = data[len(u):]
-	// 				break
-	// 			}
-	// 		}
-	// 		takenData += string(data[0])
-	// 		data = data[1:]
-	// 	}
-	// 	return takenData
-	// }
+	// Loop until we find something that isn't a comment
+	takeUntil := func(until ...string) string {
+		takenData := ""
+	take:
+		for {
+			if len(data) == 0 {
+				break
+			}
+			// Check if any of the until strings are at the start of the data
+			for _, u := range until {
+				if strings.HasPrefix(data, u) {
+					data = data[len(u):]
+					break take
+				}
+			}
+			takenData += string(data[0])
+			data = data[1:]
+		}
+		return takenData
+	}
 
-	// path := ""
+	path := ""
 
-	// takeComments := func() {
-	// 	// Comments at the start
-	// 	for len(data) > 0 {
-	// 		data = strings.TrimSpace(data)
-	// 		if strings.HasPrefix(data, "//") {
-	// 			if comments[path] == nil {
-	// 				comments[path] = &CommentData{}
-	// 			}
-	// 			comments[path].CommentsBefore = append(comments[path].CommentsBefore, Comment{
-	// 				Comment: strings.Trim(strings.TrimPrefix(takeUntil("\n"), "//"), " "),
-	// 				Type:    InlineComment,
-	// 			})
-	// 		} else if strings.HasPrefix(data, "/*") {
-	// 			if comments[path] == nil {
-	// 				comments[path] = &CommentData{}
-	// 			}
-	// 			comments[path].CommentsBefore = append(comments[path].CommentsBefore, Comment{
-	// 				Comment: strings.Trim(strings.TrimPrefix(takeUntil("*/"), "/*"), " "),
-	// 				Type:    BlockComment,
-	// 			})
-	// 		} else {
-	// 			break
-	// 		}
-	// 	}
-	// 	return
-	// }
+	takeComments := func() {
+		// Comments at the start
+		for len(data) > 0 {
+			data = strings.TrimSpace(data)
+			if strings.HasPrefix(data, "//") {
+				if comments[path] == nil {
+					comments[path] = &CommentData{}
+				}
+				comments[path].CommentsBefore = append(comments[path].CommentsBefore, Comment{
+					Comment: strings.Trim(strings.TrimPrefix(takeUntil("\n"), "//"), " "),
+					Type:    InlineComment,
+				})
+			} else if strings.HasPrefix(data, "/*") {
+				if comments[path] == nil {
+					comments[path] = &CommentData{}
+				}
+				comments[path].CommentsBefore = append(comments[path].CommentsBefore, Comment{
+					Comment: strings.Trim(strings.TrimPrefix(takeUntil("*/"), "/*"), " "),
+					Type:    BlockComment,
+				})
+			} else {
+				break
+			}
+		}
+		return
+	}
 
-	// takeComments()
+	takeComments()
 
 	// Half-parse the JSON (We don't care about the values, just getting the path and comments).
 	// We can't use a JSON parser because it will error on the comments.
-	// for len(data) > 0 {
-	// 	takeUntil("//", "/*")
-	// 	takeComments()
-	// }
+	for len(data) > 0 {
+		takeUntil("//", "/*")
+		takeComments()
+	}
 
 	// Print the comments
-	// for k, v := range comments {
-	// 	println("Before:")
-	// 	for _, c := range v.CommentsBefore {
-	// 		println(" | ", k, ":", strings.Split(c.Comment, "\n")[0])
-	// 	}
-	// 	println("Inline:")
-	// 	println(" | ", k, ":", v.CommentAt.Comment)
-	// 	println("After:")
-	// 	for _, c := range v.CommentsAfter {
-	// 		println(" | ", k, ":", c.Comment)
-	// 	}
-	// 	println("------------")
-	// }
+	for k, v := range comments {
+		println("'" + k + "':")
+		println("  Before:")
+		for _, c := range v.CommentsBefore {
+			println("   | ", k, ":", strings.Split(c.Comment, "\n")[0])
+		}
+		println("  Inline:")
+		println("   | ", k, ":", v.CommentAt.Comment)
+		println("  After:")
+		for _, c := range v.CommentsAfter {
+			println("   | ", k, ":", c.Comment)
+		}
+		println("------------")
+	}
+
+	os.Exit(0)
 
 	return comments
 }
