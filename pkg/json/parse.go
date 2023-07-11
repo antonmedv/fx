@@ -102,14 +102,25 @@ func getComments(data string) CommentsData {
 					comment += string(c)
 				}
 
+				amountOfWhitespaceBefore := 0
+				for whitespaceIndex := index - 1; whitespaceIndex >= 0; whitespaceIndex-- {
+					if string(data[whitespaceIndex]) == " " {
+						amountOfWhitespaceBefore++
+					} else {
+						break
+					}
+				}
+
 				commentPositions = append(commentPositions, commentPosition{
-					Position: index,
+					Position: index - amountOfWhitespaceBefore,
 					Type:     InlineComment,
 					Content:  comment,
 				})
 
 				// Remove the comment from the data
-				data = data[:index] + data[index+len(comment):]
+				data = data[:index] + strings.TrimSpace(data[index+len(comment):])
+
+				index--
 			}
 			// Block comments
 			if strings.HasPrefix(dataPart, "/*") {
@@ -122,14 +133,25 @@ func getComments(data string) CommentsData {
 					comment += string(c)
 				}
 
+				amountOfWhitespaceBefore := 0
+				for whitespaceIndex := index - 1; whitespaceIndex >= 0; whitespaceIndex-- {
+					if string(data[whitespaceIndex]) == " " {
+						amountOfWhitespaceBefore++
+					} else {
+						break
+					}
+				}
+
 				commentPositions = append(commentPositions, commentPosition{
-					Position: index,
+					Position: index - amountOfWhitespaceBefore,
 					Type:     BlockComment,
 					Content:  comment,
 				})
 
 				// Remove the comment from the data
-				data = data[:index] + data[index+len(comment):]
+				data = data[:index] + strings.TrimSpace(data[index+len(comment):])
+
+				index--
 			}
 		}
 	}
@@ -147,20 +169,25 @@ func getComments(data string) CommentsData {
 		}
 	}
 
+	println(characterToPath[int64(maxKey)])
+
 	// For each comment, find the path
-	totalAdded := 0
 	for _, c := range commentPositions {
 		character := int64(c.Position)
 		if character < 0 {
 			character = 0
 		}
-		if character > int64(maxKey)-1 {
+		if character > int64(maxKey) {
 			character = int64(maxKey)
 		}
 
-		commentPath, ok := characterToPath[character]
+		lookupCharacter := character - 1
+		if lookupCharacter < 0 {
+			lookupCharacter = 0
+		}
+		commentPath, ok := characterToPath[lookupCharacter]
 		if !ok {
-			println("didn't exist uh oh ", c.Position, character, totalAdded, len(data))
+			println("didn't exist uh oh ", c.Position, character, len(data))
 			continue
 		}
 
@@ -180,38 +207,38 @@ func getComments(data string) CommentsData {
 		} else if c.Type == BlockComment {
 			content = strings.TrimPrefix(content, "/*")
 			content = strings.TrimSuffix(content, "*/")
-			lines := strings.Split(content, "\n")
-			for i, line := range lines {
-				lines[i] = strings.Trim(line, " \t")
+		}
+		// Remove any lines from content that are empty
+		lines := strings.Split(content, "\n")
+		newLines := make([]string, 0)
+		for _, line := range lines {
+			line = strings.Trim(line, " \t\n\r")
+			if line != "" {
+				newLines = append(newLines, line)
 			}
-			content = strings.Join(lines, "\n")
-			println(content)
+		}
+		content = strings.Join(newLines, "\n")
+
+		if data[character] == '}' || data[character] == ']' {
+			comments[commentPath].CommentsAfter = append(comments[commentPath].CommentsAfter, Comment{
+				Comment: content,
+				Type:    c.Type,
+			})
+			continue
+		}
+		if data[lookupCharacter] == ',' && character > 0 {
+			comments[commentPath].CommentAt = Comment{
+				Comment: content,
+				Type:    c.Type,
+			}
+			continue
 		}
 
 		comments[commentPath].CommentsBefore = append(comments[commentPath].CommentsBefore, Comment{
 			Comment: content,
 			Type:    c.Type,
 		})
-		totalAdded += len(c.Content)
 	}
-
-	// Print the comments
-	// for k, v := range comments {
-	// 	println("'" + k + "':")
-	// 	println("  Before:")
-	// 	for _, c := range v.CommentsBefore {
-	// 		println("   | ", k, ":", strings.Split(c.Comment, "\n")[0])
-	// 	}
-	// 	println("  Inline:")
-	// 	println("   | ", k, ":", v.CommentAt.Comment)
-	// 	println("  After:")
-	// 	for _, c := range v.CommentsAfter {
-	// 		println("   | ", k, ":", c.Comment)
-	// 	}
-	// 	println("------------")
-	// }
-
-	// os.Exit(0)
 
 	return comments
 }
@@ -257,20 +284,22 @@ func getPathCharacters(data string) (map[int64]string, error) {
 func getDictCharacters(dec *json.Decoder, path string) (map[int64]string, error) {
 	characterToPath := make(map[int64]string)
 
-	oldOffset := dec.InputOffset()
+	startOffset := dec.InputOffset()
 	for {
+		oldOffset := dec.InputOffset()
 		token, err := dec.Token()
 		if err != nil {
 			return nil, err
 		}
 		if delim, ok := token.(json.Delim); ok && delim == '}' {
 			offset := dec.InputOffset()
-			for i := oldOffset; i < offset; i++ {
-				_, ok = characterToPath[i]
+			for i := startOffset; i < offset; i++ {
+				_, ok := characterToPath[i]
 				if !ok {
 					characterToPath[i] = path
 				}
 			}
+
 			return characterToPath, nil
 		}
 		key := token.(string)
@@ -280,6 +309,14 @@ func getDictCharacters(dec *json.Decoder, path string) (map[int64]string, error)
 		token, err = dec.Token()
 		if err != nil {
 			return nil, err
+		}
+
+		offset := dec.InputOffset() + 1
+		for i := oldOffset; i < offset; i++ {
+			_, ok := characterToPath[i]
+			if !ok {
+				characterToPath[i] = subpath
+			}
 		}
 
 		if delim, ok := token.(json.Delim); ok {
@@ -307,12 +344,23 @@ func getDictCharacters(dec *json.Decoder, path string) (map[int64]string, error)
 
 func getArrayCharacters(dec *json.Decoder, path string) (map[int64]string, error) {
 	characterToPath := make(map[int64]string)
+	startOffset := dec.InputOffset()
 	for index := 0; ; index++ {
+		oldOffset := dec.InputOffset()
 		token, err := dec.Token()
 		if err != nil {
 			return nil, err
 		}
 		subpath := path + "[" + fmt.Sprint(index) + "]"
+
+		offset := dec.InputOffset()
+		for i := oldOffset; i < offset; i++ {
+			_, ok := characterToPath[i]
+			if !ok {
+				characterToPath[i] = subpath
+			}
+		}
+
 		if delim, ok := token.(json.Delim); ok {
 			switch delim {
 			case '{':
@@ -332,6 +380,13 @@ func getArrayCharacters(dec *json.Decoder, path string) (map[int64]string, error
 					characterToPath[k] = v
 				}
 			case ']':
+				offset := dec.InputOffset()
+				for i := startOffset; i < offset; i++ {
+					_, ok := characterToPath[i]
+					if !ok {
+						characterToPath[i] = subpath
+					}
+				}
 				return characterToPath, nil
 			}
 			continue
