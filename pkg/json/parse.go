@@ -30,6 +30,7 @@ func Parse(dec *json.Decoder, data string) (interface{}, CommentsData, error) {
 		return nil, nil, err
 	}
 	comments := getComments(data)
+
 	if delim, ok := token.(json.Delim); ok {
 		switch delim {
 		case '{':
@@ -53,6 +54,7 @@ func getComments(data string) CommentsData {
 	// Block comments are of the form "/* comment */"
 	type commentPosition struct {
 		Position int
+		Offset   int
 		Type     int
 		Content  string
 	}
@@ -68,6 +70,7 @@ func getComments(data string) CommentsData {
 	)
 	stringType := NoString
 	escape := false
+	whitespaceCount := 0
 	for index := 0; index < len(data); index++ {
 		char := string(data[index])
 
@@ -88,71 +91,61 @@ func getComments(data string) CommentsData {
 			escape = true
 		}
 
+		if stringType != NoString {
+			continue
+		}
+
 		// If we're not in a string, check for comments
-		if stringType == NoString {
-			dataPart := data[index:]
-			// Inline comments
-			if strings.HasPrefix(dataPart, "//") {
-				// Inline comment
-				comment := ""
-				for _, c := range dataPart {
-					if c == '\n' {
-						break
-					}
-					comment += string(c)
+		dataPart := data[index:]
+		// Inline comments
+		if strings.HasPrefix(dataPart, "//") {
+			// Inline comment
+			comment := ""
+			for _, c := range dataPart {
+				if c == '\n' {
+					break
 				}
-
-				amountOfWhitespaceBefore := 0
-				for whitespaceIndex := index - 1; whitespaceIndex >= 0; whitespaceIndex-- {
-					if string(data[whitespaceIndex]) == " " {
-						amountOfWhitespaceBefore++
-					} else {
-						break
-					}
-				}
-
-				commentPositions = append(commentPositions, commentPosition{
-					Position: index - amountOfWhitespaceBefore,
-					Type:     InlineComment,
-					Content:  comment,
-				})
-
-				// Remove the comment from the data
-				data = data[:index] + strings.TrimSpace(data[index+len(comment):])
-
-				index--
+				comment += string(c)
 			}
-			// Block comments
-			if strings.HasPrefix(dataPart, "/*") {
-				// Block comment
-				comment := ""
-				for _, c := range dataPart {
-					if strings.HasSuffix(comment, "*/") {
-						break
-					}
-					comment += string(c)
+
+			commentPositions = append(commentPositions, commentPosition{
+				Position: index,
+				Offset:   whitespaceCount,
+				Type:     InlineComment,
+				Content:  comment,
+			})
+
+			// Remove the comment from the data
+			data = data[:index] + data[index+len(comment):]
+			index--
+		}
+		// Block comments
+		if strings.HasPrefix(dataPart, "/*") {
+			// Block comment
+			comment := ""
+			for _, c := range dataPart {
+				if strings.HasSuffix(comment, "*/") {
+					break
 				}
-
-				amountOfWhitespaceBefore := 0
-				for whitespaceIndex := index - 1; whitespaceIndex >= 0; whitespaceIndex-- {
-					if string(data[whitespaceIndex]) == " " {
-						amountOfWhitespaceBefore++
-					} else {
-						break
-					}
-				}
-
-				commentPositions = append(commentPositions, commentPosition{
-					Position: index - amountOfWhitespaceBefore,
-					Type:     BlockComment,
-					Content:  comment,
-				})
-
-				// Remove the comment from the data
-				data = data[:index] + strings.TrimSpace(data[index+len(comment):])
-
-				index--
+				comment += string(c)
 			}
+
+			commentPositions = append(commentPositions, commentPosition{
+				Position: index,
+				Offset:   whitespaceCount,
+				Type:     BlockComment,
+				Content:  comment,
+			})
+
+			// Remove the comment from the data
+			data = data[:index] + data[index+len(comment):]
+			index--
+		}
+
+		if char == " " || char == "\t" || char == "\n" || char == "\r" {
+			whitespaceCount++
+		} else {
+			whitespaceCount = 0
 		}
 	}
 
@@ -169,8 +162,6 @@ func getComments(data string) CommentsData {
 		}
 	}
 
-	println(characterToPath[int64(maxKey)])
-
 	// For each comment, find the path
 	for _, c := range commentPositions {
 		character := int64(c.Position)
@@ -181,13 +172,8 @@ func getComments(data string) CommentsData {
 			character = int64(maxKey)
 		}
 
-		lookupCharacter := character - 1
-		if lookupCharacter < 0 {
-			lookupCharacter = 0
-		}
-		commentPath, ok := characterToPath[lookupCharacter]
+		commentPath, ok := characterToPath[character]
 		if !ok {
-			println("didn't exist uh oh ", c.Position, character, len(data))
 			continue
 		}
 
@@ -219,15 +205,59 @@ func getComments(data string) CommentsData {
 		}
 		content = strings.Join(newLines, "\n")
 
-		if data[character] == '}' || data[character] == ']' {
+		lastCharacters := strings.Trim(data[character+1:], " \t\n\r")
+		if len(lastCharacters) == 0 {
 			comments[commentPath].CommentsAfter = append(comments[commentPath].CommentsAfter, Comment{
 				Comment: content,
 				Type:    c.Type,
 			})
 			continue
 		}
-		if data[lookupCharacter] == ',' && character > 0 {
-			comments[commentPath].CommentAt = Comment{
+		lastCharacter := lastCharacters[0]
+		if lastCharacter == '}' || lastCharacter == ']' {
+			lookupCharacter := character - int64(c.Offset) - 1
+			if lookupCharacter < 0 {
+				lookupCharacter = 0
+			}
+			previousCommentPath, ok := characterToPath[lookupCharacter]
+			if !ok {
+				continue
+			}
+			_, ok = comments[previousCommentPath]
+			if !ok {
+				comments[previousCommentPath] = &CommentData{
+					CommentsBefore: []Comment{},
+					CommentAt:      Comment{},
+					CommentsAfter:  []Comment{},
+				}
+			}
+			println(previousCommentPath)
+			comments[previousCommentPath].CommentsAfter = append(comments[previousCommentPath].CommentsAfter, Comment{
+				Comment: content,
+				Type:    c.Type,
+			})
+			continue
+		}
+
+		lastCharacter = strings.Trim(data[character:], " ")[0]
+		if lastCharacter != '\n' && character > 0 {
+			lookupCharacter := character - int64(c.Offset) - 1
+			if lookupCharacter < 0 {
+				lookupCharacter = 0
+			}
+			previousCommentPath, ok := characterToPath[lookupCharacter]
+			if !ok {
+				continue
+			}
+			_, ok = comments[previousCommentPath]
+			if !ok {
+				comments[previousCommentPath] = &CommentData{
+					CommentsBefore: []Comment{},
+					CommentAt:      Comment{},
+					CommentsAfter:  []Comment{},
+				}
+			}
+			comments[previousCommentPath].CommentAt = Comment{
 				Comment: content,
 				Type:    c.Type,
 			}
