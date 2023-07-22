@@ -1,4 +1,4 @@
-package main
+package model
 
 import "testing"
 
@@ -7,7 +7,6 @@ func Test_clamp(t *testing.T) {
 	if got != 2 {
 		t.Errorf("clamp() = %v, want 2", got)
 	}
-
 }
 
 func Test_max(t *testing.T) {
@@ -22,5 +21,4 @@ func Test_min(t *testing.T) {
 	if got != 1 {
 		t.Errorf("min() = %v, want 1", got)
 	}
-
 }
