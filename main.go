@@ -156,7 +156,7 @@ func main() {
 	}
 
 	// Start interactive mode.
-	m := model.NewModel(object, model.Config{
+	m := model.New(object, model.Config{
 		FileName: fileName,
 		Theme:    theme,
 		ShowSize: showSize,

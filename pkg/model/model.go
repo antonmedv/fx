@@ -19,7 +19,8 @@ type Config struct {
 	ShowSize bool
 }
 
-func NewModel(
+// New creates a new application model.
+func New(
 	object interface{},
 	cfg Config,
 ) *model {
