@@ -518,7 +518,7 @@ function stringify(value, isPretty = false) {
 
   function stringifyValue(value, level = 0) {
     if (typeof value === 'string') {
-      return `${colors.string}"${value}"${colors.reset}`
+      return `${colors.string}${JSON.stringify(value)}${colors.reset}`
     } else if (typeof value === 'number') {
       return `${colors.number}${value}${colors.reset}`
     } else if (typeof value === 'bigint') {

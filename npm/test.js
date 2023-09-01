@@ -23,6 +23,11 @@ void async function main() {
     t.deepEqual(stdout, '[\n  {\n    "greeting": "hello world"\n  }\n]\n')
   })
 
+  await test('format - escape newline', async t => {
+    const {stdout} = await run('{"foo": "bar\nbaz"}')
+    t.equal(stdout, '{\n  "foo": "bar\\nbaz"\n}\n')
+  })
+
   await test('parseJson - valid json', async t => {
     const obj = {a: 2.3e100, b: 'str', c: null, d: false, e: [1, 2, 3]}
     const {stdout, stderr} = await run(obj)
