@@ -2,26 +2,28 @@ package main
 
 import (
 	"fmt"
+	"github.com/charmbracelet/bubbles/key"
+	tea "github.com/charmbracelet/bubbletea"
 	"io"
 	"os"
 	"runtime/pprof"
-
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 func main() {
-	cpuProfile := os.Getenv("CPU_PROFILE")
-	if cpuProfile != "" {
-		f, err := os.Create(cpuProfile)
-		if err != nil {
-			panic(err)
-		}
-		err = pprof.StartCPUProfile(f)
-		if err != nil {
-			panic(err)
-		}
+	f, err := os.Create("cpu.prof")
+	if err != nil {
+		panic(err)
 	}
+	err = pprof.StartCPUProfile(f)
+	if err != nil {
+		panic(err)
+	}
+	defer pprof.StopCPUProfile()
+	memProf, err := os.Create("mem.prof")
+	if err != nil {
+		panic(err)
+	}
+	defer pprof.WriteHeapProfile(memProf)
 
 	data, err := io.ReadAll(os.Stdin)
 	if err != nil {
@@ -43,10 +45,6 @@ func main() {
 	_, err = p.Run()
 	if err != nil {
 		panic(err)
-	}
-
-	if cpuProfile != "" {
-		pprof.StopCPUProfile()
 	}
 }
 
@@ -114,7 +112,7 @@ func (m *model) View() string {
 		screen = append(screen, '\n')
 		head = head.next
 	}
-	if len(screen) > 0 && screen[len(screen)-1] == '\n' {
+	if len(screen) > 0 {
 		screen = screen[:len(screen)-1]
 	}
 	return string(screen)
