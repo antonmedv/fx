@@ -24,7 +24,7 @@ void async function main() {
   })
 
   await test('format - escape newline', async t => {
-    const {stdout} = await run('{"foo": "bar\nbaz"}')
+    const {stdout} = await run(`{"foo": "bar\\\\nbaz"}`)
     t.equal(stdout, '{\n  "foo": "bar\\nbaz"\n}\n')
   })
 
@@ -43,6 +43,12 @@ void async function main() {
 
   await test('parseJson - invalid number', async t => {
     const {stderr, status} = await run('{"num": 12.3.4}')
+    t.equal(status, 1)
+    t.ok(stderr.includes('SyntaxError'))
+  })
+
+  await test('parseJson - string control chars', async t => {
+    const {stderr, status} = await run('"\t"')
     t.equal(status, 1)
     t.ok(stderr.includes('SyntaxError'))
   })

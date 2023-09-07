@@ -63,7 +63,7 @@ async function runTransforms(json, args) {
     console.error(
       `\n  ${pre} ${code} ${post}\n` +
       `  ${' '.repeat(pre.length + 1)}${'^'.repeat(code.length)}\n` +
-      `\n${err.stack || err}`
+      `\n${err.stack || err}`,
     )
   }
 }
@@ -263,7 +263,7 @@ function* parseJson(stdin) {
             'f': '\f',
             'n': '\n',
             'r': '\r',
-            't': '\t'
+            't': '\t',
           }[lastChar]
           if (!escapedChar) {
             throw new SyntaxError(errorSnippet())
@@ -275,6 +275,8 @@ function* parseJson(stdin) {
         escaped = true
       } else if (lastChar === '"') {
         break
+      } else if (lastChar < '\x1F') {
+        throw new SyntaxError(errorSnippet(`Unescaped control character ${JSON.stringify(lastChar)}`))
       } else if (lastChar === undefined) {
         throw new SyntaxError(errorSnippet())
       } else {
@@ -545,8 +547,8 @@ function stringify(value, isPretty = false) {
           (key) =>
             `${getIndent(level + 1)}${colors.key}"${key}"${colors.reset}: ${stringifyValue(
               value[key],
-              level + 1
-            )}`
+              level + 1,
+            )}`,
         )
         .join(',\n')
       return `{\n${entries}\n${getIndent(level)}}`
