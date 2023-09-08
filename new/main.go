@@ -94,6 +94,7 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m *model) View() string {
 	var screen []byte
 	head := m.head
+
 	for i := 0; i < m.windowHeight; i++ {
 		if head == nil {
 			break
@@ -112,6 +113,7 @@ func (m *model) View() string {
 		screen = append(screen, '\n')
 		head = head.next
 	}
+
 	if len(screen) > 0 {
 		screen = screen[:len(screen)-1]
 	}

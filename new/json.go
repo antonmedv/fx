@@ -211,7 +211,6 @@ func (p *jsonParser) parseObject() *node {
 
 		p.skipWhitespace()
 
-		// End of object
 		if p.lastChar == '}' {
 			closeBracket := &node{depth: p.depth}
 			closeBracket.value = []byte{'}'}
@@ -220,7 +219,6 @@ func (p *jsonParser) parseObject() *node {
 			return object
 		}
 
-		// Multiple key-value pairs separated by comma
 		if p.lastChar == ',' {
 			object.end.comma = true
 			p.next()
@@ -228,7 +226,6 @@ func (p *jsonParser) parseObject() *node {
 			continue
 		}
 
-		// Unexpected character
 		panic(fmt.Sprintf("Unexpected character %q in object", p.lastChar))
 	}
 }
@@ -329,8 +326,5 @@ func (p *jsonParser) skipComment() {
 }
 
 func (p *jsonParser) errorSnippet(message string) error {
-	if p.lastChar == 0 {
-		message = "Unexpected end of input"
-	}
 	return fmt.Errorf("%s on node %d.\n%s\n", message, p.lineNumber, p.sourceTail.string())
 }
