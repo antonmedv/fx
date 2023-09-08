@@ -1,5 +1,9 @@
 package main
 
+import (
+	"github.com/charmbracelet/lipgloss"
+)
+
 func isHexDigit(ch byte) bool {
 	return (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F')
 }
@@ -28,4 +32,8 @@ func colorForValue(b []byte) color {
 		}
 		return noColor
 	}
+}
+
+func width(s string) int {
+	return lipgloss.Width(s)
 }

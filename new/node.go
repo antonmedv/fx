@@ -20,3 +20,16 @@ func (n *node) append(child *node) {
 		n.end = child.end
 	}
 }
+
+func (n *node) collapse() {
+	if n.end != nil {
+		n.next = n.end.next
+		if n.next != nil {
+			n.next.prev = n
+		}
+	}
+}
+
+func (n *node) atEnd() bool {
+	return n.next == nil
+}

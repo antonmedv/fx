@@ -11,20 +11,22 @@ import (
 )
 
 func main() {
-	f, err := os.Create("cpu.prof")
-	if err != nil {
-		panic(err)
+	if _, ok := os.LookupEnv("FX_PPROF"); ok {
+		f, err := os.Create("cpu.prof")
+		if err != nil {
+			panic(err)
+		}
+		err = pprof.StartCPUProfile(f)
+		if err != nil {
+			panic(err)
+		}
+		defer pprof.StopCPUProfile()
+		memProf, err := os.Create("mem.prof")
+		if err != nil {
+			panic(err)
+		}
+		defer pprof.WriteHeapProfile(memProf)
 	}
-	err = pprof.StartCPUProfile(f)
-	if err != nil {
-		panic(err)
-	}
-	defer pprof.StopCPUProfile()
-	memProf, err := os.Create("mem.prof")
-	if err != nil {
-		panic(err)
-	}
-	defer pprof.WriteHeapProfile(memProf)
 
 	data, err := io.ReadAll(os.Stdin)
 	if err != nil {
@@ -40,6 +42,7 @@ func main() {
 
 	m := &model{
 		head: head,
+		top:  head,
 	}
 
 	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
@@ -51,7 +54,7 @@ func main() {
 
 type model struct {
 	termWidth, termHeight int
-	head                  *node
+	head, top             *node
 	cursor                int // cursor position [0, termHeight)
 }
 
@@ -68,7 +71,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.MouseMsg:
 		switch msg.Type {
 		case tea.MouseWheelUp:
+			m.up()
+
 		case tea.MouseWheelDown:
+			m.down()
 		}
 
 	case tea.KeyMsg:
@@ -83,26 +89,96 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 
 	case key.Matches(msg, keyMap.Up):
-		m.cursor--
-		if m.cursor < 0 {
-			m.cursor = 0
-			if m.head.prev != nil {
-				m.head = m.head.prev
-			}
-		}
-		return m, nil
+		m.up()
 
 	case key.Matches(msg, keyMap.Down):
-		m.cursor++
-		if m.cursor >= m.viewHeight() {
-			m.cursor = m.viewHeight() - 1
-			if m.head.next != nil && !m.isCursorAtEnd() {
-				m.head = m.head.next
-			}
+		m.down()
+
+	case key.Matches(msg, keyMap.PageUp):
+		m.cursor = 0
+		for i := 0; i < m.viewHeight(); i++ {
+			m.up()
 		}
-		return m, nil
+
+	case key.Matches(msg, keyMap.PageDown):
+		m.cursor = m.viewHeight() - 1
+		for i := 0; i < m.viewHeight(); i++ {
+			m.down()
+		}
+
+	case key.Matches(msg, keyMap.HalfPageUp):
+		m.cursor = 0
+		for i := 0; i < m.viewHeight()/2; i++ {
+			m.up()
+		}
+
+	case key.Matches(msg, keyMap.HalfPageDown):
+		m.cursor = m.viewHeight() - 1
+		for i := 0; i < m.viewHeight()/2; i++ {
+			m.down()
+		}
+
+	case key.Matches(msg, keyMap.GotoTop):
+		m.cursor = 0
+		m.head = m.top
+
+	case key.Matches(msg, keyMap.GotoBottom):
+		m.cursor = 0
+		m.head = m.findBottom()
+		m.scrollIntoView()
+		m.cursor = m.visibleLines() - 1
+
+	case key.Matches(msg, keyMap.Collapse):
+		m.cursorPointsTo().collapse()
+		m.scrollIntoView()
+
 	}
 	return m, nil
+}
+
+func (m *model) up() {
+	m.cursor--
+	if m.cursor < 0 {
+		m.cursor = 0
+		if m.head.prev != nil {
+			m.head = m.head.prev
+		}
+	}
+}
+
+func (m *model) down() {
+	m.cursor++
+	n := m.cursorPointsTo()
+	if n == nil {
+		m.cursor--
+		return
+	}
+	if m.cursor >= m.viewHeight() {
+		m.cursor = m.viewHeight() - 1
+		if m.head.next != nil && !n.atEnd() {
+			m.head = m.head.next
+		}
+	}
+}
+
+func (m *model) visibleLines() int {
+	visibleLines := 0
+	n := m.head
+	for n != nil && visibleLines < m.viewHeight() {
+		visibleLines++
+		n = n.next
+	}
+	return visibleLines
+}
+
+func (m *model) scrollIntoView() string {
+	visibleLines := m.visibleLines()
+	for visibleLines < m.viewHeight() && m.head.prev != nil {
+		visibleLines++
+		m.cursor++
+		m.head = m.head.prev
+	}
+	return fmt.Sprintf("visible lines: %d", visibleLines)
 }
 
 func (m *model) View() string {
@@ -138,32 +214,45 @@ func (m *model) View() string {
 		if head.comma {
 			screen = append(screen, comma...)
 		}
+
 		screen = append(screen, '\n')
 		head = head.next
 	}
 
-	if len(screen) > 0 {
-		screen = screen[:len(screen)-1]
+	n := m.cursorPointsTo()
+	if n == nil {
+		screen = append(screen, '-')
+	} else {
+		screen = append(screen, currentTheme.StatusBar(n.value)...)
 	}
+	screen = append(screen, m.scrollIntoView()...)
+
 	return string(screen)
 }
 
 func (m *model) viewHeight() int {
-	return m.termHeight
+	return m.termHeight - 1
 }
 
 func (m *model) cursorPointsTo() *node {
 	head := m.head
 	for i := 0; i < m.cursor; i++ {
 		if head == nil {
-			return nil
+			break
 		}
 		head = head.next
 	}
 	return head
 }
 
-func (m *model) isCursorAtEnd() bool {
-	n := m.cursorPointsTo()
-	return n == nil || n.next == nil
+func (m *model) findBottom() *node {
+	n := m.head
+	for n.next != nil {
+		if n.end != nil {
+			n = n.end
+		} else {
+			n = n.next
+		}
+	}
+	return n
 }
