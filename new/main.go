@@ -195,57 +195,55 @@ func (m *model) scrollIntoView() {
 
 func (m *model) View() string {
 	var screen []byte
-	head := m.head
+	n := m.head
 
-	// Prerender syntax
 	colon := currentTheme.Syntax([]byte{':', ' '})
 	comma := currentTheme.Syntax([]byte{','})
+	empty := currentTheme.Preview([]byte{'~'})
+	printedLines := 0
 
 	for i := 0; i < m.viewHeight(); i++ {
-		if head == nil {
+		if n == nil {
 			break
 		}
-		for ident := 0; ident < int(head.depth); ident++ {
+		for ident := 0; ident < int(n.depth); ident++ {
 			screen = append(screen, ' ', ' ')
 		}
-		if head.key != nil {
+		if n.key != nil {
 			keyColor := currentTheme.Key
 			if m.cursor == i {
 				keyColor = currentTheme.Cursor
 			}
-			screen = append(screen, keyColor(head.key)...)
+			screen = append(screen, keyColor(n.key)...)
 			screen = append(screen, colon...)
-			screen = append(screen, colorForValue(head.value)(head.value)...)
+			screen = append(screen, colorForValue(n.value)(n.value)...)
 		} else {
-			colorize := colorForValue(head.value)
+			colorize := colorForValue(n.value)
 			if m.cursor == i {
 				colorize = currentTheme.Cursor
 			}
-			screen = append(screen, colorize(head.value)...)
+			screen = append(screen, colorize(n.value)...)
 		}
-		if head.isCollapsed() {
+		if n.isCollapsed() {
 			screen = append(screen, currentTheme.Preview([]byte("…"))...)
-			if head.value[0] == '{' {
+			if n.value[0] == '{' {
 				screen = append(screen, currentTheme.Syntax([]byte{'}'})...)
-			} else if head.value[0] == '[' {
+			} else if n.value[0] == '[' {
 				screen = append(screen, currentTheme.Syntax([]byte{']'})...)
 			}
 		}
-		if head.comma {
+		if n.comma {
 			screen = append(screen, comma...)
 		}
 
 		screen = append(screen, '\n')
-		head = head.next
+		printedLines++
+		n = n.next
 	}
 
-	n := m.cursorPointsTo()
-	if n == nil {
-		screen = append(screen, '-')
-	} else if n.parent() != nil {
-		screen = append(screen, currentTheme.StatusBar(n.parent().key)...)
-		screen = append(screen, ':')
-		screen = append(screen, currentTheme.StatusBar(n.parent().value)...)
+	for i := printedLines; i < m.viewHeight(); i++ {
+		screen = append(screen, empty...)
+		screen = append(screen, '\n')
 	}
 
 	return string(screen)
