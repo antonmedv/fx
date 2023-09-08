@@ -96,11 +96,11 @@ func init() {
 			key.WithHelp("", "collapse all"),
 		),
 		NextSibling: key.NewBinding(
-			key.WithKeys("J"),
+			key.WithKeys("J", "shift+down"),
 			key.WithHelp("", "next sibling"),
 		),
 		PrevSibling: key.NewBinding(
-			key.WithKeys("K"),
+			key.WithKeys("K", "shift+up"),
 			key.WithHelp("", "previous sibling"),
 		),
 		ToggleWrap: key.NewBinding(

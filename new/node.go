@@ -35,20 +35,25 @@ func (n *node) append(child *node) {
 	}
 }
 
-func (n *node) collapse() *node {
+func (n *node) collapseThisOrParent() *node {
 	if n.end == nil || n.isCollapsed() {
 		if n.parent() != nil {
 			return n.parent().collapse()
 		}
 		return n
-	} else {
+	}
+	return n.collapse()
+}
+
+func (n *node) collapse() *node {
+	if n.end != nil {
 		n.collapsed = n.next
 		n.next = n.end.next
 		if n.next != nil {
 			n.next.prev = n
 		}
-		return n
 	}
+	return n
 }
 
 func (n *node) isCollapsed() bool {

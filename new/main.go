@@ -75,6 +75,17 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case tea.MouseWheelDown:
 			m.down()
+
+		case tea.MouseLeft:
+			if msg.Y < m.viewHeight() {
+				m.cursor = msg.Y
+				node := m.cursorPointsTo()
+				if node.isCollapsed() {
+					node.expand()
+				} else {
+					node.collapse()
+				}
+			}
 		}
 
 	case tea.KeyMsg:
@@ -128,8 +139,28 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.scrollIntoView()
 		m.cursor = m.visibleLines() - 1
 
+	case key.Matches(msg, keyMap.NextSibling):
+		pointsTo := m.cursorPointsTo()
+		var nextSibling *node
+		if pointsTo.end != nil && pointsTo.end.next != nil {
+			nextSibling = pointsTo.end.next
+		} else {
+			nextSibling = pointsTo.next
+		}
+		if nextSibling != nil {
+			if m.nodeInsideView(nextSibling) {
+				m.selectNodeInView(nextSibling)
+			} else {
+				m.cursor = 0
+				m.head = nextSibling
+				m.scrollIntoView()
+			}
+		}
+
+	case key.Matches(msg, keyMap.PrevSibling):
+
 	case key.Matches(msg, keyMap.Collapse):
-		node := m.cursorPointsTo().collapse()
+		node := m.cursorPointsTo().collapseThisOrParent()
 		if m.nodeInsideView(node) {
 			m.selectNodeInView(node)
 			m.scrollIntoView()
