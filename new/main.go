@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
 	"io"
 	"os"
 	"runtime/pprof"
+
+	"github.com/charmbracelet/bubbles/key"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 func main() {
@@ -49,8 +50,9 @@ func main() {
 }
 
 type model struct {
-	windowWidth, windowHeight int
-	head                      *node
+	termWidth, termHeight int
+	head                  *node
+	cursor                int // cursor position [0, termHeight)
 }
 
 func (m *model) Init() tea.Cmd {
@@ -60,8 +62,8 @@ func (m *model) Init() tea.Cmd {
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.windowWidth = msg.Width
-		m.windowHeight = msg.Height
+		m.termWidth = msg.Width
+		m.termHeight = msg.Height
 
 	case tea.MouseMsg:
 		switch msg.Type {
@@ -81,11 +83,23 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 
 	case key.Matches(msg, keyMap.Up):
-		m.head = m.head.prev
+		m.cursor--
+		if m.cursor < 0 {
+			m.cursor = 0
+			if m.head.prev != nil {
+				m.head = m.head.prev
+			}
+		}
 		return m, nil
 
 	case key.Matches(msg, keyMap.Down):
-		m.head = m.head.next
+		m.cursor++
+		if m.cursor >= m.viewHeight() {
+			m.cursor = m.viewHeight() - 1
+			if m.head.next != nil && !m.isCursorAtEnd() {
+				m.head = m.head.next
+			}
+		}
 		return m, nil
 	}
 	return m, nil
@@ -95,7 +109,11 @@ func (m *model) View() string {
 	var screen []byte
 	head := m.head
 
-	for i := 0; i < m.windowHeight; i++ {
+	// Prerender syntax
+	colon := currentTheme.Syntax([]byte{':', ' '})
+	comma := currentTheme.Syntax([]byte{','})
+
+	for i := 0; i < m.viewHeight(); i++ {
 		if head == nil {
 			break
 		}
@@ -103,12 +121,22 @@ func (m *model) View() string {
 			screen = append(screen, ' ', ' ')
 		}
 		if head.key != nil {
-			screen = append(screen, head.key...)
-			screen = append(screen, ':', ' ')
+			keyColor := currentTheme.Key
+			if m.cursor == i {
+				keyColor = currentTheme.Cursor
+			}
+			screen = append(screen, keyColor(head.key)...)
+			screen = append(screen, colon...)
+			screen = append(screen, colorForValue(head.value)(head.value)...)
+		} else {
+			colorize := colorForValue(head.value)
+			if m.cursor == i {
+				colorize = currentTheme.Cursor
+			}
+			screen = append(screen, colorize(head.value)...)
 		}
-		screen = append(screen, head.value...)
 		if head.comma {
-			screen = append(screen, ',')
+			screen = append(screen, comma...)
 		}
 		screen = append(screen, '\n')
 		head = head.next
@@ -118,4 +146,24 @@ func (m *model) View() string {
 		screen = screen[:len(screen)-1]
 	}
 	return string(screen)
+}
+
+func (m *model) viewHeight() int {
+	return m.termHeight
+}
+
+func (m *model) cursorPointsTo() *node {
+	head := m.head
+	for i := 0; i < m.cursor; i++ {
+		if head == nil {
+			return nil
+		}
+		head = head.next
+	}
+	return head
+}
+
+func (m *model) isCursorAtEnd() bool {
+	n := m.cursorPointsTo()
+	return n == nil || n.next == nil
 }
