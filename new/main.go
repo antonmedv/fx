@@ -129,8 +129,18 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.cursor = m.visibleLines() - 1
 
 	case key.Matches(msg, keyMap.Collapse):
-		m.cursorPointsTo().collapse()
-		m.scrollIntoView()
+		node := m.cursorPointsTo().collapse()
+		if m.nodeInsideView(node) {
+			m.selectNodeInView(node)
+			m.scrollIntoView()
+		} else {
+			m.cursor = 0
+			m.head = node
+			m.scrollIntoView()
+		}
+
+	case key.Matches(msg, keyMap.Expand):
+		m.cursorPointsTo().expand()
 
 	}
 	return m, nil
@@ -171,14 +181,16 @@ func (m *model) visibleLines() int {
 	return visibleLines
 }
 
-func (m *model) scrollIntoView() string {
+func (m *model) scrollIntoView() {
 	visibleLines := m.visibleLines()
+	if m.cursor >= visibleLines {
+		m.cursor = visibleLines - 1
+	}
 	for visibleLines < m.viewHeight() && m.head.prev != nil {
 		visibleLines++
 		m.cursor++
 		m.head = m.head.prev
 	}
-	return fmt.Sprintf("visible lines: %d", visibleLines)
 }
 
 func (m *model) View() string {
@@ -211,6 +223,14 @@ func (m *model) View() string {
 			}
 			screen = append(screen, colorize(head.value)...)
 		}
+		if head.isCollapsed() {
+			screen = append(screen, currentTheme.Preview([]byte("…"))...)
+			if head.value[0] == '{' {
+				screen = append(screen, currentTheme.Syntax([]byte{'}'})...)
+			} else if head.value[0] == '[' {
+				screen = append(screen, currentTheme.Syntax([]byte{']'})...)
+			}
+		}
 		if head.comma {
 			screen = append(screen, comma...)
 		}
@@ -222,10 +242,11 @@ func (m *model) View() string {
 	n := m.cursorPointsTo()
 	if n == nil {
 		screen = append(screen, '-')
-	} else {
-		screen = append(screen, currentTheme.StatusBar(n.value)...)
+	} else if n.parent() != nil {
+		screen = append(screen, currentTheme.StatusBar(n.parent().key)...)
+		screen = append(screen, ':')
+		screen = append(screen, currentTheme.StatusBar(n.parent().value)...)
 	}
-	screen = append(screen, m.scrollIntoView()...)
 
 	return string(screen)
 }
@@ -255,4 +276,35 @@ func (m *model) findBottom() *node {
 		}
 	}
 	return n
+}
+
+func (m *model) nodeInsideView(n *node) bool {
+	if n == nil {
+		return false
+	}
+	head := m.head
+	for i := 0; i < m.viewHeight(); i++ {
+		if head == nil {
+			break
+		}
+		if head == n {
+			return true
+		}
+		head = head.next
+	}
+	return false
+}
+
+func (m *model) selectNodeInView(n *node) {
+	head := m.head
+	for i := 0; i < m.viewHeight(); i++ {
+		if head == nil {
+			break
+		}
+		if head == n {
+			m.cursor = i
+			return
+		}
+		head = head.next
+	}
 }
