@@ -1,9 +1,5 @@
 package main
 
-import (
-	"fmt"
-)
-
 type node struct {
 	prev, next, end *node
 	directParent    *node
@@ -44,6 +40,7 @@ func (n *node) collapse() *node {
 		if n.parent() != nil {
 			return n.parent().collapse()
 		}
+		return n
 	} else {
 		n.collapsed = n.next
 		n.next = n.end.next
@@ -52,7 +49,6 @@ func (n *node) collapse() *node {
 		}
 		return n
 	}
-	panic(fmt.Sprintf("Cannot collapse node %q", n.value))
 }
 
 func (n *node) isCollapsed() bool {
