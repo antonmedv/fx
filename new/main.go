@@ -130,14 +130,13 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 	case key.Matches(msg, keyMap.GotoTop):
-		m.cursor = 0
 		m.head = m.top
+		m.cursor = 0
 
 	case key.Matches(msg, keyMap.GotoBottom):
-		m.cursor = 0
 		m.head = m.findBottom()
+		m.cursor = 0
 		m.scrollIntoView()
-		m.cursor = m.visibleLines() - 1
 
 	case key.Matches(msg, keyMap.NextSibling):
 		pointsTo := m.cursorPointsTo()

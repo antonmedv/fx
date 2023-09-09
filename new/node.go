@@ -38,7 +38,7 @@ func (n *node) append(child *node) {
 func (n *node) collapseThisOrParent() *node {
 	if n.end == nil || n.isCollapsed() {
 		if n.parent() != nil {
-			return n.parent().collapse()
+			return n.parent().collapseThisOrParent()
 		}
 		return n
 	}
@@ -62,6 +62,7 @@ func (n *node) isCollapsed() bool {
 
 func (n *node) expand() {
 	if n.collapsed != nil {
+		n.next.prev = n.end
 		n.next = n.collapsed
 		n.collapsed = nil
 	}
