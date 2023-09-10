@@ -179,7 +179,7 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 	case key.Matches(msg, keyMap.Collapse):
-		node := m.cursorPointsTo().collapseThisOrParent()
+		node := m.cursorPointsTo().collapse()
 		if m.nodeInsideView(node) {
 			m.selectNodeInView(node)
 			m.scrollIntoView()
@@ -215,7 +215,7 @@ func (m *model) down() {
 	}
 	if m.cursor >= m.viewHeight() {
 		m.cursor = m.viewHeight() - 1
-		if m.head.next != nil && !n.atEnd() {
+		if m.head.next != nil && n.next != nil {
 			m.head = m.head.next
 		}
 	}
