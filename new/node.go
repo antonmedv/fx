@@ -40,7 +40,7 @@ func (n *node) append(child *node) {
 }
 
 func (n *node) collapse() *node {
-	if n.end != nil {
+	if n.end != nil && !n.isCollapsed() {
 		n.collapsed = n.next
 		n.next = n.end.next
 		if n.next != nil {

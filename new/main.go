@@ -147,13 +147,7 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			nextSibling = pointsTo.next
 		}
 		if nextSibling != nil {
-			if m.nodeInsideView(nextSibling) {
-				m.selectNodeInView(nextSibling)
-			} else {
-				m.cursor = 0
-				m.head = nextSibling
-				m.scrollIntoView()
-			}
+			m.selectNode(nextSibling)
 		}
 
 	case key.Matches(msg, keyMap.PrevSibling):
@@ -169,25 +163,19 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 		if prevSibling != nil {
-			if m.nodeInsideView(prevSibling) {
-				m.selectNodeInView(prevSibling)
-			} else {
-				m.cursor = 0
-				m.head = prevSibling
-				m.scrollIntoView()
-			}
+			m.selectNode(prevSibling)
 		}
 
 	case key.Matches(msg, keyMap.Collapse):
-		node := m.cursorPointsTo().collapse()
-		if m.nodeInsideView(node) {
-			m.selectNodeInView(node)
-			m.scrollIntoView()
+		n := m.cursorPointsTo()
+		if n.hasChildren() && !n.isCollapsed() {
+			n.collapse()
 		} else {
-			m.cursor = 0
-			m.head = node
-			m.scrollIntoView()
+			if n.parent() != nil {
+				n = n.parent()
+			}
 		}
+		m.selectNode(n)
 
 	case key.Matches(msg, keyMap.Expand):
 		m.cursorPointsTo().expand()
@@ -354,5 +342,16 @@ func (m *model) selectNodeInView(n *node) {
 			return
 		}
 		head = head.next
+	}
+}
+
+func (m *model) selectNode(n *node) {
+	if m.nodeInsideView(n) {
+		m.selectNodeInView(n)
+		m.scrollIntoView()
+	} else {
+		m.cursor = 0
+		m.head = n
+		m.scrollIntoView()
 	}
 }
