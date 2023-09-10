@@ -11,6 +11,19 @@ type node struct {
 	comma           bool
 }
 
+func (n *node) append(child *node) {
+	if n.end == nil {
+		n.end = n
+	}
+	n.end.next = child
+	child.prev = n.end
+	if child.end == nil {
+		n.end = child
+	} else {
+		n.end = child.end
+	}
+}
+
 func (n *node) hasChildren() bool {
 	return n.end != nil
 }
@@ -26,17 +39,8 @@ func (n *node) parent() *node {
 	return parent
 }
 
-func (n *node) append(child *node) {
-	if n.end == nil {
-		n.end = n
-	}
-	n.end.next = child
-	child.prev = n.end
-	if child.end == nil {
-		n.end = child
-	} else {
-		n.end = child.end
-	}
+func (n *node) isCollapsed() bool {
+	return n.collapsed != nil
 }
 
 func (n *node) collapse() *node {
@@ -48,10 +52,6 @@ func (n *node) collapse() *node {
 		}
 	}
 	return n
-}
-
-func (n *node) isCollapsed() bool {
-	return n.collapsed != nil
 }
 
 func (n *node) expand() {
