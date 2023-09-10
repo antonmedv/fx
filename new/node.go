@@ -61,8 +61,10 @@ func (n *node) isCollapsed() bool {
 }
 
 func (n *node) expand() {
-	if n.collapsed != nil {
-		n.next.prev = n.end
+	if n.isCollapsed() {
+		if n.next != nil {
+			n.next.prev = n.end
+		}
 		n.next = n.collapsed
 		n.collapsed = nil
 	}

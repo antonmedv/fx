@@ -72,11 +72,11 @@ func init() {
 			key.WithHelp("", "up"),
 		),
 		Expand: key.NewBinding(
-			key.WithKeys("right", "l"),
+			key.WithKeys("right", "l", "enter"),
 			key.WithHelp("", "expand"),
 		),
 		Collapse: key.NewBinding(
-			key.WithKeys("left", "h"),
+			key.WithKeys("left", "h", "backspace"),
 			key.WithHelp("", "collapse"),
 		),
 		ExpandRecursively: key.NewBinding(

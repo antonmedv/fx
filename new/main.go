@@ -157,6 +157,26 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 	case key.Matches(msg, keyMap.PrevSibling):
+		pointsTo := m.cursorPointsTo()
+		var prevSibling *node
+		if pointsTo.parent() != nil && pointsTo.parent().end == pointsTo {
+			prevSibling = pointsTo.parent()
+		} else if pointsTo.prev != nil {
+			prevSibling = pointsTo.prev
+			parent := prevSibling.parent()
+			if parent != nil && parent.end == prevSibling {
+				prevSibling = parent
+			}
+		}
+		if prevSibling != nil {
+			if m.nodeInsideView(prevSibling) {
+				m.selectNodeInView(prevSibling)
+			} else {
+				m.cursor = 0
+				m.head = prevSibling
+				m.scrollIntoView()
+			}
+		}
 
 	case key.Matches(msg, keyMap.Collapse):
 		node := m.cursorPointsTo().collapseThisOrParent()
