@@ -67,6 +67,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.termWidth = msg.Width
 		m.termHeight = msg.Height
+		if m.termWidth > 0 {
+			wrapAll(m.top, m.termWidth)
+		}
 
 	case tea.MouseMsg:
 		switch msg.Type {
@@ -235,11 +238,7 @@ func (m *model) View() string {
 	var screen []byte
 	n := m.head
 
-	colon := currentTheme.Syntax([]byte{':', ' '})
-	comma := currentTheme.Syntax([]byte{','})
-	empty := currentTheme.Preview([]byte{'~'})
 	printedLines := 0
-
 	for i := 0; i < m.viewHeight(); i++ {
 		if n == nil {
 			break
@@ -247,6 +246,13 @@ func (m *model) View() string {
 		for ident := 0; ident < int(n.depth); ident++ {
 			screen = append(screen, ' ', ' ')
 		}
+
+		valueOrChunk := n.value
+		if n.chunk != nil {
+			valueOrChunk = n.chunk
+		}
+		selected := m.cursor == i
+
 		if n.key != nil {
 			keyColor := currentTheme.Key
 			if m.cursor == i {
@@ -254,20 +260,34 @@ func (m *model) View() string {
 			}
 			screen = append(screen, keyColor(n.key)...)
 			screen = append(screen, colon...)
-			screen = append(screen, colorForValue(n.value)(n.value)...)
-		} else {
-			colorize := colorForValue(n.value)
-			if m.cursor == i {
-				colorize = currentTheme.Cursor
-			}
-			screen = append(screen, colorize(n.value)...)
+			selected = false // don't highlight the key's value
 		}
-		if n.isCollapsed() {
-			screen = append(screen, currentTheme.Preview([]byte("…"))...)
+
+		if !n.isCollapsed() {
+			screen = append(screen, prettyPrint(valueOrChunk, selected, n.chunk != nil)...)
+		} else {
 			if n.value[0] == '{' {
-				screen = append(screen, currentTheme.Syntax([]byte{'}'})...)
+				screen = append(screen, prettyPrint(valueOrChunk, selected, n.chunk != nil)...)
+				screen = append(screen, dot3...)
+				screen = append(screen, closeCurlyBracket...)
 			} else if n.value[0] == '[' {
-				screen = append(screen, currentTheme.Syntax([]byte{']'})...)
+				screen = append(screen, prettyPrint(valueOrChunk, selected, n.chunk != nil)...)
+				screen = append(screen, dot3...)
+				screen = append(screen, closeSquareBracket...)
+			} else if n.value[0] == '"' {
+				suffix := 2
+				if n.comma {
+					suffix++
+				}
+				offset := len(n.chunk) - suffix
+				if offset < 0 {
+					offset = 0
+				}
+				screen = append(screen, prettyPrint(valueOrChunk[:offset], selected, n.chunk != nil)...)
+				screen = append(screen, dot3...)
+				screen = append(screen, doubleQuotationMark...)
+			} else {
+				screen = append(screen, dot3...)
 			}
 		}
 		if n.comma {

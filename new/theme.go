@@ -29,6 +29,14 @@ func init() {
 		themeId = "1"
 	}
 	currentTheme = themes[themeId]
+
+	colon = currentTheme.Syntax([]byte{':', ' '})
+	comma = currentTheme.Syntax([]byte{','})
+	empty = currentTheme.Preview([]byte{'~'})
+	dot3 = currentTheme.Preview([]byte("…"))
+	closeCurlyBracket = currentTheme.Syntax([]byte{'}'})
+	closeSquareBracket = currentTheme.Syntax([]byte{']'})
+	doubleQuotationMark = currentTheme.String([]byte{'"'})
 }
 
 var (
@@ -38,6 +46,16 @@ var (
 	defaultStatusBar = toColor(lipgloss.NewStyle().Background(lipgloss.Color("7")).Foreground(lipgloss.Color("0")).Render)
 	defaultSearch    = toColor(lipgloss.NewStyle().Background(lipgloss.Color("11")).Foreground(lipgloss.Color("16")).Render)
 	defaultNull      = fg("8")
+)
+
+var (
+	colon               []byte
+	comma               []byte
+	empty               []byte
+	dot3                []byte
+	closeCurlyBracket   []byte
+	closeSquareBracket  []byte
+	doubleQuotationMark []byte
 )
 
 var themes = map[string]theme{

@@ -8,6 +8,7 @@ type node struct {
 	depth           uint8
 	key             []byte
 	value           []byte
+	chunk           []byte
 	comma           bool
 }
 
@@ -22,6 +23,43 @@ func (n *node) append(child *node) {
 	} else {
 		n.end = child.end
 	}
+}
+
+func (n *node) insertChild(child *node) {
+	if n.end == nil {
+		n.insertAfter(child)
+	} else {
+		n.end.insertAfter(child)
+	}
+	n.end = child
+}
+
+func (n *node) insertAfter(child *node) {
+	if n.next == nil {
+		n.next = child
+		child.prev = n
+	} else {
+		old := n.next
+		n.next = child
+		child.prev = n
+		child.next = old
+		old.prev = child
+	}
+}
+
+func (n *node) dropChunks() {
+	if n.end == nil {
+		return
+	}
+
+	n.chunk = nil
+
+	n.next = n.end.next
+	if n.next != nil {
+		n.next.prev = n
+	}
+
+	n.end = nil
 }
 
 func (n *node) hasChildren() bool {
