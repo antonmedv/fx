@@ -12,6 +12,11 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+var (
+	flagHelp    bool
+	flagVersion bool
+)
+
 func main() {
 	if _, ok := os.LookupEnv("FX_PPROF"); ok {
 		f, err := os.Create("cpu.prof")
@@ -28,6 +33,27 @@ func main() {
 			panic(err)
 		}
 		defer pprof.WriteHeapProfile(memProf)
+	}
+
+	var args []string
+	for _, arg := range os.Args[1:] {
+		switch arg {
+		case "-h", "--help":
+			flagHelp = true
+		case "-v", "-V", "--version":
+			flagVersion = true
+		default:
+			args = append(args, arg)
+		}
+
+	}
+	if flagHelp {
+		fmt.Println(usage(keyMap))
+		return
+	}
+	if flagVersion {
+		fmt.Println(version)
+		return
 	}
 
 	data, err := io.ReadAll(os.Stdin)
