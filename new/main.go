@@ -263,31 +263,16 @@ func (m *model) View() string {
 			selected = false // don't highlight the key's value
 		}
 
-		if !n.isCollapsed() {
-			screen = append(screen, prettyPrint(valueOrChunk, selected, n.chunk != nil)...)
-		} else {
+		screen = append(screen, prettyPrint(valueOrChunk, selected, n.chunk != nil)...)
+
+		if n.isCollapsed() {
 			if n.value[0] == '{' {
 				screen = append(screen, prettyPrint(valueOrChunk, selected, n.chunk != nil)...)
 				screen = append(screen, dot3...)
 				screen = append(screen, closeCurlyBracket...)
 			} else if n.value[0] == '[' {
-				screen = append(screen, prettyPrint(valueOrChunk, selected, n.chunk != nil)...)
 				screen = append(screen, dot3...)
 				screen = append(screen, closeSquareBracket...)
-			} else if n.value[0] == '"' {
-				suffix := 2
-				if n.comma {
-					suffix++
-				}
-				offset := len(n.chunk) - suffix
-				if offset < 0 {
-					offset = 0
-				}
-				screen = append(screen, prettyPrint(valueOrChunk[:offset], selected, n.chunk != nil)...)
-				screen = append(screen, dot3...)
-				screen = append(screen, doubleQuotationMark...)
-			} else {
-				screen = append(screen, dot3...)
 			}
 		}
 		if n.comma {

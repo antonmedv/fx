@@ -36,7 +36,6 @@ func init() {
 	dot3 = currentTheme.Preview([]byte("…"))
 	closeCurlyBracket = currentTheme.Syntax([]byte{'}'})
 	closeSquareBracket = currentTheme.Syntax([]byte{']'})
-	doubleQuotationMark = currentTheme.String([]byte{'"'})
 }
 
 var (
@@ -49,13 +48,12 @@ var (
 )
 
 var (
-	colon               []byte
-	comma               []byte
-	empty               []byte
-	dot3                []byte
-	closeCurlyBracket   []byte
-	closeSquareBracket  []byte
-	doubleQuotationMark []byte
+	colon              []byte
+	comma              []byte
+	empty              []byte
+	dot3               []byte
+	closeCurlyBracket  []byte
+	closeSquareBracket []byte
 )
 
 var themes = map[string]theme{
