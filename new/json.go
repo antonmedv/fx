@@ -217,6 +217,7 @@ func (p *jsonParser) parseObject() *node {
 			closeBracket := &node{depth: p.depth}
 			closeBracket.value = []byte{'}'}
 			closeBracket.directParent = object
+			closeBracket.index = -1
 			object.append(closeBracket)
 			p.next()
 			return object
@@ -243,10 +244,11 @@ func (p *jsonParser) parseArray() *node {
 		p.next()
 		return arr
 	}
-	for {
+	for i := 0; ; i++ {
 		p.depth++
 		value := p.parseValue()
 		value.directParent = arr
+		value.index = i
 		p.depth--
 		arr.append(value)
 		p.skipWhitespace()
@@ -254,6 +256,7 @@ func (p *jsonParser) parseArray() *node {
 			closeBracket := &node{depth: p.depth}
 			closeBracket.value = []byte{']'}
 			closeBracket.directParent = arr
+			closeBracket.index = -1
 			arr.append(closeBracket)
 			p.next()
 			return arr

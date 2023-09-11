@@ -10,6 +10,7 @@ type node struct {
 	value           []byte
 	chunk           []byte
 	comma           bool
+	index           int
 }
 
 func (n *node) append(child *node) {

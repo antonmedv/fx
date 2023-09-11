@@ -5,6 +5,8 @@ import (
 	"io"
 	"os"
 	"runtime/pprof"
+	"strconv"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -58,6 +60,7 @@ type model struct {
 	head, top             *node
 	cursor                int // cursor position [0, termHeight)
 	wrap                  bool
+	fileName              string
 }
 
 func (m *model) Init() tea.Cmd {
@@ -334,6 +337,11 @@ func (m *model) View() string {
 		screen = append(screen, '\n')
 	}
 
+	statusBar := m.cursorPath() + " "
+	statusBar += strings.Repeat(" ", max(0, m.termWidth-len(statusBar)-len(m.fileName)))
+	statusBar += m.fileName
+	screen = append(screen, currentTheme.StatusBar([]byte(statusBar))...)
+
 	return string(screen)
 }
 
@@ -408,4 +416,32 @@ func (m *model) selectNode(n *node) {
 		m.head = n
 		m.scrollIntoView()
 	}
+}
+
+func (m *model) cursorPath() string {
+	path := ""
+	at := m.cursorPointsTo()
+	for at != nil {
+		if at.prev != nil {
+			if at.chunk != nil {
+				at = at.parent()
+			}
+			if at.key != nil {
+				quoted := string(at.key)
+				unquoted, err := strconv.Unquote(quoted)
+				if err != nil {
+					panic(err)
+				}
+				if identifier.MatchString(unquoted) {
+					path = "." + unquoted + path
+				} else {
+					path = "[" + quoted + "]" + path
+				}
+			} else if at.index >= 0 {
+				path = "[" + strconv.Itoa(at.index) + "]" + path
+			}
+		}
+		at = at.parent()
+	}
+	return path
 }
