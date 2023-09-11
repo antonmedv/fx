@@ -6,6 +6,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mazznoer/colorgrad"
+	"github.com/muesli/termenv"
 )
 
 type theme struct {
@@ -29,8 +30,12 @@ func init() {
 		themeId = "1"
 	}
 	currentTheme = themes[themeId]
+	if termenv.ColorProfile() == termenv.Ascii {
+		currentTheme = themes["0"]
+	}
 
 	colon = currentTheme.Syntax([]byte{':', ' '})
+	colonPreview = currentTheme.Preview([]byte{':'})
 	comma = currentTheme.Syntax([]byte{','})
 	empty = currentTheme.Preview([]byte{'~'})
 	dot3 = currentTheme.Preview([]byte("…"))
@@ -41,7 +46,7 @@ func init() {
 var (
 	currentTheme     theme
 	defaultCursor    = toColor(lipgloss.NewStyle().Reverse(true).Render)
-	defaultPreview   = toColor(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("8")).Render)
+	defaultPreview   = toColor(lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render)
 	defaultStatusBar = toColor(lipgloss.NewStyle().Background(lipgloss.Color("7")).Foreground(lipgloss.Color("0")).Render)
 	defaultSearch    = toColor(lipgloss.NewStyle().Background(lipgloss.Color("11")).Foreground(lipgloss.Color("16")).Render)
 	defaultNull      = fg("8")
@@ -49,6 +54,7 @@ var (
 
 var (
 	colon              []byte
+	colonPreview       []byte
 	comma              []byte
 	empty              []byte
 	dot3               []byte

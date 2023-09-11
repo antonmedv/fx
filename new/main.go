@@ -47,10 +47,12 @@ func main() {
 		}
 
 	}
+
 	if flagHelp {
 		fmt.Println(usage(keyMap))
 		return
 	}
+
 	if flagVersion {
 		fmt.Println(version)
 		return
@@ -342,6 +344,10 @@ func (m *model) View() string {
 
 		if n.isCollapsed() {
 			if n.value[0] == '{' {
+				if n.collapsed.key != nil {
+					screen = append(screen, currentTheme.Preview(n.collapsed.key)...)
+					screen = append(screen, colonPreview...)
+				}
 				screen = append(screen, dot3...)
 				screen = append(screen, closeCurlyBracket...)
 			} else if n.value[0] == '[' {
