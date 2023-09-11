@@ -6,6 +6,15 @@ import (
 	"github.com/mattn/go-runewidth"
 )
 
+func dropWrapAll(n *node) {
+	for n != nil {
+		if n.value != nil && n.value[0] == '"' {
+			n.dropChunks()
+		}
+		n = n.next
+	}
+}
+
 func wrapAll(n *node, termWidth int) {
 	for n != nil {
 		if n.value != nil && n.value[0] == '"' {

@@ -43,6 +43,7 @@ func main() {
 	m := &model{
 		head: head,
 		top:  head,
+		wrap: true,
 	}
 
 	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
@@ -56,6 +57,7 @@ type model struct {
 	termWidth, termHeight int
 	head, top             *node
 	cursor                int // cursor position [0, termHeight)
+	wrap                  bool
 }
 
 func (m *model) Init() tea.Cmd {
@@ -216,7 +218,22 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.top.expandRecursively()
 		m.selectNode(at)
 
+	case key.Matches(msg, keyMap.ToggleWrap):
+		at := m.cursorPointsTo()
+		m.wrap = !m.wrap
+		if m.wrap {
+			if m.termWidth > 0 {
+				wrapAll(m.top, m.termWidth)
+			}
+		} else {
+			dropWrapAll(m.top)
+		}
+		if at.chunk != nil && at.value == nil {
+			at = at.parent()
+		}
+		m.selectNode(at)
 	}
+
 	return m, nil
 }
 
