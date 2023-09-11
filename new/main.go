@@ -81,12 +81,23 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case tea.MouseLeft:
 			if msg.Y < m.viewHeight() {
-				m.cursor = msg.Y
-				node := m.cursorPointsTo()
-				if node.isCollapsed() {
-					node.expand()
+				if m.cursor == msg.Y {
+					to := m.cursorPointsTo()
+					if to != nil {
+						if to.isCollapsed() {
+							to.expand()
+						} else {
+							to.collapse()
+						}
+					}
 				} else {
-					node.collapse()
+					to := m.at(msg.Y)
+					if to != nil {
+						m.cursor = msg.Y
+						if to.isCollapsed() {
+							to.expand()
+						}
+					}
 				}
 			}
 		}
@@ -206,7 +217,7 @@ func (m *model) down() {
 	}
 	if m.cursor >= m.viewHeight() {
 		m.cursor = m.viewHeight() - 1
-		if m.head.next != nil && n.next != nil {
+		if m.head.next != nil {
 			m.head = m.head.next
 		}
 	}
@@ -267,7 +278,6 @@ func (m *model) View() string {
 
 		if n.isCollapsed() {
 			if n.value[0] == '{' {
-				screen = append(screen, prettyPrint(valueOrChunk, selected, n.chunk != nil)...)
 				screen = append(screen, dot3...)
 				screen = append(screen, closeCurlyBracket...)
 			} else if n.value[0] == '[' {
@@ -297,8 +307,12 @@ func (m *model) viewHeight() int {
 }
 
 func (m *model) cursorPointsTo() *node {
+	return m.at(m.cursor)
+}
+
+func (m *model) at(pos int) *node {
 	head := m.head
-	for i := 0; i < m.cursor; i++ {
+	for i := 0; i < pos; i++ {
 		if head == nil {
 			break
 		}
