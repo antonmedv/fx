@@ -69,9 +69,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.termWidth = msg.Width
 		m.termHeight = msg.Height
-		if m.termWidth > 0 {
-			wrapAll(m.top, m.termWidth)
-		}
+		wrapAll(m.top, m.termWidth)
 
 	case tea.MouseMsg:
 		switch msg.Type {
@@ -222,9 +220,7 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		at := m.cursorPointsTo()
 		m.wrap = !m.wrap
 		if m.wrap {
-			if m.termWidth > 0 {
-				wrapAll(m.top, m.termWidth)
-			}
+			wrapAll(m.top, m.termWidth)
 		} else {
 			dropWrapAll(m.top)
 		}

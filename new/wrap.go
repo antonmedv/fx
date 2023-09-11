@@ -16,6 +16,9 @@ func dropWrapAll(n *node) {
 }
 
 func wrapAll(n *node, termWidth int) {
+	if termWidth <= 0 {
+		return
+	}
 	for n != nil {
 		if n.value != nil && n.value[0] == '"' {
 			collapsed := n.isCollapsed()
@@ -65,17 +68,12 @@ func doWrap(n *node, termWidth int) ([][]byte, int) {
 		r, size := utf8.DecodeRune(b)
 		w := runewidth.RuneWidth(r)
 		if width+w > termWidth {
-			if linesCount == 0 {
-				lines = append(lines, n.value[start:end])
-			} else {
-				lines = append(lines, n.value[start:end])
-			}
+			lines = append(lines, n.value[start:end])
 			start = end
 			width = int(n.depth) * 2
 			linesCount++
-		} else {
-			width += w
 		}
+		width += w
 		end += size
 		b = b[size:]
 	}
