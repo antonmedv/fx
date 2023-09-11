@@ -92,6 +92,22 @@ func (n *node) collapse() *node {
 	return n
 }
 
+func (n *node) collapseRecursively() {
+	var at *node
+	if n.isCollapsed() {
+		at = n.collapsed
+	} else {
+		at = n.next
+	}
+	for at != nil && at != n.end {
+		if at.hasChildren() {
+			at.collapseRecursively()
+			at.collapse()
+		}
+		at = at.next
+	}
+}
+
 func (n *node) expand() {
 	if n.isCollapsed() {
 		if n.next != nil {
@@ -99,5 +115,13 @@ func (n *node) expand() {
 		}
 		n.next = n.collapsed
 		n.collapsed = nil
+	}
+}
+
+func (n *node) expandRecursively() {
+	at := n
+	for at != nil && at != n.end {
+		at.expand()
+		at = at.next
 	}
 }

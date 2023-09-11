@@ -80,11 +80,11 @@ func init() {
 			key.WithHelp("", "collapse"),
 		),
 		ExpandRecursively: key.NewBinding(
-			key.WithKeys("L"),
+			key.WithKeys("L", "shift+right"),
 			key.WithHelp("", "expand recursively"),
 		),
 		CollapseRecursively: key.NewBinding(
-			key.WithKeys("H"),
+			key.WithKeys("H", "shift+left"),
 			key.WithHelp("", "collapse recursively"),
 		),
 		ExpandAll: key.NewBinding(

@@ -194,6 +194,28 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keyMap.Expand):
 		m.cursorPointsTo().expand()
 
+	case key.Matches(msg, keyMap.CollapseRecursively):
+		n := m.cursorPointsTo()
+		if n.hasChildren() {
+			n.collapseRecursively()
+		}
+
+	case key.Matches(msg, keyMap.ExpandRecursively):
+		n := m.cursorPointsTo()
+		if n.hasChildren() {
+			n.expandRecursively()
+		}
+
+	case key.Matches(msg, keyMap.CollapseAll):
+		m.top.collapseRecursively()
+		m.cursor = 0
+		m.head = m.top
+
+	case key.Matches(msg, keyMap.ExpandAll):
+		at := m.cursorPointsTo()
+		m.top.expandRecursively()
+		m.selectNode(at)
+
 	}
 	return m, nil
 }
