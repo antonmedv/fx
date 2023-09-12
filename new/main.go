@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -73,11 +74,11 @@ func main() {
 		filePath := args[0]
 		f, err := os.Open(filePath)
 		if err != nil {
-			switch err.(type) {
-			case *fs.PathError:
+			var pathError *fs.PathError
+			if errors.As(err, &pathError) {
 				fmt.Println(err)
 				os.Exit(1)
-			default:
+			} else {
 				panic(err)
 			}
 		}
