@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
+	"path"
 	"runtime/pprof"
 	"strconv"
 	"strings"
@@ -12,6 +14,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/mattn/go-isatty"
 
 	"github.com/antonmedv/fx/new/dig"
 )
@@ -62,7 +65,29 @@ func main() {
 		return
 	}
 
-	data, err := io.ReadAll(os.Stdin)
+	stdinIsTty := isatty.IsTerminal(os.Stdin.Fd())
+	var fileName string
+	var src io.Reader
+
+	if stdinIsTty && len(args) == 1 {
+		filePath := args[0]
+		f, err := os.Open(filePath)
+		if err != nil {
+			switch err.(type) {
+			case *fs.PathError:
+				fmt.Println(err)
+				os.Exit(1)
+			default:
+				panic(err)
+			}
+		}
+		fileName = path.Base(filePath)
+		src = f
+	} else {
+		src = os.Stdin
+	}
+
+	data, err := io.ReadAll(src)
 	if err != nil {
 		panic(err)
 	}
@@ -88,6 +113,7 @@ func main() {
 		top:      head,
 		wrap:     true,
 		digInput: digInput,
+		fileName: fileName,
 	}
 
 	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
