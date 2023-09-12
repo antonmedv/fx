@@ -1,0 +1,9 @@
+{
+  "title": "Fox and Dog",
+  "body": "Brown fox jumps over a lazy dog",
+  "tags": ["fox", "dog", "lazy"],
+  "author": {
+    "name": "John Doe",
+    "email": "john@doe.com"
+  }
+}
