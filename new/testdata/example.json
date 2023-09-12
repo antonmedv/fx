@@ -1,7 +1,13 @@
 {
   "title": "Fox and Dog",
   "body": "Brown fox jumps over a lazy dog",
-  "tags": ["fox", "dog", "lazy"],
+  "tags": [
+    "fox",
+    "dog",
+    "lazy"
+  ],
+  "year": 3000,
+  "funny": true,
   "author": {
     "name": "John Doe",
     "email": "john@doe.com"

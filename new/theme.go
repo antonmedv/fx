@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -93,13 +95,25 @@ var themes = map[string]theme{
 		Preview:   defaultPreview,
 		StatusBar: defaultStatusBar,
 		Search:    defaultSearch,
+		Key:       fg("2"),
+		String:    fg("4"),
+		Null:      defaultNull,
+		Boolean:   fg("5"),
+		Number:    fg("6"),
+	},
+	"3": {
+		Cursor:    defaultCursor,
+		Syntax:    noColor,
+		Preview:   defaultPreview,
+		StatusBar: defaultStatusBar,
+		Search:    defaultSearch,
 		Key:       fg("#00F5D4"),
 		String:    fg("#00BBF9"),
 		Null:      defaultNull,
 		Boolean:   fg("#F15BB5"),
 		Number:    fg("#9B5DE5"),
 	},
-	"3": {
+	"4": {
 		Cursor:    defaultCursor,
 		Syntax:    noColor,
 		Preview:   defaultPreview,
@@ -111,7 +125,7 @@ var themes = map[string]theme{
 		Boolean:   fg("#ee964b"),
 		Number:    fg("#ee964b"),
 	},
-	"4": {
+	"5": {
 		Cursor:    defaultCursor,
 		Syntax:    noColor,
 		Preview:   defaultPreview,
@@ -123,7 +137,7 @@ var themes = map[string]theme{
 		Boolean:   fg("#FF6B6B"),
 		Number:    fg("#FFD93D"),
 	},
-	"5": {
+	"6": {
 		Cursor:    defaultCursor,
 		Syntax:    noColor,
 		Preview:   defaultPreview,
@@ -135,7 +149,7 @@ var themes = map[string]theme{
 		Boolean:   boldFg("201"),
 		Number:    boldFg("201"),
 	},
-	"6": {
+	"7": {
 		Cursor:    defaultCursor,
 		Syntax:    noColor,
 		Preview:   defaultPreview,
@@ -147,15 +161,27 @@ var themes = map[string]theme{
 		Boolean:   fg("195"),
 		Number:    fg("195"),
 	},
-	"7": {
+	"8": {
 		Cursor:    defaultCursor,
 		Syntax:    noColor,
 		Preview:   defaultPreview,
 		StatusBar: defaultStatusBar,
 		Search:    defaultSearch,
 		Key:       gradient("rgb(123,216,96)", "rgb(255,255,255)"),
-		String:    noColor,
+		String:    fg("15"),
 		Null:      defaultNull,
+		Boolean:   noColor,
+		Number:    noColor,
+	},
+	"9": {
+		Cursor:    defaultCursor,
+		Syntax:    boldFg("33"),
+		Preview:   defaultPreview,
+		StatusBar: defaultStatusBar,
+		Search:    defaultSearch,
+		Key:       fg("33"),
+		String:    noColor,
+		Null:      noColor,
 		Boolean:   noColor,
 		Number:    noColor,
 	},
@@ -191,4 +217,46 @@ func gradient(colors ...string) color {
 		}
 		return out.String()
 	})
+}
+
+func themeTester() {
+	title := lipgloss.NewStyle().Bold(true)
+	themeNames := make([]string, 0, len(themes))
+	for name := range themes {
+		themeNames = append(themeNames, name)
+	}
+	sort.Strings(themeNames)
+	for _, name := range themeNames {
+		theme := themes[name]
+		comma := string(theme.Syntax([]byte{','}))
+		colon := string(theme.Syntax([]byte{':'}))
+
+		fmt.Println(title.Render(fmt.Sprintf("Theme %q", name)))
+		fmt.Println(string(theme.Syntax([]byte("{"))))
+
+		fmt.Printf("  %v%v %v%v\n",
+			string(theme.Key([]byte("\"string\""))),
+			colon,
+			string(theme.String([]byte("\"Fox jumps over the lazy dog\""))),
+			comma)
+
+		fmt.Printf("  %v%v %v%v\n",
+			string(theme.Key([]byte("\"number\""))),
+			colon,
+			string(theme.Number([]byte("1234567890"))),
+			comma)
+
+		fmt.Printf("  %v%v %v%v\n",
+			string(theme.Key([]byte("\"boolean\""))),
+			colon,
+			string(theme.Boolean([]byte("true"))),
+			comma)
+		fmt.Printf("  %v%v %v%v\n",
+			string(theme.Key([]byte("\"null\""))),
+			colon,
+			string(theme.Null([]byte("null"))),
+			comma)
+		fmt.Println(string(theme.Syntax([]byte("}"))))
+		println()
+	}
 }

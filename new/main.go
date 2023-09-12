@@ -50,6 +50,9 @@ func main() {
 			flagHelp = true
 		case "-v", "-V", "--version":
 			flagVersion = true
+		case "--themes":
+			themeTester()
+			return
 		default:
 			args = append(args, arg)
 		}

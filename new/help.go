@@ -24,6 +24,7 @@ func usage(keyMap KeyMap) string {
   %v
     -h, --help          print help
     -v, --version       print version
+	--themes			print themes
 
   %v
 %v
