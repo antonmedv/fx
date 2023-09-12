@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/antonmedv/fx/new/dig"
+	"github.com/antonmedv/fx/dig"
 )
 
 func Test_SplitPath(t *testing.T) {

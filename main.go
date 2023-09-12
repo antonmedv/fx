@@ -17,7 +17,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mattn/go-isatty"
 
-	"github.com/antonmedv/fx/new/dig"
+	"github.com/antonmedv/fx/dig"
 )
 
 var (

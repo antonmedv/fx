@@ -1,4 +1,4 @@
-module github.com/antonmedv/fx/new
+module github.com/antonmedv/fx
 
 go 1.20
 
