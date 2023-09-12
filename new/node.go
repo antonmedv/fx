@@ -1,5 +1,9 @@
 package main
 
+import (
+	"strconv"
+)
+
 type node struct {
 	prev, next, end *node
 	directParent    *node
@@ -125,4 +129,36 @@ func (n *node) expandRecursively() {
 		at.expand()
 		at = at.next
 	}
+}
+
+func (n *node) findChildByKey(key string) *node {
+	for at := n.next; at != nil && at != n.end; {
+		k, err := strconv.Unquote(string(at.key))
+		if err != nil {
+			return nil
+		}
+		if k == key {
+			return at
+		}
+		if at.end != nil {
+			at = at.end.next
+		} else {
+			at = at.next
+		}
+	}
+	return nil
+}
+
+func (n *node) findChildByIndex(index int) *node {
+	for at := n.next; at != nil && at != n.end; {
+		if at.index == index {
+			return at
+		}
+		if at.end != nil {
+			at = at.end.next
+		} else {
+			at = at.next
+		}
+	}
+	return nil
 }

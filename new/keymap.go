@@ -25,6 +25,7 @@ type KeyMap struct {
 	Search              key.Binding
 	Next                key.Binding
 	Prev                key.Binding
+	Dig                 key.Binding
 }
 
 var keyMap KeyMap
@@ -118,6 +119,10 @@ func init() {
 		Prev: key.NewBinding(
 			key.WithKeys("N"),
 			key.WithHelp("", "prev search result"),
+		),
+		Dig: key.NewBinding(
+			key.WithKeys("."),
+			key.WithHelp("", "dig json"),
 		),
 	}
 }

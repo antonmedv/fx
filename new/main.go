@@ -9,7 +9,11 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+
+	"github.com/antonmedv/fx/new/dig"
 )
 
 var (
@@ -70,10 +74,20 @@ func main() {
 		return
 	}
 
+	digInput := textinput.New()
+	digInput.Prompt = ""
+	digInput.TextStyle = lipgloss.NewStyle().
+		Background(lipgloss.Color("7")).
+		Foreground(lipgloss.Color("0"))
+	digInput.Cursor.Style = lipgloss.NewStyle().
+		Background(lipgloss.Color("15")).
+		Foreground(lipgloss.Color("0"))
+
 	m := &model{
-		head: head,
-		top:  head,
-		wrap: true,
+		head:     head,
+		top:      head,
+		wrap:     true,
+		digInput: digInput,
 	}
 
 	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
@@ -88,7 +102,9 @@ type model struct {
 	head, top             *node
 	cursor                int // cursor position [0, termHeight)
 	wrap                  bool
+	margin                int
 	fileName              string
+	digInput              textinput.Model
 }
 
 func (m *model) Init() tea.Cmd {
@@ -111,6 +127,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.down()
 
 		case tea.MouseLeft:
+			m.digInput.Blur()
 			if msg.Y < m.viewHeight() {
 				if m.cursor == msg.Y {
 					to := m.cursorPointsTo()
@@ -134,9 +151,28 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tea.KeyMsg:
+		if m.digInput.Focused() {
+			return m.handleDigKey(msg)
+		}
 		return m.handleKey(msg)
 	}
 	return m, nil
+}
+
+func (m *model) handleDigKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	switch {
+	case msg.Type == tea.KeyEscape, msg.Type == tea.KeyEnter:
+		m.digInput.Blur()
+
+	default:
+		m.digInput, cmd = m.digInput.Update(msg)
+		n := m.dig(m.digInput.Value())
+		if n != nil {
+			m.selectNode(n)
+		}
+	}
+	return m, cmd
 }
 
 func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -259,8 +295,14 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			at = at.parent()
 		}
 		m.selectNode(at)
-	}
 
+	case key.Matches(msg, keyMap.Dig):
+		m.digInput.SetValue(m.cursorPath())
+		m.digInput.CursorEnd()
+		m.digInput.Width = m.termWidth - 1
+		m.digInput.Focus()
+
+	}
 	return m, nil
 }
 
@@ -369,10 +411,15 @@ func (m *model) View() string {
 		screen = append(screen, '\n')
 	}
 
-	statusBar := m.cursorPath() + " "
-	statusBar += strings.Repeat(" ", max(0, m.termWidth-len(statusBar)-len(m.fileName)))
-	statusBar += m.fileName
-	screen = append(screen, currentTheme.StatusBar([]byte(statusBar))...)
+	if m.digInput.Focused() {
+		screen = append(screen, m.digInput.View()...)
+	} else {
+		var statusBar string
+		statusBar += m.cursorPath() + " "
+		statusBar += strings.Repeat(" ", max(0, m.termWidth-len(statusBar)-len(m.fileName)))
+		statusBar += m.fileName
+		screen = append(screen, currentTheme.StatusBar([]byte(statusBar))...)
+	}
 
 	return string(screen)
 }
@@ -455,7 +502,7 @@ func (m *model) cursorPath() string {
 	at := m.cursorPointsTo()
 	for at != nil {
 		if at.prev != nil {
-			if at.chunk != nil {
+			if at.chunk != nil && at.value == nil {
 				at = at.parent()
 			}
 			if at.key != nil {
@@ -476,4 +523,24 @@ func (m *model) cursorPath() string {
 		at = at.parent()
 	}
 	return path
+}
+
+func (m *model) dig(value string) *node {
+	p, ok := dig.SplitPath(value)
+	if !ok {
+		return nil
+	}
+	n := m.top
+	for _, part := range p {
+		if n == nil {
+			return nil
+		}
+		switch part := part.(type) {
+		case string:
+			n = n.findChildByKey(part)
+		case int:
+			n = n.findChildByIndex(part)
+		}
+	}
+	return n
 }
