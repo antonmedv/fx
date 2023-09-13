@@ -1,4 +1,4 @@
-package dig
+package path
 
 import (
 	"strconv"
@@ -21,7 +21,7 @@ const (
 	singleQuoteEscape
 )
 
-func SplitPath(p string) ([]any, bool) {
+func Split(p string) ([]any, bool) {
 	path := make([]any, 0)
 	s := ""
 	state := start

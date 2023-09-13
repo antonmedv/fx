@@ -1,11 +1,11 @@
-package dig_test
+package path_test
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/antonmedv/fx/dig"
+	"github.com/antonmedv/fx/path"
 )
 
 func Test_SplitPath(t *testing.T) {
@@ -80,7 +80,7 @@ func Test_SplitPath(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			p, ok := dig.SplitPath(tt.input)
+			p, ok := path.Split(tt.input)
 			require.Equal(t, tt.want, p)
 			require.True(t, ok)
 		})
@@ -130,7 +130,7 @@ func Test_SplitPath_negative(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			p, ok := dig.SplitPath(tt.input)
+			p, ok := path.Split(tt.input)
 			require.False(t, ok, p)
 		})
 	}

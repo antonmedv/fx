@@ -17,7 +17,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mattn/go-isatty"
 
-	"github.com/antonmedv/fx/dig"
+	jsonpath "github.com/antonmedv/fx/path"
 )
 
 var (
@@ -556,7 +556,7 @@ func (m *model) cursorPath() string {
 }
 
 func (m *model) dig(value string) *node {
-	p, ok := dig.SplitPath(value)
+	p, ok := jsonpath.Split(value)
 	if !ok {
 		return nil
 	}
