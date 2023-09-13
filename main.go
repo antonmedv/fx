@@ -87,8 +87,11 @@ func main() {
 		}
 		fileName = path.Base(filePath)
 		src = f
-	} else {
+	} else if !stdinIsTty && len(args) == 0 {
 		src = os.Stdin
+	} else {
+		reduce(args)
+		return
 	}
 
 	data, err := io.ReadAll(src)
