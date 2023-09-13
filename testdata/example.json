@@ -4,7 +4,8 @@
   "tags": [
     "fox",
     "dog",
-    "lazy"
+    "lazy",
+    null
   ],
   "year": 3000,
   "funny": true,

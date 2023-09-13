@@ -84,10 +84,10 @@ var themes = map[string]theme{
 		StatusBar: defaultStatusBar,
 		Search:    defaultSearch,
 		Key:       boldFg("4"),
-		String:    boldFg("2"),
+		String:    fg("2"),
 		Null:      defaultNull,
-		Boolean:   boldFg("3"),
-		Number:    boldFg("6"),
+		Boolean:   fg("5"),
+		Number:    fg("6"),
 	},
 	"2": {
 		Cursor:    defaultCursor,
@@ -107,13 +107,25 @@ var themes = map[string]theme{
 		Preview:   defaultPreview,
 		StatusBar: defaultStatusBar,
 		Search:    defaultSearch,
+		Key:       fg("13"),
+		String:    fg("11"),
+		Null:      defaultNull,
+		Boolean:   fg("1"),
+		Number:    fg("14"),
+	},
+	"4": {
+		Cursor:    defaultCursor,
+		Syntax:    noColor,
+		Preview:   defaultPreview,
+		StatusBar: defaultStatusBar,
+		Search:    defaultSearch,
 		Key:       fg("#00F5D4"),
 		String:    fg("#00BBF9"),
 		Null:      defaultNull,
 		Boolean:   fg("#F15BB5"),
 		Number:    fg("#9B5DE5"),
 	},
-	"4": {
+	"5": {
 		Cursor:    defaultCursor,
 		Syntax:    noColor,
 		Preview:   defaultPreview,
@@ -125,7 +137,7 @@ var themes = map[string]theme{
 		Boolean:   fg("#ee964b"),
 		Number:    fg("#ee964b"),
 	},
-	"5": {
+	"6": {
 		Cursor:    defaultCursor,
 		Syntax:    noColor,
 		Preview:   defaultPreview,
@@ -137,7 +149,7 @@ var themes = map[string]theme{
 		Boolean:   fg("#FF6B6B"),
 		Number:    fg("#FFD93D"),
 	},
-	"6": {
+	"7": {
 		Cursor:    defaultCursor,
 		Syntax:    noColor,
 		Preview:   defaultPreview,
@@ -149,7 +161,7 @@ var themes = map[string]theme{
 		Boolean:   boldFg("201"),
 		Number:    boldFg("201"),
 	},
-	"7": {
+	"8": {
 		Cursor:    defaultCursor,
 		Syntax:    noColor,
 		Preview:   defaultPreview,
@@ -161,7 +173,7 @@ var themes = map[string]theme{
 		Boolean:   fg("195"),
 		Number:    fg("195"),
 	},
-	"8": {
+	"9": {
 		Cursor:    defaultCursor,
 		Syntax:    noColor,
 		Preview:   defaultPreview,
@@ -173,7 +185,7 @@ var themes = map[string]theme{
 		Boolean:   noColor,
 		Number:    noColor,
 	},
-	"9": {
+	"🔵": {
 		Cursor:    defaultCursor,
 		Syntax:    boldFg("33"),
 		Preview:   defaultPreview,
