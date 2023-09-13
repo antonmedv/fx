@@ -3,6 +3,7 @@
 
 void async function main() {
   const os = await import('node:os')
+  const fs = await import('node:fs')
   const process = await import('node:process')
   let flagHelp = false
   let flagRaw = false
@@ -19,8 +20,23 @@ void async function main() {
     return printUsage()
   await importFxrc(process.cwd())
   await importFxrc(os.homedir())
-  const stdin = await readStdinGenerator()
-  const input = flagRaw ? readLine(stdin) : parseJson(stdin)
+  let fd = 0 // stdin
+  if (args.length > 0) {
+    try {
+      fs.accessSync(args[0], fs.constants.R_OK)
+      const file = args.shift()
+      fd = fs.openSync(file, 'r')
+    } catch (_) {
+      try {
+        fs.accessSync(args.at(-1), fs.constants.R_OK)
+        const file = args.pop()
+        fd = fs.openSync(file, 'r')
+      } catch (_) {
+      }
+    }
+  }
+  const gen = await read(fd)
+  const input = flagRaw ? readLine(gen) : parseJson(gen)
   if (flagSlurp) {
     const array = []
     for (const json of input) {
@@ -161,7 +177,7 @@ async function transform(json, code) {
   }
 }
 
-async function readStdinGenerator() {
+async function read(fd = 0) {
   const fs = await import('node:fs')
   const {Buffer} = await import('node:buffer')
   const {StringDecoder} = await import('node:string_decoder')
@@ -171,7 +187,7 @@ async function readStdinGenerator() {
       const buffer = Buffer.alloc(4_096)
       let bytesRead
       try {
-        bytesRead = fs.readSync(0, buffer, 0, buffer.length, null)
+        bytesRead = fs.readSync(fd, buffer, 0, buffer.length, null)
       } catch (e) {
         if (e.code === 'EAGAIN' || e.code === 'EWOULDBLOCK') {
           sleepSync(10)
@@ -206,11 +222,11 @@ function* readLine(stdin) {
   return buffer
 }
 
-function* parseJson(stdin) {
+function* parseJson(gen) {
   let lineNumber = 1, buffer = '', lastChar, done = false
 
   function next() {
-    ({value: lastChar, done} = stdin.next())
+    ({value: lastChar, done} = gen.next())
     if (lastChar === '\n') lineNumber++
     buffer += (lastChar || '')
     if (buffer.length > 100) buffer = buffer.slice(-40)
@@ -496,7 +512,7 @@ function* parseJson(stdin) {
 
   function readEOL() {
     let line = ''
-    for (const ch of stdin) {
+    for (const ch of gen) {
       if (!ch || ch === '\n' || line.length >= 60) break
       line += ch
     }
