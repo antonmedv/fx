@@ -22,34 +22,10 @@ func splitBytesByIndexes(b []byte, indexes []match) []кусочек {
 	return out
 }
 
-func safeSlice(b []byte, start, end int) []byte {
-	length := len(b)
-
-	if start > length {
-		start = length
-	}
-	if end > length {
-		end = length
-	}
-	if start < 0 {
-		start = 0
-	}
-	if end < 0 {
-		end = 0
-	}
-	if start > end {
-		start = end
-	}
-	return b[start:end]
-}
-
 func splitIndexesToChunks(chunks [][]byte, indexes [][]int, searchIndex int) (chunkIndexes [][]match) {
-	// Initialize a slice for indexes of each chunk
 	chunkIndexes = make([][]match, len(chunks))
 
-	// Iterate over each index pair from regex results
 	for index, idx := range indexes {
-		// Calculate the current position in the whole byte slice
 		position := 0
 		for i, chunk := range chunks {
 			// If start index lies in this chunk
