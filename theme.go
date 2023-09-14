@@ -180,7 +180,7 @@ var themes = map[string]theme{
 		StatusBar: defaultStatusBar,
 		Search:    defaultSearch,
 		Key:       gradient("rgb(123,216,96)", "rgb(255,255,255)"),
-		String:    fg("15"),
+		String:    gradient("rgb(255,255,255)", "rgb(123,216,96)"),
 		Null:      defaultNull,
 		Boolean:   noColor,
 		Number:    noColor,
