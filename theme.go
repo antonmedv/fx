@@ -186,7 +186,7 @@ var themes = map[string]theme{
 		Number:    noColor,
 	},
 	"🔵": {
-		Cursor:    defaultCursor,
+		Cursor:    toColor(lipgloss.NewStyle().Foreground(lipgloss.Color("15")).Background(lipgloss.Color("33")).Render),
 		Syntax:    boldFg("33"),
 		Preview:   defaultPreview,
 		StatusBar: defaultStatusBar,
