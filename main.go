@@ -122,12 +122,13 @@ func main() {
 	searchInput.Prompt = "/"
 
 	m := &model{
-		head:        head,
-		top:         head,
-		wrap:        true,
-		fileName:    fileName,
-		digInput:    digInput,
-		searchInput: searchInput,
+		head:                 head,
+		top:                  head,
+		wrap:                 true,
+		fileName:             fileName,
+		digInput:             digInput,
+		searchInput:          searchInput,
+		searchResultsIndexes: make(map[*node][][]int),
 	}
 
 	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
@@ -147,8 +148,9 @@ type model struct {
 	digInput              textinput.Model
 	searchInput           textinput.Model
 	searchError           error
-	searchResults         []searchResult
-	searchResultCursor    int
+	searchResults         []*node
+	searchResultsCursor   int
+	searchResultsIndexes  map[*node][][]int
 }
 
 func (m *model) Init() tea.Cmd {
@@ -227,6 +229,10 @@ func (m *model) handleSearchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case msg.Type == tea.KeyEscape:
 		m.searchInput.Blur()
+		m.searchInput.SetValue("")
+		m.searchError = nil
+		m.searchResults = nil
+		m.searchResultsCursor = 0
 
 	case msg.Type == tea.KeyEnter:
 		m.searchInput.Blur()
@@ -373,10 +379,10 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.searchInput.Focus()
 
 	case key.Matches(msg, keyMap.SearchNext):
-		m.selectSearchResult(m.searchResultCursor + 1)
+		m.selectSearchResult(m.searchResultsCursor + 1)
 
 	case key.Matches(msg, keyMap.SearchPrev):
-		m.selectSearchResult(m.searchResultCursor - 1)
+		m.selectSearchResult(m.searchResultsCursor - 1)
 	}
 	return m, nil
 }
@@ -433,7 +439,7 @@ func (m *model) View() string {
 	n := m.head
 
 	printedLines := 0
-	for i := 0; i < m.viewHeight(); i++ {
+	for lineNumber := 0; lineNumber < m.viewHeight(); lineNumber++ {
 		if n == nil {
 			break
 		}
@@ -441,15 +447,11 @@ func (m *model) View() string {
 			screen = append(screen, ' ', ' ')
 		}
 
-		valueOrChunk := n.value
-		if n.chunk != nil {
-			valueOrChunk = n.chunk
-		}
-		selected := m.cursor == i
+		selected := m.cursor == lineNumber
 
 		if n.key != nil {
 			keyColor := currentTheme.Key
-			if m.cursor == i {
+			if m.cursor == lineNumber {
 				keyColor = currentTheme.Cursor
 			}
 			screen = append(screen, keyColor(n.key)...)
@@ -457,7 +459,7 @@ func (m *model) View() string {
 			selected = false // don't highlight the key's value
 		}
 
-		screen = append(screen, prettyPrint(valueOrChunk, selected, n.chunk != nil)...)
+		screen = append(screen, m.prettyPrint(n, selected)...)
 
 		if n.isCollapsed() {
 			if n.value[0] == '{' {
@@ -499,22 +501,75 @@ func (m *model) View() string {
 	} else if m.searchInput.Value() != "" {
 		screen = append(screen, '\n')
 		re, ci := regexCase(m.searchInput.Value())
+		re = "/" + re + "/"
 		if ci {
-			re = "/" + re + "/i"
-		} else {
-			re = "/" + re + "/"
+			re += "i"
 		}
 		if m.searchError != nil {
 			screen = append(screen, flex(m.termWidth, re, m.searchError.Error())...)
 		} else if len(m.searchResults) == 0 {
 			screen = append(screen, flex(m.termWidth, re, "not found")...)
 		} else {
-			cursor := fmt.Sprintf("found: [%v/%v]", m.searchResultCursor+1, len(m.searchResults))
+			cursor := fmt.Sprintf("found: [%v/%v]", m.searchResultsCursor+1, len(m.searchResults))
 			screen = append(screen, flex(m.termWidth, re, cursor)...)
 		}
 	}
 
 	return string(screen)
+}
+
+func (m *model) prettyPrint(node *node, selected bool) []byte {
+	var b []byte
+	if node.chunk != nil {
+		b = node.chunk
+	} else {
+		b = node.value
+	}
+
+	if len(b) == 0 {
+		return b
+	}
+
+	var style color
+	if selected {
+		style = currentTheme.Cursor
+	} else if node.chunk != nil {
+		style = currentTheme.String
+	} else {
+		if node.chunk != nil {
+			style = currentTheme.String
+		}
+		switch b[0] {
+		case '"':
+			style = currentTheme.String
+		case 't', 'f':
+			style = currentTheme.Boolean
+		case 'n':
+			style = currentTheme.Null
+		case '{', '[', '}', ']':
+			style = currentTheme.Syntax
+		default:
+			if isDigit(b[0]) || b[0] == '-' {
+				style = currentTheme.Number
+			}
+			style = noColor
+		}
+	}
+
+	if indexes, ok := m.searchResultsIndexes[node]; ok {
+		bb := splitBytesByIndexes(b, indexes)
+		var out []byte
+		for i, b := range bb {
+			if i%2 == 0 {
+				out = append(out, style(b)...)
+			} else {
+				out = append(out, currentTheme.Search(b)...)
+			}
+		}
+		return out
+	} else {
+		return style(b)
+	}
 }
 
 func (m *model) viewHeight() int {
@@ -591,6 +646,11 @@ func (m *model) selectNode(n *node) {
 		m.head = n
 		m.scrollIntoView()
 	}
+	parent := n.parent()
+	for parent != nil {
+		parent.expand()
+		parent = parent.parent()
+	}
 }
 
 func (m *model) cursorPath() string {
@@ -641,15 +701,10 @@ func (m *model) dig(value string) *node {
 	return n
 }
 
-type searchResult struct {
-	node  *node
-	index []int
-}
-
 func (m *model) search(s string) {
 	m.searchError = nil
 	m.searchResults = nil
-	m.searchResultCursor = 0
+	m.searchResultsCursor = 0
 
 	code, ci := regexCase(s)
 	if ci {
@@ -662,16 +717,48 @@ func (m *model) search(s string) {
 		return
 	}
 
-	node := m.top
-	for node != nil {
-		indexes := re.FindAllIndex(node.value, -1)
-		for _, index := range indexes {
-			m.searchResults = append(m.searchResults, searchResult{
-				node:  node,
-				index: index,
-			})
+	n := m.top
+	for n != nil {
+		indexes := re.FindAllIndex(n.value, -1)
+		if len(indexes) > 0 {
+			for range indexes {
+				m.searchResults = append(m.searchResults, n)
+			}
+			if n.chunk != nil && n.hasChildren() {
+				// String can be split into chunks, so we need to map the indexes to the chunks.
+				chunks := [][]byte{n.chunk}
+				chunkNodes := []*node{n}
+
+				var it *node
+				if n.isCollapsed() {
+					it = n.collapsed
+				} else {
+					it = n.next
+				}
+
+				for it != nil {
+					chunkNodes = append(chunkNodes, it)
+					chunks = append(chunks, it.chunk)
+					if it == n.end {
+						break
+					}
+					it = it.next
+				}
+
+				chunkMatches := splitIndexesToChunks(chunks, indexes)
+				for i, matches := range chunkMatches {
+					m.searchResultsIndexes[chunkNodes[i]] = matches
+				}
+			} else {
+				m.searchResultsIndexes[n] = indexes
+			}
 		}
-		node = node.next
+
+		if n.isCollapsed() {
+			n = n.collapsed
+		} else {
+			n = n.next
+		}
 	}
 
 	m.selectSearchResult(0)
@@ -687,7 +774,7 @@ func (m *model) selectSearchResult(i int) {
 	if i >= len(m.searchResults) {
 		i = 0
 	}
-	m.searchResultCursor = i
+	m.searchResultsCursor = i
 	result := m.searchResults[i]
-	m.selectNode(result.node)
+	m.selectNode(result)
 }
