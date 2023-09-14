@@ -128,7 +128,7 @@ func main() {
 		fileName:             fileName,
 		digInput:             digInput,
 		searchInput:          searchInput,
-		searchResultsIndexes: make(map[*node][][]int),
+		searchResultsIndexes: make(map[*node][]match),
 	}
 
 	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
@@ -150,7 +150,7 @@ type model struct {
 	searchError           error
 	searchResults         []*node
 	searchResultsCursor   int
-	searchResultsIndexes  map[*node][][]int
+	searchResultsIndexes  map[*node][]match
 }
 
 func (m *model) Init() tea.Cmd {
@@ -557,13 +557,17 @@ func (m *model) prettyPrint(node *node, selected bool) []byte {
 	}
 
 	if indexes, ok := m.searchResultsIndexes[node]; ok {
-		bb := splitBytesByIndexes(b, indexes)
+		куски := splitBytesByIndexes(b, indexes)
 		var out []byte
-		for i, b := range bb {
+		for i, кусочек := range куски {
 			if i%2 == 0 {
-				out = append(out, style(b)...)
+				out = append(out, style(кусочек.b)...)
 			} else {
-				out = append(out, currentTheme.Search(b)...)
+				if кусочек.index == m.searchResultsCursor {
+					out = append(out, currentTheme.Cursor(кусочек.b)...)
+				} else {
+					out = append(out, currentTheme.Search(кусочек.b)...)
+				}
 			}
 		}
 		return out
@@ -718,6 +722,7 @@ func (m *model) search(s string) {
 	}
 
 	n := m.top
+	searchIndex := 0
 	for n != nil {
 		indexes := re.FindAllIndex(n.value, -1)
 		if len(indexes) > 0 {
@@ -745,13 +750,16 @@ func (m *model) search(s string) {
 					it = it.next
 				}
 
-				chunkMatches := splitIndexesToChunks(chunks, indexes)
+				chunkMatches := splitIndexesToChunks(chunks, indexes, searchIndex)
 				for i, matches := range chunkMatches {
 					m.searchResultsIndexes[chunkNodes[i]] = matches
 				}
 			} else {
-				m.searchResultsIndexes[n] = indexes
+				for i, pair := range indexes {
+					m.searchResultsIndexes[n] = append(m.searchResultsIndexes[n], match{start: pair[0], end: pair[1], index: searchIndex + i})
+				}
 			}
+			searchIndex += len(indexes)
 		}
 
 		if n.isCollapsed() {

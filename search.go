@@ -5,15 +5,20 @@ type match struct {
 	index      int
 }
 
-func splitBytesByIndexes(b []byte, indexes []match) [][]byte {
-	out := make([][]byte, 0, 1)
+type кусочек struct {
+	b     []byte
+	index int
+}
+
+func splitBytesByIndexes(b []byte, indexes []match) []кусочек {
+	out := make([]кусочек, 0, 1)
 	pos := 0
 	for _, pair := range indexes {
-		out = append(out, safeSlice(b, pos, pair[0]))
-		out = append(out, safeSlice(b, pair[0], pair[1]))
-		pos = pair[1]
+		out = append(out, кусочек{safeSlice(b, pos, pair.start), -1})
+		out = append(out, кусочек{safeSlice(b, pair.start, pair.end), pair.index})
+		pos = pair.end
 	}
-	out = append(out, safeSlice(b, pos, len(b)))
+	out = append(out, кусочек{safeSlice(b, pos, len(b)), -1})
 	return out
 }
 
@@ -32,15 +37,18 @@ func safeSlice(b []byte, start, end int) []byte {
 	if end < 0 {
 		end = 0
 	}
+	if start > end {
+		start = end
+	}
 	return b[start:end]
 }
 
-func splitIndexesToChunks(chunks [][]byte, indexes [][]int) (chunkIndexes [][][]int) {
+func splitIndexesToChunks(chunks [][]byte, indexes [][]int, searchIndex int) (chunkIndexes [][]match) {
 	// Initialize a slice for indexes of each chunk
-	chunkIndexes = make([][][]int, len(chunks))
+	chunkIndexes = make([][]match, len(chunks))
 
 	// Iterate over each index pair from regex results
-	for _, idx := range indexes {
+	for index, idx := range indexes {
 		// Calculate the current position in the whole byte slice
 		position := 0
 		for i, chunk := range chunks {
@@ -52,11 +60,11 @@ func splitIndexesToChunks(chunks [][]byte, indexes [][]int) (chunkIndexes [][][]
 
 				// If the end index also lies in this chunk
 				if idx[1] <= position+len(chunk) {
-					chunkIndexes[i] = append(chunkIndexes[i], []int{localStart, localEnd})
+					chunkIndexes[i] = append(chunkIndexes[i], match{start: localStart, end: localEnd, index: searchIndex + index})
 					break
 				} else {
 					// If the end index is outside this chunk, split the index
-					chunkIndexes[i] = append(chunkIndexes[i], []int{localStart, len(chunk)})
+					chunkIndexes[i] = append(chunkIndexes[i], match{start: localStart, end: len(chunk), index: searchIndex + index})
 
 					// Adjust the starting index for the next chunk
 					idx[0] = position + len(chunk)
