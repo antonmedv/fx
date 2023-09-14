@@ -22,11 +22,11 @@ func usage(keyMap KeyMap) string {
     curl ... | fx
 
   %v
-    -h, --help          Print help
-    -v, --version       Print version
-    --themes            Print themes
-    -r, --raw           Treat input as a raw string
-    -s, --slurp         Read all inputs into an array
+    -h, --help            print help
+    -v, --version         print version
+    --themes              print themes
+    -r, --raw             treat input as a raw string
+    -s, --slurp           read all inputs into an array
 
   %v
 %v

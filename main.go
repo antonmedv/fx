@@ -73,7 +73,10 @@ func main() {
 	var fileName string
 	var src io.Reader
 
-	if stdinIsTty && len(args) == 1 {
+	if stdinIsTty && len(args) == 0 {
+		fmt.Println(usage(keyMap))
+		return
+	} else if stdinIsTty && len(args) == 1 {
 		filePath := args[0]
 		f, err := os.Open(filePath)
 		if err != nil {
