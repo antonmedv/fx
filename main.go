@@ -122,13 +122,14 @@ func main() {
 	searchInput.Prompt = "/"
 
 	m := &model{
-		head:                 head,
-		top:                  head,
-		wrap:                 true,
-		fileName:             fileName,
-		digInput:             digInput,
-		searchInput:          searchInput,
-		searchResultsIndexes: make(map[*node][]match),
+		head:        head,
+		top:         head,
+		showCursor:  true,
+		wrap:        true,
+		fileName:    fileName,
+		digInput:    digInput,
+		searchInput: searchInput,
+		search:      NewSearch(),
 	}
 
 	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
@@ -142,15 +143,13 @@ type model struct {
 	termWidth, termHeight int
 	head, top             *node
 	cursor                int // cursor position [0, termHeight)
+	showCursor            bool
 	wrap                  bool
 	margin                int
 	fileName              string
 	digInput              textinput.Model
 	searchInput           textinput.Model
-	searchError           error
-	searchResults         []*node
-	searchResultsCursor   int
-	searchResultsIndexes  map[*node][]match
+	search                *search
 }
 
 func (m *model) Init() tea.Cmd {
@@ -163,6 +162,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.termWidth = msg.Width
 		m.termHeight = msg.Height
 		wrapAll(m.top, m.termWidth)
+		m.redoSearch()
 
 	case tea.MouseMsg:
 		switch msg.Type {
@@ -174,6 +174,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case tea.MouseLeft:
 			m.digInput.Blur()
+			m.showCursor = true
 			if msg.Y < m.viewHeight() {
 				if m.cursor == msg.Y {
 					to := m.cursorPointsTo()
@@ -230,11 +231,12 @@ func (m *model) handleSearchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case msg.Type == tea.KeyEscape:
 		m.searchInput.Blur()
 		m.searchInput.SetValue("")
-		m.search("")
+		m.doSearch("")
+		m.showCursor = true
 
 	case msg.Type == tea.KeyEnter:
 		m.searchInput.Blur()
-		m.search(m.searchInput.Value())
+		m.doSearch(m.searchInput.Value())
 
 	default:
 		m.searchInput, cmd = m.searchInput.Update(msg)
@@ -280,10 +282,12 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keyMap.GotoTop):
 		m.head = m.top
 		m.cursor = 0
+		m.showCursor = true
 
 	case key.Matches(msg, keyMap.GotoBottom):
 		m.head = m.findBottom()
 		m.cursor = 0
+		m.showCursor = true
 		m.scrollIntoView()
 
 	case key.Matches(msg, keyMap.NextSibling):
@@ -327,23 +331,27 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keyMap.Expand):
 		m.cursorPointsTo().expand()
+		m.showCursor = true
 
 	case key.Matches(msg, keyMap.CollapseRecursively):
 		n := m.cursorPointsTo()
 		if n.hasChildren() {
 			n.collapseRecursively()
 		}
+		m.showCursor = true
 
 	case key.Matches(msg, keyMap.ExpandRecursively):
 		n := m.cursorPointsTo()
 		if n.hasChildren() {
 			n.expandRecursively()
 		}
+		m.showCursor = true
 
 	case key.Matches(msg, keyMap.CollapseAll):
 		m.top.collapseRecursively()
 		m.cursor = 0
 		m.head = m.top
+		m.showCursor = true
 
 	case key.Matches(msg, keyMap.ExpandAll):
 		at := m.cursorPointsTo()
@@ -361,6 +369,7 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if at.chunk != nil && at.value == nil {
 			at = at.parent()
 		}
+		m.redoSearch()
 		m.selectNode(at)
 
 	case key.Matches(msg, keyMap.Dig):
@@ -375,15 +384,16 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.searchInput.Focus()
 
 	case key.Matches(msg, keyMap.SearchNext):
-		m.selectSearchResult(m.searchResultsCursor + 1)
+		m.selectSearchResult(m.search.cursor + 1)
 
 	case key.Matches(msg, keyMap.SearchPrev):
-		m.selectSearchResult(m.searchResultsCursor - 1)
+		m.selectSearchResult(m.search.cursor - 1)
 	}
 	return m, nil
 }
 
 func (m *model) up() {
+	m.showCursor = true
 	m.cursor--
 	if m.cursor < 0 {
 		m.cursor = 0
@@ -394,6 +404,7 @@ func (m *model) up() {
 }
 
 func (m *model) down() {
+	m.showCursor = true
 	m.cursor++
 	n := m.cursorPointsTo()
 	if n == nil {
@@ -443,19 +454,18 @@ func (m *model) View() string {
 			screen = append(screen, ' ', ' ')
 		}
 
-		selected := m.cursor == lineNumber
-
-		if n.key != nil {
-			keyColor := currentTheme.Key
-			if m.cursor == lineNumber {
-				keyColor = currentTheme.Cursor
-			}
-			screen = append(screen, keyColor(n.key)...)
-			screen = append(screen, colon...)
-			selected = false // don't highlight the key's value
+		isSelected := m.cursor == lineNumber
+		if !m.showCursor {
+			isSelected = false // don't highlight the cursor while iterating search results
 		}
 
-		screen = append(screen, m.prettyPrint(n, selected)...)
+		if n.key != nil {
+			screen = append(screen, m.prettyKey(n, isSelected)...)
+			screen = append(screen, colon...)
+			isSelected = false // don't highlight the key's value
+		}
+
+		screen = append(screen, m.prettyPrint(n, isSelected)...)
 
 		if n.isCollapsed() {
 			if n.value[0] == '{' {
@@ -501,17 +511,42 @@ func (m *model) View() string {
 		if ci {
 			re += "i"
 		}
-		if m.searchError != nil {
-			screen = append(screen, flex(m.termWidth, re, m.searchError.Error())...)
-		} else if len(m.searchResults) == 0 {
+		if m.search.err != nil {
+			screen = append(screen, flex(m.termWidth, re, m.search.err.Error())...)
+		} else if len(m.search.results) == 0 {
 			screen = append(screen, flex(m.termWidth, re, "not found")...)
 		} else {
-			cursor := fmt.Sprintf("found: [%v/%v]", m.searchResultsCursor+1, len(m.searchResults))
+			cursor := fmt.Sprintf("found: [%v/%v]", m.search.cursor+1, len(m.search.results))
 			screen = append(screen, flex(m.termWidth, re, cursor)...)
 		}
 	}
 
 	return string(screen)
+}
+
+func (m *model) prettyKey(node *node, selected bool) []byte {
+	b := node.key
+
+	style := currentTheme.Key
+	if selected {
+		style = currentTheme.Cursor
+	}
+
+	if indexes, ok := m.search.keys[node]; ok {
+		var out []byte
+		for i, кусочек := range splitBytesByIndexes(b, indexes) {
+			if i%2 == 0 {
+				out = append(out, style(кусочек.b)...)
+			} else if кусочек.index == m.search.cursor {
+				out = append(out, currentTheme.Cursor(кусочек.b)...)
+			} else {
+				out = append(out, currentTheme.Search(кусочек.b)...)
+			}
+		}
+		return out
+	} else {
+		return style(b)
+	}
 }
 
 func (m *model) prettyPrint(node *node, selected bool) []byte {
@@ -526,44 +561,17 @@ func (m *model) prettyPrint(node *node, selected bool) []byte {
 		return b
 	}
 
-	var style color
-	if selected {
-		style = currentTheme.Cursor
-	} else if node.chunk != nil {
-		style = currentTheme.String
-	} else {
-		if node.chunk != nil {
-			style = currentTheme.String
-		}
-		switch b[0] {
-		case '"':
-			style = currentTheme.String
-		case 't', 'f':
-			style = currentTheme.Boolean
-		case 'n':
-			style = currentTheme.Null
-		case '{', '[', '}', ']':
-			style = currentTheme.Syntax
-		default:
-			if isDigit(b[0]) || b[0] == '-' {
-				style = currentTheme.Number
-			}
-			style = noColor
-		}
-	}
+	style := valueStyle(b, selected, node.chunk != nil)
 
-	if indexes, ok := m.searchResultsIndexes[node]; ok {
-		куски := splitBytesByIndexes(b, indexes)
+	if indexes, ok := m.search.values[node]; ok {
 		var out []byte
-		for i, кусочек := range куски {
+		for i, кусочек := range splitBytesByIndexes(b, indexes) {
 			if i%2 == 0 {
 				out = append(out, style(кусочек.b)...)
+			} else if кусочек.index == m.search.cursor {
+				out = append(out, currentTheme.Cursor(кусочек.b)...)
 			} else {
-				if кусочек.index == m.searchResultsCursor {
-					out = append(out, currentTheme.Cursor(кусочек.b)...)
-				} else {
-					out = append(out, currentTheme.Search(кусочек.b)...)
-				}
+				out = append(out, currentTheme.Search(кусочек.b)...)
 			}
 		}
 		return out
@@ -638,6 +646,7 @@ func (m *model) selectNodeInView(n *node) {
 }
 
 func (m *model) selectNode(n *node) {
+	m.showCursor = true
 	if m.nodeInsideView(n) {
 		m.selectNodeInView(n)
 		m.scrollIntoView()
@@ -701,11 +710,9 @@ func (m *model) dig(value string) *node {
 	return n
 }
 
-func (m *model) search(s string) {
-	m.searchError = nil
-	m.searchResults = nil
-	m.searchResultsCursor = 0
-	m.searchResultsIndexes = make(map[*node][]match)
+func (m *model) doSearch(s string) {
+	m.search = NewSearch()
+
 	if s == "" {
 		return
 	}
@@ -717,17 +724,27 @@ func (m *model) search(s string) {
 
 	re, err := regexp.Compile(code)
 	if err != nil {
-		m.searchError = err
+		m.search.err = err
 		return
 	}
 
 	n := m.top
 	searchIndex := 0
 	for n != nil {
+		if n.key != nil {
+			indexes := re.FindAllIndex(n.key, -1)
+			if len(indexes) > 0 {
+				for i, pair := range indexes {
+					m.search.results = append(m.search.results, n)
+					m.search.keys[n] = append(m.search.keys[n], match{start: pair[0], end: pair[1], index: searchIndex + i})
+				}
+				searchIndex += len(indexes)
+			}
+		}
 		indexes := re.FindAllIndex(n.value, -1)
 		if len(indexes) > 0 {
 			for range indexes {
-				m.searchResults = append(m.searchResults, n)
+				m.search.results = append(m.search.results, n)
 			}
 			if n.chunk != nil && n.hasChildren() {
 				// String can be split into chunks, so we need to map the indexes to the chunks.
@@ -752,11 +769,11 @@ func (m *model) search(s string) {
 
 				chunkMatches := splitIndexesToChunks(chunks, indexes, searchIndex)
 				for i, matches := range chunkMatches {
-					m.searchResultsIndexes[chunkNodes[i]] = matches
+					m.search.values[chunkNodes[i]] = matches
 				}
 			} else {
 				for i, pair := range indexes {
-					m.searchResultsIndexes[n] = append(m.searchResultsIndexes[n], match{start: pair[0], end: pair[1], index: searchIndex + i})
+					m.search.values[n] = append(m.search.values[n], match{start: pair[0], end: pair[1], index: searchIndex + i})
 				}
 			}
 			searchIndex += len(indexes)
@@ -773,16 +790,25 @@ func (m *model) search(s string) {
 }
 
 func (m *model) selectSearchResult(i int) {
-	if len(m.searchResults) == 0 {
+	if len(m.search.results) == 0 {
 		return
 	}
 	if i < 0 {
-		i = len(m.searchResults) - 1
+		i = len(m.search.results) - 1
 	}
-	if i >= len(m.searchResults) {
+	if i >= len(m.search.results) {
 		i = 0
 	}
-	m.searchResultsCursor = i
-	result := m.searchResults[i]
+	m.search.cursor = i
+	result := m.search.results[i]
 	m.selectNode(result)
+	m.showCursor = false
+}
+
+func (m *model) redoSearch() {
+	if m.searchInput.Value() != "" && len(m.search.results) > 0 {
+		cursor := m.search.cursor
+		m.doSearch(m.searchInput.Value())
+		m.selectSearchResult(cursor)
+	}
 }

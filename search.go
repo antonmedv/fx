@@ -1,5 +1,21 @@
 package main
 
+type search struct {
+	err     error
+	results []*node
+	cursor  int
+	values  map[*node][]match
+	keys    map[*node][]match
+}
+
+func NewSearch() *search {
+	return &search{
+		results: make([]*node, 0),
+		values:  make(map[*node][]match),
+		keys:    make(map[*node][]match),
+	}
+}
+
 type match struct {
 	start, end int
 	index      int

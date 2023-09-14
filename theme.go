@@ -272,3 +272,27 @@ func themeTester() {
 		println()
 	}
 }
+
+func valueStyle(b []byte, selected, chunk bool) color {
+	if selected {
+		return currentTheme.Cursor
+	} else if chunk {
+		return currentTheme.String
+	} else {
+		switch b[0] {
+		case '"':
+			return currentTheme.String
+		case 't', 'f':
+			return currentTheme.Boolean
+		case 'n':
+			return currentTheme.Null
+		case '{', '[', '}', ']':
+			return currentTheme.Syntax
+		default:
+			if isDigit(b[0]) || b[0] == '-' {
+				return currentTheme.Number
+			}
+			return noColor
+		}
+	}
+}
