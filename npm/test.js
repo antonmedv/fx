@@ -17,6 +17,15 @@ async function run(json, code = '') {
   })
 }
 
+async function runSimple(code = '') {
+  const {spawnSync} = await import('node:child_process')
+  return spawnSync(`node index.js ${code}`, {
+    stdio: 'pipe',
+    encoding: 'utf8',
+    shell: true
+  })
+}
+
 void async function main() {
   await test('properly formatted', async t => {
     const {stdout} = await run([{'greeting': 'hello world'}])
@@ -181,5 +190,15 @@ void async function main() {
   await test('flags - slurp raw', async t => {
     const {stdout} = await run('hello,\nworld!', `-rs '.join(" ")'`)
     t.equal(stdout, 'hello, world!\n')
+  })
+
+  await test('cli - first arg is file', async t => {
+    const {stdout} = await runSimple(`package.json .name`)
+    t.equal(stdout, 'fx\n')
+  })
+
+  await test('cli - last arg is file', async t => {
+    const {stdout} = await runSimple(`.name package.json`)
+    t.equal(stdout, 'fx\n')
   })
 }()

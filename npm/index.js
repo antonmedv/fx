@@ -22,17 +22,10 @@ void async function main() {
   await importFxrc(os.homedir())
   let fd = 0 // stdin
   if (args.length > 0) {
-    try {
-      fs.accessSync(args[0], fs.constants.R_OK)
-      const file = args.shift()
-      fd = fs.openSync(file, 'r')
-    } catch (_) {
-      try {
-        fs.accessSync(args.at(-1), fs.constants.R_OK)
-        const file = args.pop()
-        fd = fs.openSync(file, 'r')
-      } catch (_) {
-      }
+    if (await isFile(args[0])) {
+      fd = fs.openSync(args.shift(), 'r')
+    } else if (await isFile(args.at(-1))) {
+      fd = fs.openSync(args.pop(), 'r')
     }
   }
   const gen = await read(fd)
@@ -203,6 +196,12 @@ async function read(fd = 0) {
     for (const ch of decoder.end())
       yield ch
   }()
+}
+
+async function isFile(path) {
+  const fs = await import('node:fs')
+  const stat = fs.statSync(path, {throwIfNoEntry: false})
+  return stat !== undefined && stat.isFile()
 }
 
 function sleepSync(ms) {
