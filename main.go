@@ -7,9 +7,9 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"regexp"
 	"runtime/pprof"
 	"strconv"
-	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -118,12 +118,16 @@ func main() {
 		Background(lipgloss.Color("15")).
 		Foreground(lipgloss.Color("0"))
 
+	searchInput := textinput.New()
+	searchInput.Prompt = "/"
+
 	m := &model{
-		head:     head,
-		top:      head,
-		wrap:     true,
-		digInput: digInput,
-		fileName: fileName,
+		head:        head,
+		top:         head,
+		wrap:        true,
+		fileName:    fileName,
+		digInput:    digInput,
+		searchInput: searchInput,
 	}
 
 	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
@@ -141,6 +145,10 @@ type model struct {
 	margin                int
 	fileName              string
 	digInput              textinput.Model
+	searchInput           textinput.Model
+	searchError           error
+	searchResults         []searchResult
+	searchResultCursor    int
 }
 
 func (m *model) Init() tea.Cmd {
@@ -190,6 +198,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.digInput.Focused() {
 			return m.handleDigKey(msg)
 		}
+		if m.searchInput.Focused() {
+			return m.handleSearchKey(msg)
+		}
 		return m.handleKey(msg)
 	}
 	return m, nil
@@ -207,6 +218,24 @@ func (m *model) handleDigKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if n != nil {
 			m.selectNode(n)
 		}
+	}
+	return m, cmd
+}
+
+func (m *model) handleSearchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	switch {
+	case msg.Type == tea.KeyEscape:
+		m.searchInput.Blur()
+
+	case msg.Type == tea.KeyEnter:
+		m.searchInput.Blur()
+		if m.searchInput.Value() != "" {
+			m.search(m.searchInput.Value())
+		}
+
+	default:
+		m.searchInput, cmd = m.searchInput.Update(msg)
 	}
 	return m, cmd
 }
@@ -338,6 +367,16 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.digInput.Width = m.termWidth - 1
 		m.digInput.Focus()
 
+	case key.Matches(msg, keyMap.Search):
+		m.searchInput.CursorEnd()
+		m.searchInput.Width = m.termWidth - 2 // -1 for the prompt, -1 for the cursor
+		m.searchInput.Focus()
+
+	case key.Matches(msg, keyMap.SearchNext):
+		m.selectSearchResult(m.searchResultCursor + 1)
+
+	case key.Matches(msg, keyMap.SearchPrev):
+		m.selectSearchResult(m.searchResultCursor - 1)
 	}
 	return m, nil
 }
@@ -450,17 +489,38 @@ func (m *model) View() string {
 	if m.digInput.Focused() {
 		screen = append(screen, m.digInput.View()...)
 	} else {
-		var statusBar string
-		statusBar += m.cursorPath() + " "
-		statusBar += strings.Repeat(" ", max(0, m.termWidth-len(statusBar)-len(m.fileName)))
-		statusBar += m.fileName
+		statusBar := flex(m.termWidth, m.cursorPath(), m.fileName)
 		screen = append(screen, currentTheme.StatusBar([]byte(statusBar))...)
+	}
+
+	if m.searchInput.Focused() {
+		screen = append(screen, '\n')
+		screen = append(screen, m.searchInput.View()...)
+	} else if m.searchInput.Value() != "" {
+		screen = append(screen, '\n')
+		re, ci := regexCase(m.searchInput.Value())
+		if ci {
+			re = "/" + re + "/i"
+		} else {
+			re = "/" + re + "/"
+		}
+		if m.searchError != nil {
+			screen = append(screen, flex(m.termWidth, re, m.searchError.Error())...)
+		} else if len(m.searchResults) == 0 {
+			screen = append(screen, flex(m.termWidth, re, "not found")...)
+		} else {
+			cursor := fmt.Sprintf("found: [%v/%v]", m.searchResultCursor+1, len(m.searchResults))
+			screen = append(screen, flex(m.termWidth, re, cursor)...)
+		}
 	}
 
 	return string(screen)
 }
 
 func (m *model) viewHeight() int {
+	if m.searchInput.Focused() || m.searchInput.Value() != "" {
+		return m.termHeight - 2
+	}
 	return m.termHeight - 1
 }
 
@@ -579,4 +639,55 @@ func (m *model) dig(value string) *node {
 		}
 	}
 	return n
+}
+
+type searchResult struct {
+	node  *node
+	index []int
+}
+
+func (m *model) search(s string) {
+	m.searchError = nil
+	m.searchResults = nil
+	m.searchResultCursor = 0
+
+	code, ci := regexCase(s)
+	if ci {
+		code = "(?i)" + code
+	}
+
+	re, err := regexp.Compile(code)
+	if err != nil {
+		m.searchError = err
+		return
+	}
+
+	node := m.top
+	for node != nil {
+		indexes := re.FindAllIndex(node.value, -1)
+		for _, index := range indexes {
+			m.searchResults = append(m.searchResults, searchResult{
+				node:  node,
+				index: index,
+			})
+		}
+		node = node.next
+	}
+
+	m.selectSearchResult(0)
+}
+
+func (m *model) selectSearchResult(i int) {
+	if len(m.searchResults) == 0 {
+		return
+	}
+	if i < 0 {
+		i = len(m.searchResults) - 1
+	}
+	if i >= len(m.searchResults) {
+		i = 0
+	}
+	m.searchResultCursor = i
+	result := m.searchResults[i]
+	m.selectNode(result.node)
 }

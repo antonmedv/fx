@@ -23,8 +23,8 @@ type KeyMap struct {
 	PrevSibling         key.Binding
 	ToggleWrap          key.Binding
 	Search              key.Binding
-	Next                key.Binding
-	Prev                key.Binding
+	SearchNext          key.Binding
+	SearchPrev          key.Binding
 	Dig                 key.Binding
 }
 
@@ -112,11 +112,11 @@ func init() {
 			key.WithKeys("/"),
 			key.WithHelp("", "search regexp"),
 		),
-		Next: key.NewBinding(
+		SearchNext: key.NewBinding(
 			key.WithKeys("n"),
 			key.WithHelp("", "next search result"),
 		),
-		Prev: key.NewBinding(
+		SearchPrev: key.NewBinding(
 			key.WithKeys("N"),
 			key.WithHelp("", "prev search result"),
 		),
