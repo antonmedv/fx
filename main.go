@@ -746,22 +746,16 @@ func (m *model) doSearch(s string) {
 			for range indexes {
 				m.search.results = append(m.search.results, n)
 			}
-			if n.chunk != nil && n.hasChildren() {
+			if n.chunk != nil {
 				// String can be split into chunks, so we need to map the indexes to the chunks.
 				chunks := [][]byte{n.chunk}
 				chunkNodes := []*node{n}
 
-				var it *node
-				if n.isCollapsed() {
-					it = n.collapsed
-				} else {
-					it = n.next
-				}
-
+				it := n.next
 				for it != nil {
 					chunkNodes = append(chunkNodes, it)
 					chunks = append(chunks, it.chunk)
-					if it == n.end {
+					if it == n.chunkEnd {
 						break
 					}
 					it = it.next

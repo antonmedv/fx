@@ -11,7 +11,11 @@ func dropWrapAll(n *node) {
 		if n.value != nil && n.value[0] == '"' {
 			n.dropChunks()
 		}
-		n = n.next
+		if n.isCollapsed() {
+			n = n.collapsed
+		} else {
+			n = n.next
+		}
 	}
 }
 
@@ -21,10 +25,6 @@ func wrapAll(n *node, termWidth int) {
 	}
 	for n != nil {
 		if n.value != nil && n.value[0] == '"' {
-			collapsed := n.isCollapsed()
-			if collapsed {
-				n.collapsed = nil
-			}
 			n.dropChunks()
 			lines, count := doWrap(n, termWidth)
 			if count > 1 {
@@ -38,11 +38,8 @@ func wrapAll(n *node, termWidth int) {
 					if n.comma && i == count-1 {
 						child.comma = true
 					}
-					n.insertChild(child)
+					n.insertChunk(child)
 				}
-			}
-			if collapsed {
-				n.collapse()
 			}
 		}
 		n = n.next

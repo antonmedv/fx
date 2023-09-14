@@ -13,6 +13,7 @@ type node struct {
 	key             []byte
 	value           []byte
 	chunk           []byte
+	chunkEnd        *node
 	comma           bool
 	index           int
 }
@@ -30,13 +31,13 @@ func (n *node) append(child *node) {
 	}
 }
 
-func (n *node) insertChild(child *node) {
-	if n.end == nil {
-		n.insertAfter(child)
+func (n *node) insertChunk(chunk *node) {
+	if n.chunkEnd == nil {
+		n.insertAfter(chunk)
 	} else {
-		n.end.insertAfter(child)
+		n.chunkEnd.insertAfter(chunk)
 	}
-	n.end = child
+	n.chunkEnd = chunk
 }
 
 func (n *node) insertAfter(child *node) {
@@ -53,18 +54,18 @@ func (n *node) insertAfter(child *node) {
 }
 
 func (n *node) dropChunks() {
-	if n.end == nil {
+	if n.chunkEnd == nil {
 		return
 	}
 
 	n.chunk = nil
 
-	n.next = n.end.next
+	n.next = n.chunkEnd.next
 	if n.next != nil {
 		n.next.prev = n
 	}
 
-	n.end = nil
+	n.chunkEnd = nil
 }
 
 func (n *node) hasChildren() bool {
