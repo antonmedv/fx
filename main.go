@@ -230,15 +230,11 @@ func (m *model) handleSearchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case msg.Type == tea.KeyEscape:
 		m.searchInput.Blur()
 		m.searchInput.SetValue("")
-		m.searchError = nil
-		m.searchResults = nil
-		m.searchResultsCursor = 0
+		m.search("")
 
 	case msg.Type == tea.KeyEnter:
 		m.searchInput.Blur()
-		if m.searchInput.Value() != "" {
-			m.search(m.searchInput.Value())
-		}
+		m.search(m.searchInput.Value())
 
 	default:
 		m.searchInput, cmd = m.searchInput.Update(msg)
@@ -709,6 +705,10 @@ func (m *model) search(s string) {
 	m.searchError = nil
 	m.searchResults = nil
 	m.searchResultsCursor = 0
+	m.searchResultsIndexes = make(map[*node][]match)
+	if s == "" {
+		return
+	}
 
 	code, ci := regexCase(s)
 	if ci {
