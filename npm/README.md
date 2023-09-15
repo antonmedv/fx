@@ -13,16 +13,10 @@ Or use **npx**:
 cat file.json | npx fx .field
 ```
 
-Or use **node**:
-
-```sh
-cat file.json | node <(curl -s https://fx.wtf) .field
-```
-
 Or use **deno**:
 
 ```sh
-cat file.json | deno run https://fx.wtf .field
+cat file.json | deno run -A https://fx.wtf .field
 ```
 
 ## Usage
