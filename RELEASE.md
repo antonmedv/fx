@@ -8,4 +8,5 @@
    ```sh
    npx zx scripts/build.js 
    ```
-6. Bump version [install.sh](install.sh) and upload it to [fx.wtf](https://fx.wtf).
+6. Bump version in [install.sh](https://github.com/antonmedv/fx.wtf/blob/master/public/install.sh) and upload it
+   to [fx.wtf](https://fx.wtf).
