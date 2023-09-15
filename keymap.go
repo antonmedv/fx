@@ -126,3 +126,9 @@ func init() {
 		),
 	}
 }
+
+var (
+	yankValue = key.NewBinding(key.WithKeys("y"))
+	yankKey   = key.NewBinding(key.WithKeys("k"))
+	yankPath  = key.NewBinding(key.WithKeys("p"))
+)

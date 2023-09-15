@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -252,9 +253,11 @@ func (m *model) handleSearchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m *model) handleYankKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
-	case msg.Type == tea.KeyRunes && len(msg.Runes) == 1 && msg.Runes[0] == 'p':
+	case key.Matches(msg, yankPath):
 		_ = clipboard.WriteAll(m.cursorPath())
-	case msg.Type == tea.KeyRunes && len(msg.Runes) == 1 && msg.Runes[0] == 'y':
+	case key.Matches(msg, yankKey):
+		_ = clipboard.WriteAll(m.cursorKey())
+	case key.Matches(msg, yankValue):
 		_ = clipboard.WriteAll(m.cursorValue())
 	}
 	m.yank = false
@@ -524,7 +527,10 @@ func (m *model) View() string {
 		screen = append(screen, currentTheme.StatusBar([]byte(statusBar))...)
 	}
 
-	if m.searchInput.Focused() {
+	if m.yank {
+		screen = append(screen, '\n')
+		screen = append(screen, []byte("(y)value  (p)path  (k)key")...)
+	} else if m.searchInput.Focused() {
 		screen = append(screen, '\n')
 		screen = append(screen, m.searchInput.View()...)
 	} else if m.searchInput.Value() != "" {
@@ -542,11 +548,6 @@ func (m *model) View() string {
 			cursor := fmt.Sprintf("found: [%v/%v]", m.search.cursor+1, len(m.search.results))
 			screen = append(screen, flex(m.termWidth, re, cursor)...)
 		}
-	}
-
-	if m.yank {
-		screen = append(screen, '\n')
-		screen = append(screen, []byte("(y)value  (p)path")...)
 	}
 
 	return string(screen)
@@ -760,6 +761,20 @@ func (m *model) cursorValue() string {
 		}
 	}
 	return out.String()
+}
+
+func (m *model) cursorKey() string {
+	at := m.cursorPointsTo()
+	if at == nil {
+		return ""
+	}
+	if at.key != nil {
+		var v string
+		_ = json.Unmarshal(at.key, &v)
+		return v
+	}
+	return strconv.Itoa(at.index)
+
 }
 
 func (m *model) dig(value string) *node {
