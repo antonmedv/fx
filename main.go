@@ -10,7 +10,9 @@ import (
 	"regexp"
 	"runtime/pprof"
 	"strconv"
+	"strings"
 
+	"github.com/antonmedv/clipboard"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -150,6 +152,7 @@ type model struct {
 	digInput              textinput.Model
 	searchInput           textinput.Model
 	search                *search
+	yank                  bool
 }
 
 func (m *model) Init() tea.Cmd {
@@ -204,6 +207,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.searchInput.Focused() {
 			return m.handleSearchKey(msg)
 		}
+		if m.yank {
+			return m.handleYankKey(msg)
+		}
 		return m.handleKey(msg)
 	}
 	return m, nil
@@ -242,6 +248,17 @@ func (m *model) handleSearchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.searchInput, cmd = m.searchInput.Update(msg)
 	}
 	return m, cmd
+}
+
+func (m *model) handleYankKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch {
+	case msg.Type == tea.KeyRunes && len(msg.Runes) == 1 && msg.Runes[0] == 'p':
+		_ = clipboard.WriteAll(m.cursorPath())
+	case msg.Type == tea.KeyRunes && len(msg.Runes) == 1 && msg.Runes[0] == 'y':
+		_ = clipboard.WriteAll(m.cursorValue())
+	}
+	m.yank = false
+	return m, nil
 }
 
 func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -371,6 +388,9 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		m.redoSearch()
 		m.selectNode(at)
+
+	case key.Matches(msg, keyMap.Yank):
+		m.yank = true
 
 	case key.Matches(msg, keyMap.Dig):
 		m.digInput.SetValue(m.cursorPath())
@@ -524,6 +544,11 @@ func (m *model) View() string {
 		}
 	}
 
+	if m.yank {
+		screen = append(screen, '\n')
+		screen = append(screen, []byte("(y)value  (p)path")...)
+	}
+
 	return string(screen)
 }
 
@@ -585,6 +610,9 @@ func (m *model) prettyPrint(node *node, selected bool) []byte {
 
 func (m *model) viewHeight() int {
 	if m.searchInput.Focused() || m.searchInput.Value() != "" {
+		return m.termHeight - 2
+	}
+	if m.yank {
 		return m.termHeight - 2
 	}
 	return m.termHeight - 1
@@ -691,6 +719,47 @@ func (m *model) cursorPath() string {
 		at = at.parent()
 	}
 	return path
+}
+
+func (m *model) cursorValue() string {
+	at := m.cursorPointsTo()
+	if at == nil {
+		return ""
+	}
+	var out strings.Builder
+	if at.chunk != nil && at.value == nil {
+		at = at.parent()
+	}
+	out.Write(at.value)
+	if at.hasChildren() {
+		it := at.next
+		if at.isCollapsed() {
+			it = at.collapsed
+		}
+		for it != nil {
+			if it.key != nil {
+				out.Write(it.key)
+				out.WriteString(": ")
+			}
+			if it.chunk != nil {
+				out.Write(it.chunk)
+			} else {
+				out.Write(it.value)
+			}
+			if it == at.end {
+				break
+			}
+			if it.comma {
+				out.WriteString(", ")
+			}
+			if it.isCollapsed() {
+				it = it.collapsed
+			} else {
+				it = it.next
+			}
+		}
+	}
+	return out.String()
 }
 
 func (m *model) dig(value string) *node {

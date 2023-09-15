@@ -21,6 +21,7 @@ type KeyMap struct {
 	NextSibling         key.Binding
 	PrevSibling         key.Binding
 	ToggleWrap          key.Binding
+	Yank                key.Binding
 	Search              key.Binding
 	SearchNext          key.Binding
 	SearchPrev          key.Binding
@@ -102,6 +103,10 @@ func init() {
 		ToggleWrap: key.NewBinding(
 			key.WithKeys("z"),
 			key.WithHelp("", "toggle strings wrap"),
+		),
+		Yank: key.NewBinding(
+			key.WithKeys("y"),
+			key.WithHelp("", "yank/copy"),
 		),
 		Search: key.NewBinding(
 			key.WithKeys("/"),
