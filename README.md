@@ -39,7 +39,7 @@ Start the interactive viewer via:
 fx data.json
 ```
 
-Or
+Or:
 
 ```sh
 curl ... | fx
