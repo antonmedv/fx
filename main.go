@@ -129,7 +129,7 @@ func main() {
 		fileName:    fileName,
 		digInput:    digInput,
 		searchInput: searchInput,
-		search:      NewSearch(),
+		search:      newSearch(),
 	}
 
 	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
@@ -714,7 +714,7 @@ func (m *model) dig(value string) *node {
 }
 
 func (m *model) doSearch(s string) {
-	m.search = NewSearch()
+	m.search = newSearch()
 
 	if s == "" {
 		return

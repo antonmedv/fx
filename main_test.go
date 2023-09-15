@@ -29,9 +29,11 @@ func TestOutput(t *testing.T) {
 	require.NoError(t, err)
 
 	m := &model{
-		top:  head,
-		head: head,
-		wrap: true,
+		top:        head,
+		head:       head,
+		wrap:       true,
+		showCursor: true,
+		search:     newSearch(),
 	}
 	tm := teatest.NewTestModel(
 		t, m,

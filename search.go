@@ -8,7 +8,7 @@ type search struct {
 	keys    map[*node][]match
 }
 
-func NewSearch() *search {
+func newSearch() *search {
 	return &search{
 		results: make([]*node, 0),
 		values:  make(map[*node][]match),
