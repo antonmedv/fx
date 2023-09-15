@@ -133,18 +133,23 @@ func (n *node) expandRecursively() {
 }
 
 func (n *node) findChildByKey(key string) *node {
-	for at := n.next; at != nil && at != n.end; {
-		k, err := strconv.Unquote(string(at.key))
-		if err != nil {
-			return nil
+	it := n.next
+	for it != nil && it != n.end {
+		if it.key != nil {
+			k, err := strconv.Unquote(string(it.key))
+			if err != nil {
+				return nil
+			}
+			if k == key {
+				return it
+			}
 		}
-		if k == key {
-			return at
-		}
-		if at.end != nil {
-			at = at.end.next
+		if it.chunkEnd != nil {
+			it = it.chunkEnd.next
+		} else if it.end != nil {
+			it = it.end.next
 		} else {
-			at = at.next
+			it = it.next
 		}
 	}
 	return nil
