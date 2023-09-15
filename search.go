@@ -21,20 +21,20 @@ type match struct {
 	index      int
 }
 
-type кусочек struct {
+type piece struct {
 	b     []byte
 	index int
 }
 
-func splitBytesByIndexes(b []byte, indexes []match) []кусочек {
-	out := make([]кусочек, 0, 1)
+func splitBytesByIndexes(b []byte, indexes []match) []piece {
+	out := make([]piece, 0, 1)
 	pos := 0
 	for _, pair := range indexes {
-		out = append(out, кусочек{safeSlice(b, pos, pair.start), -1})
-		out = append(out, кусочек{safeSlice(b, pair.start, pair.end), pair.index})
+		out = append(out, piece{safeSlice(b, pos, pair.start), -1})
+		out = append(out, piece{safeSlice(b, pair.start, pair.end), pair.index})
 		pos = pair.end
 	}
-	out = append(out, кусочек{safeSlice(b, pos, len(b)), -1})
+	out = append(out, piece{safeSlice(b, pos, len(b)), -1})
 	return out
 }
 

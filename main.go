@@ -479,6 +479,9 @@ func (m *model) View() string {
 				screen = append(screen, dot3...)
 				screen = append(screen, closeSquareBracket...)
 			}
+			if n.end != nil && n.end.comma {
+				screen = append(screen, comma...)
+			}
 		}
 		if n.comma {
 			screen = append(screen, comma...)
@@ -534,13 +537,13 @@ func (m *model) prettyKey(node *node, selected bool) []byte {
 
 	if indexes, ok := m.search.keys[node]; ok {
 		var out []byte
-		for i, кусочек := range splitBytesByIndexes(b, indexes) {
+		for i, p := range splitBytesByIndexes(b, indexes) {
 			if i%2 == 0 {
-				out = append(out, style(кусочек.b)...)
-			} else if кусочек.index == m.search.cursor {
-				out = append(out, currentTheme.Cursor(кусочек.b)...)
+				out = append(out, style(p.b)...)
+			} else if p.index == m.search.cursor {
+				out = append(out, currentTheme.Cursor(p.b)...)
 			} else {
-				out = append(out, currentTheme.Search(кусочек.b)...)
+				out = append(out, currentTheme.Search(p.b)...)
 			}
 		}
 		return out
@@ -565,13 +568,13 @@ func (m *model) prettyPrint(node *node, selected bool) []byte {
 
 	if indexes, ok := m.search.values[node]; ok {
 		var out []byte
-		for i, кусочек := range splitBytesByIndexes(b, indexes) {
+		for i, p := range splitBytesByIndexes(b, indexes) {
 			if i%2 == 0 {
-				out = append(out, style(кусочек.b)...)
-			} else if кусочек.index == m.search.cursor {
-				out = append(out, currentTheme.Cursor(кусочек.b)...)
+				out = append(out, style(p.b)...)
+			} else if p.index == m.search.cursor {
+				out = append(out, currentTheme.Cursor(p.b)...)
 			} else {
-				out = append(out, currentTheme.Search(кусочек.b)...)
+				out = append(out, currentTheme.Search(p.b)...)
 			}
 		}
 		return out
