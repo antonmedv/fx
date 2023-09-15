@@ -48,7 +48,7 @@ curl ... | fx
 Pretty print:
 
 ```sh
-curl ... | fx .
+curl ... | fx .field
 ```
 
 ## License
