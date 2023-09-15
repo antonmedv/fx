@@ -31,6 +31,10 @@ npm install -g fx
 curl https://fx.wtf/install.sh | sh
 ```
 
+## Documentation
+
+See full documentation at [fx.wtf](https://fx.wtf).
+
 ## Usage
 
 Start the interactive viewer via:
