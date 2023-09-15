@@ -31,7 +31,10 @@ func init() {
 	if !ok {
 		themeId = "1"
 	}
-	currentTheme = themes[themeId]
+	currentTheme, ok = themes[themeId]
+	if !ok {
+		currentTheme = themes["1"]
+	}
 	if termenv.ColorProfile() == termenv.Ascii {
 		currentTheme = themes["0"]
 	}

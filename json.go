@@ -213,6 +213,17 @@ func (p *jsonParser) parseObject() *node {
 
 		p.skipWhitespace()
 
+		if p.lastChar == ',' {
+			object.end.comma = true
+			p.next()
+			p.skipWhitespace()
+			if p.lastChar == '}' {
+				object.end.comma = false
+			} else {
+				continue
+			}
+		}
+
 		if p.lastChar == '}' {
 			closeBracket := &node{depth: p.depth}
 			closeBracket.value = []byte{'}'}
@@ -223,13 +234,6 @@ func (p *jsonParser) parseObject() *node {
 			return object
 		}
 
-		if p.lastChar == ',' {
-			object.end.comma = true
-			p.next()
-			p.skipWhitespace()
-			continue
-		}
-
 		panic(fmt.Sprintf("Unexpected character %q in object", p.lastChar))
 	}
 }
@@ -237,21 +241,37 @@ func (p *jsonParser) parseObject() *node {
 func (p *jsonParser) parseArray() *node {
 	arr := &node{depth: p.depth}
 	arr.value = []byte{'['}
+
 	p.next()
 	p.skipWhitespace()
+
 	if p.lastChar == ']' {
 		arr.value = append(arr.value, ']')
 		p.next()
 		return arr
 	}
+
 	for i := 0; ; i++ {
 		p.depth++
 		value := p.parseValue()
 		value.directParent = arr
 		value.index = i
 		p.depth--
+
 		arr.append(value)
 		p.skipWhitespace()
+
+		if p.lastChar == ',' {
+			arr.end.comma = true
+			p.next()
+			p.skipWhitespace()
+			if p.lastChar == ']' {
+				arr.end.comma = false
+			} else {
+				continue
+			}
+		}
+
 		if p.lastChar == ']' {
 			closeBracket := &node{depth: p.depth}
 			closeBracket.value = []byte{']'}
@@ -260,14 +280,9 @@ func (p *jsonParser) parseArray() *node {
 			arr.append(closeBracket)
 			p.next()
 			return arr
-		} else if p.lastChar == ',' {
-			arr.end.comma = true
-			p.next()
-			p.skipWhitespace()
-			continue
-		} else {
-			panic(fmt.Sprintf("Invalid character %q in array", p.lastChar))
 		}
+
+		panic(fmt.Sprintf("Invalid character %q in array", p.lastChar))
 	}
 }
 
