@@ -28,14 +28,6 @@ pkg install fx
 go install github.com/antonmedv/fx@latest
 ```
 
-```sh
-npm install -g fx
-```
-
-```sh
-curl https://fx.wtf/install.sh | sh
-```
-
 ## Documentation
 
 See full documentation at [fx.wtf](https://fx.wtf).
