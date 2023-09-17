@@ -19,8 +19,9 @@ jobs:
         id: build
 
       - uses: snapcore/action-publish@v1
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.MY_SNAPCRAFT_CREDENTIALS }}
         with:
-          store_login: ${{ secrets.STORE_LOGIN }}
           snap: ${{ steps.build.outputs.snap }}
           release: stable
 
@@ -51,18 +52,8 @@ jobs:
       - name: Update brew
         run: brew update
 
-      - uses: actions/checkout@v3
-        with:
-          ref: master
-
-      - name: Get Version
-        run: echo "RELEASE_VERSION=$(go run . -v)" >> $GITHUB_ENV
-
       - name: Bump formulae
-        run: |
-          brew bump-formula-pr --no-browse \
-          --url "https://github.com/antonmedv/fx/archive/refs/tags/${RELEASE_VERSION}.tar.gz" \
-          --version "${RELEASE_VERSION}" fx
-        env:
-          HOMEBREW_DEVELOPER: "1"
-          HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.MY_GITHUB_TOKEN_FOR_BREW_BUMP_FORMULAE }}
+        uses: Homebrew/actions/bump-formulae@master
+        with:
+          token: ${{ secrets.MY_HOMEBREW_RELEASE_GITHUB_TOKEN }}
+          formulae: fx
