@@ -18,7 +18,5 @@ parts:
     source: .
     source-type: git
     go-importpath: github.com/antonmedv/fx
-
-  fx-node:
-    source: ./npm
-    plugin: nodejs
+    stage-packages:
+      - nodejs
