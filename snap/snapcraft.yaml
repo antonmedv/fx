@@ -1,5 +1,5 @@
 name: fx
-version: 30.0.0-5
+version: 30.0.0-6
 summary: Terminal JSON viewer
 description: Terminal JSON viewer
 base: core18
@@ -22,5 +22,7 @@ parts:
     source: .
     source-type: git
     go-importpath: github.com/antonmedv/fx
+    stage-packages:
+      - glibc-tools
     stage-snaps:
       - node/18/stable
