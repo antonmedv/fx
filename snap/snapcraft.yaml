@@ -18,10 +18,7 @@ apps:
 parts:
   fx:
     plugin: go
-    source: github.com/antonmedv/fx
+    source: https://github.com/antonmedv/fx
     source-type: git
     stage-snaps:
       - node/18/stable
-    stage-packages:
-      - libc6
-      - libgcc1
