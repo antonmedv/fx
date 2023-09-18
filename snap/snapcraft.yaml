@@ -1,10 +1,10 @@
 name: fx
-version: 30.0.0-3
+version: 30.0.0-4
 summary: Terminal JSON viewer
 description: Terminal JSON viewer
 base: core18
 grade: stable
-confinement: classic
+confinement: strict
 architectures:
   - build-on: armhf
   - build-on: amd64
@@ -22,5 +22,5 @@ parts:
     source: .
     source-type: git
     go-importpath: github.com/antonmedv/fx
-    stage-packages:
-      - nodejs
+    stage-snaps:
+      - node/20/stable
