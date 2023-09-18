@@ -5,6 +5,10 @@ description: Terminal JSON viewer
 base: core18
 grade: stable
 confinement: strict
+architectures:
+  - build-on: armhf
+  - build-on: amd64
+  - build-on: arm64
 
 apps:
   fx:
