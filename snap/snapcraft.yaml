@@ -22,7 +22,5 @@ parts:
     source: .
     source-type: git
     go-importpath: github.com/antonmedv/fx
-    stage-packages:
-      - libglibc
     stage-snaps:
       - node/18/stable
