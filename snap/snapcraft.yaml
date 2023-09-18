@@ -24,3 +24,6 @@ parts:
     go-importpath: github.com/antonmedv/fx
     stage-snaps:
       - node/18/stable
+    stage-packages:
+      - libc6
+      - libgcc1
