@@ -20,5 +20,5 @@ parts:
     go-importpath: github.com/antonmedv/fx
 
   fx-node:
-    source: .
+    source: ./npm
     plugin: nodejs
