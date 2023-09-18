@@ -1,5 +1,5 @@
 name: fx
-version: 30.0.0-8
+version: 30.0.0-9
 summary: Terminal JSON viewer
 description: Terminal JSON viewer
 base: core20
@@ -10,10 +10,18 @@ architectures:
   - build-on: amd64
   - build-on: arm64
 
+plugs:
+  home:
+    interface: personal-files
+    read:
+      - $HOME/.fxrc.js
+  network:
+    interface: network
+
 apps:
   fx:
     command: bin/fx
-    plugs: [home, network]
+    plugs: [ home, network ]
 
 parts:
   fx:
