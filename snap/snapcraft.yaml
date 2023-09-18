@@ -12,13 +12,13 @@ architectures:
 
 apps:
   fx:
-    command: fx
+    command: bin/fx
     plugs: [home, network]
 
 parts:
   fx:
     plugin: go
-    source: .
+    source: https://github.com/antonmedv/fx.git
     source-type: git
     stage-snaps:
       - node/18/stable
