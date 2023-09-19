@@ -311,6 +311,7 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		for i := 0; i < m.viewHeight(); i++ {
 			m.down()
 		}
+		m.scrollIntoView()
 
 	case key.Matches(msg, keyMap.HalfPageUp):
 		m.cursor = 0
@@ -323,6 +324,7 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		for i := 0; i < m.viewHeight()/2; i++ {
 			m.down()
 		}
+		m.scrollIntoView()
 
 	case key.Matches(msg, keyMap.GotoTop):
 		m.head = m.top
