@@ -108,6 +108,7 @@ async function transform(json, code) {
   }
 
   const fn = eval(`(function () {
+    const x = this
     return ${code}
   })`).call(json)
 
