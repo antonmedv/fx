@@ -34,15 +34,21 @@ func reduce(fns []string) {
 		}
 	}
 
+	env := os.Environ()
 	var args []string
+
 	if deno {
 		args = []string{"run", "-A", script}
+		env = append(env, "V8_FLAGS=--max-old-space-size=16384")
 	} else {
 		args = []string{script}
+		env = append(env, "NODE_OPTIONS=--max-old-space-size=16384")
 	}
+
 	args = append(args, fns...)
 
 	cmd := exec.Command(bin, args...)
+	cmd.Env = env
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
