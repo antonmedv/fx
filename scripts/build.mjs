@@ -24,3 +24,8 @@ await Promise.all(
   goos.flatMap(GOOS =>
     goarch.map(GOARCH =>
       $`gh release upload ${latest} ${name(GOOS, GOARCH)}`)))
+
+await Promise.all(
+  goos.flatMap(GOOS =>
+    goarch.map(GOARCH =>
+      $`rm ${name(GOOS, GOARCH)}`)))
