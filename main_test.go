@@ -84,7 +84,7 @@ func TestDig(t *testing.T) {
 	tm := prepare(t)
 
 	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(".")})
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(".year")})
+	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("year")})
 	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
 	teatest.RequireEqualOutput(t, read(t, tm))
 

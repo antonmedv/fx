@@ -1,6 +1,6 @@
 # Release
 
-1. Bump version in [version.go](version.go).
+1. Bumpversion in [version.go](version.go).
 2. Bump version in [snapcraft.yaml](snap/snapcraft.yaml).
 3. Bump version in [package.json](npm/package.json).
 4. Publish npm package.
