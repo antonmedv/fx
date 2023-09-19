@@ -10,14 +10,13 @@ architectures:
   - build-on: amd64
   - build-on: arm64
 
-# TODO: Allow to read .fxrc.js from home directory
-#plugs:
-#  home:
-#    interface: personal-files
-#    read:
-#      - $HOME/.fxrc.js
-#  network:
-#    interface: network
+plugs:
+  home:
+    interface: personal-files
+    read:
+      - $HOME/.fxrc.js
+  network:
+    interface: network
 
 apps:
   fx:
