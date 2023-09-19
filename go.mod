@@ -12,6 +12,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.15
 	github.com/mazznoer/colorgrad v0.9.1
 	github.com/muesli/termenv v0.15.2
+	github.com/sahilm/fuzzy v0.1.0
 	github.com/stretchr/testify v1.8.4
 )
 

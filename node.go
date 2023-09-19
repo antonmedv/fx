@@ -168,3 +168,70 @@ func (n *node) findChildByIndex(index int) *node {
 	}
 	return nil
 }
+
+func (n *node) paths(prefix string, paths *[]string, nodes *[]*node) {
+	it := n.next
+	for it != nil && it != n.end {
+		var path string
+
+		if it.key != nil {
+			quoted := string(it.key)
+			unquoted, err := strconv.Unquote(quoted)
+			if err != nil {
+				panic(err)
+			}
+			if identifier.MatchString(unquoted) {
+				path = prefix + "." + unquoted
+			} else {
+				path = prefix + "[" + quoted + "]"
+			}
+		} else if it.index >= 0 {
+			path = prefix + "[" + strconv.Itoa(it.index) + "]"
+		}
+
+		*paths = append(*paths, path)
+		*nodes = append(*nodes, it)
+
+		if it.hasChildren() {
+			it.paths(path, paths, nodes)
+			it = it.end.next
+		} else {
+			it = it.next
+		}
+	}
+}
+
+func (n *node) children() ([]string, []*node) {
+	if !n.hasChildren() {
+		return nil, nil
+	}
+
+	var paths []string
+	var nodes []*node
+
+	var it *node
+	if n.isCollapsed() {
+		it = n.collapsed
+	} else {
+		it = n.next
+	}
+
+	for it != nil && it != n.end {
+		if it.key != nil {
+			unquoted, err := strconv.Unquote(string(it.key))
+			if err != nil {
+				panic(err)
+			}
+			paths = append(paths, unquoted)
+			nodes = append(nodes, it)
+		}
+
+		if it.hasChildren() {
+			it = it.end.next
+		} else {
+			it = it.next
+		}
+	}
+
+	return paths, nodes
+}

@@ -19,6 +19,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mattn/go-isatty"
+	"github.com/sahilm/fuzzy"
 
 	jsonpath "github.com/antonmedv/fx/path"
 )
@@ -219,8 +220,32 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *model) handleDigKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch {
-	case msg.Type == tea.KeyEscape, msg.Type == tea.KeyEnter:
+	case key.Matches(msg, arrowUp):
+		m.up()
+		m.digInput.SetValue(m.cursorPath())
+		m.digInput.CursorEnd()
+
+	case key.Matches(msg, arrowDown):
+		m.down()
+		m.digInput.SetValue(m.cursorPath())
+		m.digInput.CursorEnd()
+
+	case msg.Type == tea.KeyEscape:
 		m.digInput.Blur()
+
+	case msg.Type == tea.KeyTab:
+		m.digInput.SetValue(m.cursorPath())
+		m.digInput.CursorEnd()
+
+	case msg.Type == tea.KeyEnter:
+		m.digInput.Blur()
+		digPath, ok := jsonpath.Split(m.digInput.Value())
+		if ok {
+			n := m.selectByPath(digPath)
+			if n != nil {
+				m.selectNode(n)
+			}
+		}
 
 	default:
 		m.digInput, cmd = m.digInput.Update(msg)
@@ -396,7 +421,7 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.yank = true
 
 	case key.Matches(msg, keyMap.Dig):
-		m.digInput.SetValue(m.cursorPath())
+		m.digInput.SetValue(m.cursorPath() + ".")
 		m.digInput.CursorEnd()
 		m.digInput.Width = m.termWidth - 1
 		m.digInput.Focus()
@@ -777,13 +802,9 @@ func (m *model) cursorKey() string {
 
 }
 
-func (m *model) dig(value string) *node {
-	p, ok := jsonpath.Split(value)
-	if !ok {
-		return nil
-	}
+func (m *model) selectByPath(path []any) *node {
 	n := m.top
-	for _, part := range p {
+	for _, part := range path {
 		if n == nil {
 			return nil
 		}
@@ -892,4 +913,36 @@ func (m *model) redoSearch() {
 		m.doSearch(m.searchInput.Value())
 		m.selectSearchResult(cursor)
 	}
+}
+
+func (m *model) dig(v string) *node {
+	p, ok := jsonpath.Split(v)
+	if !ok {
+		return nil
+	}
+	at := m.selectByPath(p)
+	if at != nil {
+		return at
+	}
+
+	lastPart := p[len(p)-1]
+	searchTerm, ok := lastPart.(string)
+	if !ok {
+		return nil
+	}
+	p = p[:len(p)-1]
+
+	at = m.selectByPath(p)
+	if at == nil {
+		return nil
+	}
+
+	keys, nodes := at.children()
+
+	matches := fuzzy.Find(searchTerm, keys)
+	if len(matches) == 0 {
+		return nil
+	}
+
+	return nodes[matches[0].Index]
 }
