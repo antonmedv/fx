@@ -525,7 +525,7 @@ function stringify(value, isPretty = false) {
     string: isPretty ? '\x1b[32m' : '',
     number: isPretty ? '\x1b[36m' : '',
     boolean: isPretty ? '\x1b[35m' : '',
-    null: isPretty ? '\x1b[2m' : '',
+    null: isPretty ? '\x1b[38;5;243m' : '',
     reset: isPretty ? '\x1b[0m' : '',
   }
 
