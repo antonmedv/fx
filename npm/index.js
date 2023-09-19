@@ -577,8 +577,9 @@ function stringify(value, isPretty = false) {
 
 async function importFxrc(path) {
   const {join} = await import('node:path')
+  const {pathToFileURL} = await import('node:url')
   try {
-    await import(join(path, '.fxrc.js'))
+    await import(pathToFileURL(join(path, '.fxrc.js')))
   } catch (err) {
     if (err.code !== 'ERR_MODULE_NOT_FOUND') throw err
   }
