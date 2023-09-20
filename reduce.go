@@ -24,14 +24,12 @@ func reduce(fns []string) {
 	deno := false
 	bin, err := exec.LookPath("node")
 	if err != nil {
+		bin, err = exec.LookPath("deno")
 		if err != nil {
-			bin, err = exec.LookPath("deno")
-			if err != nil {
-				_, _ = fmt.Fprintf(os.Stderr, "Node.js or Deno is required to run fx with reducers.\n")
-				os.Exit(1)
-			}
-			deno = true
+			_, _ = fmt.Fprintf(os.Stderr, "Node.js or Deno is required to run fx with reducers.\n")
+			os.Exit(1)
 		}
+		deno = true
 	}
 
 	env := os.Environ()
