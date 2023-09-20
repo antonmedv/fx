@@ -12,6 +12,10 @@ brew install fx
 
 See full documentation at [fx.wtf](https://fx.wtf).
 
+## Become a sponsor
+
+Every line of code in my repositories 📖 signifies my unwavering commitment to open source 💡. Your support 🤝 ensures these projects keep thriving, innovating, and benefiting all 💼. If my work has ever resonated 🎵 or helped you, kindly consider showing love ❤️ by sponsoring. [**🚀 Sponsor Me Today! 🚀**](https://github.com/sponsors/antonmedv)
+
 ## License
 
 [MIT](LICENSE)
