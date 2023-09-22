@@ -4,10 +4,8 @@ import (
 	"fmt"
 	"os"
 	"sort"
-	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/mazznoer/colorgrad"
 	"github.com/muesli/termenv"
 )
 
@@ -27,14 +25,23 @@ type theme struct {
 type color func(s []byte) []byte
 
 func init() {
+	themeNames = make([]string, 0, len(themes))
+	for name := range themes {
+		themeNames = append(themeNames, name)
+	}
+	sort.Strings(themeNames)
+
 	themeId, ok := os.LookupEnv("FX_THEME")
 	if !ok {
 		themeId = "1"
 	}
+
 	currentTheme, ok = themes[themeId]
 	if !ok {
-		currentTheme = themes["1"]
+		_, _ = fmt.Fprintf(os.Stderr, "fx: unknown theme %q, available themes: %v\n", themeId, themeNames)
+		os.Exit(1)
 	}
+
 	if termenv.ColorProfile() == termenv.Ascii {
 		currentTheme = themes["0"]
 	}
@@ -49,6 +56,7 @@ func init() {
 }
 
 var (
+	themeNames       []string
 	currentTheme     theme
 	defaultCursor    = toColor(lipgloss.NewStyle().Reverse(true).Render)
 	defaultPreview   = toColor(lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render)
@@ -170,23 +178,11 @@ var themes = map[string]theme{
 		Preview:   defaultPreview,
 		StatusBar: defaultStatusBar,
 		Search:    defaultSearch,
-		Key:       gradient("rgb(125,110,221)", "rgb(90%,45%,97%)", "hsl(229,79%,85%)"),
+		Key:       boldFg("51"),
 		String:    fg("195"),
 		Null:      defaultNull,
-		Boolean:   fg("195"),
-		Number:    fg("195"),
-	},
-	"9": {
-		Cursor:    defaultCursor,
-		Syntax:    noColor,
-		Preview:   defaultPreview,
-		StatusBar: defaultStatusBar,
-		Search:    defaultSearch,
-		Key:       gradient("rgb(123,216,96)", "rgb(255,255,255)"),
-		String:    gradient("rgb(255,255,255)", "rgb(123,216,96)"),
-		Null:      defaultNull,
-		Boolean:   noColor,
-		Number:    noColor,
+		Boolean:   fg("50"),
+		Number:    fg("123"),
 	},
 	"🔵": {
 		Cursor: toColor(lipgloss.NewStyle().
@@ -202,6 +198,18 @@ var themes = map[string]theme{
 		Null:      noColor,
 		Boolean:   noColor,
 		Number:    noColor,
+	},
+	"🥝": {
+		Cursor:    defaultCursor,
+		Syntax:    fg("179"),
+		Preview:   defaultPreview,
+		StatusBar: defaultStatusBar,
+		Search:    defaultSearch,
+		Key:       boldFg("154"),
+		String:    fg("82"),
+		Null:      fg("230"),
+		Boolean:   fg("226"),
+		Number:    fg("226"),
 	},
 }
 
@@ -223,27 +231,8 @@ func boldFg(color string) color {
 	return toColor(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(color)).Render)
 }
 
-func gradient(colors ...string) color {
-	grad, _ := colorgrad.NewGradient().HtmlColors(colors...).Build()
-	return toColor(func(s ...string) string {
-		runes := []rune(s[0])
-		colors := grad.ColorfulColors(uint(len(runes)))
-		var out strings.Builder
-		for i, r := range runes {
-			style := lipgloss.NewStyle().Foreground(lipgloss.Color(colors[i].Hex()))
-			out.WriteString(style.Render(string(r)))
-		}
-		return out.String()
-	})
-}
-
 func themeTester() {
 	title := lipgloss.NewStyle().Bold(true)
-	themeNames := make([]string, 0, len(themes))
-	for name := range themes {
-		themeNames = append(themeNames, name)
-	}
-	sort.Strings(themeNames)
 	for _, name := range themeNames {
 		theme := themes[name]
 		comma := string(theme.Syntax([]byte{','}))
