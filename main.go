@@ -732,10 +732,7 @@ func (m *model) cursorPath() string {
 			if at.key != nil {
 				quoted := string(at.key)
 				unquoted, err := strconv.Unquote(quoted)
-				if err != nil {
-					panic(err)
-				}
-				if identifier.MatchString(unquoted) {
+				if err == nil && identifier.MatchString(unquoted) {
 					path = "." + unquoted + path
 				} else {
 					path = "[" + quoted + "]" + path

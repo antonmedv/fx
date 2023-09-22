@@ -177,10 +177,7 @@ func (n *node) paths(prefix string, paths *[]string, nodes *[]*node) {
 		if it.key != nil {
 			quoted := string(it.key)
 			unquoted, err := strconv.Unquote(quoted)
-			if err != nil {
-				panic(err)
-			}
-			if identifier.MatchString(unquoted) {
+			if err == nil && identifier.MatchString(unquoted) {
 				path = prefix + "." + unquoted
 			} else {
 				path = prefix + "[" + quoted + "]"
@@ -218,11 +215,12 @@ func (n *node) children() ([]string, []*node) {
 
 	for it != nil && it != n.end {
 		if it.key != nil {
-			unquoted, err := strconv.Unquote(string(it.key))
-			if err != nil {
-				panic(err)
+			key := string(it.key)
+			unquoted, err := strconv.Unquote(key)
+			if err == nil {
+				key = unquoted
 			}
-			paths = append(paths, unquoted)
+			paths = append(paths, key)
 			nodes = append(nodes, it)
 		}
 
