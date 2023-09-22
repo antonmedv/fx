@@ -247,7 +247,24 @@ func (m *model) handleDigKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+	case key.Matches(msg, key.NewBinding(key.WithKeys("ctrl+w"))):
+		digPath, ok := jsonpath.Split(m.digInput.Value())
+		if ok {
+			digPath = digPath[:len(digPath)-1]
+			n := m.selectByPath(digPath)
+			if n != nil {
+				m.selectNode(n)
+				m.digInput.SetValue(m.cursorPath())
+				m.digInput.CursorEnd()
+			}
+		}
+
 	default:
+		if key.Matches(msg, key.NewBinding(key.WithKeys("."))) {
+			m.digInput.SetValue(m.cursorPath())
+			m.digInput.CursorEnd()
+		}
+
 		m.digInput, cmd = m.digInput.Update(msg)
 		n := m.dig(m.digInput.Value())
 		if n != nil {

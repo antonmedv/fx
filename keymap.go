@@ -53,11 +53,11 @@ func init() {
 			key.WithHelp("", "half page down"),
 		),
 		GotoTop: key.NewBinding(
-			key.WithKeys("g"),
+			key.WithKeys("g", "home"),
 			key.WithHelp("", "goto top"),
 		),
 		GotoBottom: key.NewBinding(
-			key.WithKeys("G"),
+			key.WithKeys("G", "end"),
 			key.WithHelp("", "goto bottom"),
 		),
 		Down: key.NewBinding(
