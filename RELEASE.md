@@ -8,7 +8,7 @@
 6. Create a new release on [GitHub](https://github.com/antonmedv/fx/releases/new).
 7. Run [build.mjs](scripts/build.mjs) to upload binaries to the release.
    ```sh
-   npx zx scripts/build.js 
+   npx zx scripts/build.mjs
    ```
 8. Bump version in [install.sh](https://github.com/antonmedv/fx.wtf/blob/master/public/install.sh) and upload it
    to [fx.wtf](https://fx.wtf).
