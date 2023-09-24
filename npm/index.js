@@ -128,6 +128,10 @@ async function transform(json, code) {
     return `x => Object.values(${obj}).flatMap(${fold(s)})`
   }
 
+  function len(array) {
+    return array.length
+  }
+
   function uniq(array) {
     return [...new Set(array)]
   }
