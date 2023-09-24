@@ -42,7 +42,11 @@ func wrapAll(n *node, termWidth int) {
 				}
 			}
 		}
-		n = n.next
+		if n.isCollapsed() {
+			n = n.collapsed
+		} else {
+			n = n.next
+		}
 	}
 }
 
