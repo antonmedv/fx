@@ -1,5 +1,5 @@
 name: fx
-version: 30.0.3
+version: 30.1.0
 summary: Terminal JSON viewer
 description: Terminal JSON viewer
 base: core20
