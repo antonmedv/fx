@@ -1,6 +1,7 @@
 package path
 
 import (
+	"regexp"
 	"strconv"
 	"unicode"
 )
@@ -173,4 +174,23 @@ func Split(p string) ([]any, bool) {
 
 func isProp(ch rune) bool {
 	return unicode.IsLetter(ch) || unicode.IsDigit(ch) || ch == '_' || ch == '$'
+}
+
+var Identifier = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
+
+func Join(path []any) string {
+	s := ""
+	for _, v := range path {
+		switch v := v.(type) {
+		case string:
+			if Identifier.MatchString(v) {
+				s += "." + v
+			} else {
+				s += "[" + strconv.Quote(v) + "]"
+			}
+		case int:
+			s += "[" + strconv.Itoa(v) + "]"
+		}
+	}
+	return s
 }

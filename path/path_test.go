@@ -135,3 +135,52 @@ func Test_SplitPath_negative(t *testing.T) {
 		})
 	}
 }
+
+func TestJoin(t *testing.T) {
+	tests := []struct {
+		input []any
+		want  string
+	}{
+		{
+			input: []any{},
+			want:  "",
+		},
+		{
+			input: []any{"foo"},
+			want:  ".foo",
+		},
+		{
+			input: []any{"foo", "bar"},
+			want:  ".foo.bar",
+		},
+		{
+			input: []any{"foo", 42},
+			want:  ".foo[42]",
+		},
+		{
+			input: []any{"foo", "bar", 42},
+			want:  ".foo.bar[42]",
+		},
+		{
+			input: []any{"foo", "bar", 42, "baz"},
+			want:  ".foo.bar[42].baz",
+		},
+		{
+			input: []any{"foo", "bar", 42, "baz", 1},
+			want:  ".foo.bar[42].baz[1]",
+		},
+		{
+			input: []any{"foo", "bar", 42, "baz", 1, "qux"},
+			want:  ".foo.bar[42].baz[1].qux",
+		},
+		{
+			input: []any{"foo bar"},
+			want:  "[\"foo bar\"]",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.want, func(t *testing.T) {
+			require.Equal(t, tt.want, path.Join(tt.input))
+		})
+	}
+}

@@ -262,6 +262,31 @@ func (m *model) handleDigKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+	case key.Matches(msg, textinput.DefaultKeyMap.WordBackward):
+		value := m.digInput.Value()
+		pth, ok := jsonpath.Split(value[0:m.digInput.Position()])
+		if ok {
+			if len(pth) > 0 {
+				pth = pth[:len(pth)-1]
+				m.digInput.SetCursor(len(jsonpath.Join(pth)))
+			} else {
+				m.digInput.CursorStart()
+			}
+		}
+
+	case key.Matches(msg, textinput.DefaultKeyMap.WordForward):
+		value := m.digInput.Value()
+		fullPath, ok1 := jsonpath.Split(value)
+		pth, ok2 := jsonpath.Split(value[0:m.digInput.Position()])
+		if ok1 && ok2 {
+			if len(pth) < len(fullPath) {
+				pth = append(pth, fullPath[len(pth)])
+				m.digInput.SetCursor(len(jsonpath.Join(pth)))
+			} else {
+				m.digInput.CursorEnd()
+			}
+		}
+
 	default:
 		if key.Matches(msg, key.NewBinding(key.WithKeys("."))) {
 			m.digInput.SetValue(m.cursorPath())
@@ -752,7 +777,7 @@ func (m *model) cursorPath() string {
 			if at.key != nil {
 				quoted := string(at.key)
 				unquoted, err := strconv.Unquote(quoted)
-				if err == nil && identifier.MatchString(unquoted) {
+				if err == nil && jsonpath.Identifier.MatchString(unquoted) {
 					path = "." + unquoted + path
 				} else {
 					path = "[" + quoted + "]" + path

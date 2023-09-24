@@ -2,6 +2,8 @@ package main
 
 import (
 	"strconv"
+
+	jsonpath "github.com/antonmedv/fx/path"
 )
 
 type node struct {
@@ -177,7 +179,7 @@ func (n *node) paths(prefix string, paths *[]string, nodes *[]*node) {
 		if it.key != nil {
 			quoted := string(it.key)
 			unquoted, err := strconv.Unquote(quoted)
-			if err == nil && identifier.MatchString(unquoted) {
+			if err == nil && jsonpath.Identifier.MatchString(unquoted) {
 				path = prefix + "." + unquoted
 			} else {
 				path = prefix + "[" + quoted + "]"
