@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"regexp"
 	"sort"
 
 	"github.com/charmbracelet/lipgloss"
@@ -23,6 +25,30 @@ type theme struct {
 }
 
 type color func(s []byte) []byte
+
+func valueStyle(b []byte, selected, chunk bool) color {
+	if selected {
+		return currentTheme.Cursor
+	} else if chunk {
+		return currentTheme.String
+	} else {
+		switch b[0] {
+		case '"':
+			return currentTheme.String
+		case 't', 'f':
+			return currentTheme.Boolean
+		case 'n':
+			return currentTheme.Null
+		case '{', '[', '}', ']':
+			return currentTheme.Syntax
+		default:
+			if isDigit(b[0]) || b[0] == '-' {
+				return currentTheme.Number
+			}
+			return noColor
+		}
+	}
+}
 
 func init() {
 	themeNames = make([]string, 0, len(themes))
@@ -234,60 +260,66 @@ func boldFg(color string) color {
 func themeTester() {
 	title := lipgloss.NewStyle().Bold(true)
 	for _, name := range themeNames {
-		theme := themes[name]
-		comma := string(theme.Syntax([]byte{','}))
-		colon := string(theme.Syntax([]byte{':'}))
+		t := themes[name]
+		comma := string(t.Syntax([]byte{','}))
+		colon := string(t.Syntax([]byte{':'}))
 
 		fmt.Println(title.Render(fmt.Sprintf("Theme %q", name)))
-		fmt.Println(string(theme.Syntax([]byte("{"))))
+		fmt.Println(string(t.Syntax([]byte("{"))))
 
 		fmt.Printf("  %v%v %v%v\n",
-			string(theme.Key([]byte("\"string\""))),
+			string(t.Key([]byte("\"string\""))),
 			colon,
-			string(theme.String([]byte("\"Fox jumps over the lazy dog\""))),
-			comma)
-
-		fmt.Printf("  %v%v %v%v\n",
-			string(theme.Key([]byte("\"number\""))),
-			colon,
-			string(theme.Number([]byte("1234567890"))),
+			string(t.String([]byte("\"Fox jumps over the lazy dog\""))),
 			comma)
 
 		fmt.Printf("  %v%v %v%v\n",
-			string(theme.Key([]byte("\"boolean\""))),
+			string(t.Key([]byte("\"number\""))),
 			colon,
-			string(theme.Boolean([]byte("true"))),
+			string(t.Number([]byte("1234567890"))),
+			comma)
+
+		fmt.Printf("  %v%v %v%v\n",
+			string(t.Key([]byte("\"boolean\""))),
+			colon,
+			string(t.Boolean([]byte("true"))),
 			comma)
 		fmt.Printf("  %v%v %v%v\n",
-			string(theme.Key([]byte("\"null\""))),
+			string(t.Key([]byte("\"null\""))),
 			colon,
-			string(theme.Null([]byte("null"))),
+			string(t.Null([]byte("null"))),
 			comma)
-		fmt.Println(string(theme.Syntax([]byte("}"))))
+		fmt.Println(string(t.Syntax([]byte("}"))))
 		println()
 	}
 }
 
-func valueStyle(b []byte, selected, chunk bool) color {
-	if selected {
-		return currentTheme.Cursor
-	} else if chunk {
-		return currentTheme.String
-	} else {
-		switch b[0] {
-		case '"':
-			return currentTheme.String
-		case 't', 'f':
-			return currentTheme.Boolean
-		case 'n':
-			return currentTheme.Null
-		case '{', '[', '}', ']':
-			return currentTheme.Syntax
-		default:
-			if isDigit(b[0]) || b[0] == '-' {
-				return currentTheme.Number
-			}
-			return noColor
+func exportThemes() {
+	lipgloss.SetColorProfile(termenv.ANSI256) // Export in Terminal.app compatible colors
+	placeholder := []byte{'_'}
+	extract := func(b []byte) string {
+		matches := regexp.
+			MustCompile(`^\x1b\[(.+)m_`).
+			FindStringSubmatch(string(b))
+		if len(matches) == 0 {
+			return ""
+		} else {
+			return matches[1]
 		}
 	}
+	var export = map[string][]string{}
+	for _, name := range themeNames {
+		t := themes[name]
+		export[name] = append(export[name], extract(t.Syntax(placeholder)))
+		export[name] = append(export[name], extract(t.Key(placeholder)))
+		export[name] = append(export[name], extract(t.String(placeholder)))
+		export[name] = append(export[name], extract(t.Number(placeholder)))
+		export[name] = append(export[name], extract(t.Boolean(placeholder)))
+		export[name] = append(export[name], extract(t.Null(placeholder)))
+	}
+	data, err := json.Marshal(export)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(data))
 }

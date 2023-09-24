@@ -57,6 +57,9 @@ func main() {
 		case "--themes":
 			themeTester()
 			return
+		case "--export-themes":
+			exportThemes()
+			return
 		default:
 			args = append(args, arg)
 		}

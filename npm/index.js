@@ -18,6 +18,7 @@ void async function main() {
   }
   if (flagHelp || (args.length === 0 && process.stdin.isTTY))
     return printUsage()
+  const theme = themes(process.stdout.isTTY ? (process.env.FX_THEME || '1') : '0')
   await importFxrc(process.cwd())
   await importFxrc(os.homedir())
   let fd = 0 // stdin
@@ -35,17 +36,17 @@ void async function main() {
     for (const json of input) {
       array.push(json)
     }
-    await runTransforms(array, args)
+    await runTransforms(array, args, theme)
   } else {
     for (const json of input) {
-      await runTransforms(json, args)
+      await runTransforms(json, args, theme)
     }
   }
 }()
 
 const skip = Symbol('skip')
 
-async function runTransforms(json, args) {
+async function runTransforms(json, args, theme) {
   const process = await import('node:process')
   let i, code, output = json
   for ([i, code] of args.entries()) try {
@@ -62,7 +63,7 @@ async function runTransforms(json, args) {
   else if (output === skip)
     return
   else
-    console.log(stringify(output, process.stdout.isTTY))
+    console.log(stringify(output, theme))
 
   function printErr(err) {
     let pre = args.slice(0, i).join(' ')
@@ -520,14 +521,10 @@ function* parseJson(gen) {
   }
 }
 
-function stringify(value, isPretty = false) {
-  const colors = {
-    key: isPretty ? '\x1b[1;34m' : '',
-    string: isPretty ? '\x1b[32m' : '',
-    number: isPretty ? '\x1b[36m' : '',
-    boolean: isPretty ? '\x1b[35m' : '',
-    null: isPretty ? '\x1b[38;5;243m' : '',
-    reset: isPretty ? '\x1b[0m' : '',
+function stringify(value, theme) {
+  function color(id, str) {
+    if (theme[id] === '') return str
+    return `\x1b[${theme[id]}m${str}\x1b[0m`
   }
 
   function getIndent(level) {
@@ -536,43 +533,57 @@ function stringify(value, isPretty = false) {
 
   function stringifyValue(value, level = 0) {
     if (typeof value === 'string') {
-      return `${colors.string}${JSON.stringify(value)}${colors.reset}`
+      return color(2, JSON.stringify(value))
     } else if (typeof value === 'number') {
-      return `${colors.number}${value}${colors.reset}`
+      return color(3, `${value}`)
     } else if (typeof value === 'bigint') {
-      return `${colors.number}${value}${colors.reset}`
+      return color(3, `${value}`)
     } else if (typeof value === 'boolean') {
-      return `${colors.boolean}${value}${colors.reset}`
+      return color(4, `${value}`)
     } else if (value === null || typeof value === 'undefined') {
-      return `${colors.null}null${colors.reset}`
+      return color(5, `null`)
     } else if (Array.isArray(value)) {
       if (value.length === 0) {
-        return `[]`
+        return color(0, `[]`)
       }
       const items = value
-        .map((v) => `${getIndent(level + 1)}${stringifyValue(v, level + 1)}`)
-        .join(',\n')
-      return `[\n${items}\n${getIndent(level)}]`
+        .map((v) => getIndent(level + 1) + stringifyValue(v, level + 1))
+        .join(color(0, ',') + '\n')
+      return color(0, '[') + '\n' + items + '\n' + getIndent(level) + color(0, ']')
     } else if (typeof value === 'object') {
       const keys = Object.keys(value)
       if (keys.length === 0) {
-        return `{}`
+        return color(0, '{}')
       }
       const entries = keys
-        .map(
-          (key) =>
-            `${getIndent(level + 1)}${colors.key}"${key}"${colors.reset}: ${stringifyValue(
-              value[key],
-              level + 1,
-            )}`,
+        .map((key) =>
+          getIndent(level + 1) + color(1, `"${key}"`) + color(0, ': ') +
+          stringifyValue(value[key], level + 1),
         )
-        .join(',\n')
-      return `{\n${entries}\n${getIndent(level)}}`
+        .join(color(0, ',') + '\n')
+      return color(0, '{') + '\n' + entries + '\n' + getIndent(level) + color(0, '}')
     }
     throw new Error(`Unsupported value type: ${typeof value}`)
   }
 
   return stringifyValue(value)
+}
+
+function themes(id) {
+  const themes = {
+    '0': ['', '', '', '', '', ''],
+    '1': ['', '1;34', '32', '36', '35', '38;5;243'],
+    '2': ['', '32', '34', '36', '35', '38;5;243'],
+    '3': ['', '95', '93', '96', '31', '38;5;243'],
+    '4': ['', '38;5;50', '38;5;39', '38;5;98', '38;5;205', '38;5;243'],
+    '5': ['', '38;5;230', '38;5;221', '38;5;209', '38;5;209', '38;5;243'],
+    '6': ['', '38;5;69', '38;5;78', '38;5;221', '38;5;203', '38;5;243'],
+    '7': ['', '1;38;5;42', '1;38;5;213', '1;38;5;201', '1;38;5;201', '38;5;243'],
+    '8': ['', '1;38;5;51', '38;5;195', '38;5;123', '38;5;50', '38;5;243'],
+    '🔵': ['1;38;5;33', '38;5;33', '', '', '', ''],
+    '🥝': ['38;5;179', '1;38;5;154', '38;5;82', '38;5;226', '38;5;226', '38;5;230'],
+  }
+  return themes[id] || themes['1']
 }
 
 async function importFxrc(path) {
