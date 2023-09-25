@@ -253,7 +253,9 @@ func (m *model) handleDigKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, key.NewBinding(key.WithKeys("ctrl+w"))):
 		digPath, ok := jsonpath.Split(m.digInput.Value())
 		if ok {
-			digPath = digPath[:len(digPath)-1]
+			if len(digPath) > 0 {
+				digPath = digPath[:len(digPath)-1]
+			}
 			n := m.selectByPath(digPath)
 			if n != nil {
 				m.selectNode(n)
