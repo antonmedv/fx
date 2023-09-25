@@ -35,6 +35,8 @@ func Split(p string) ([]any, bool) {
 				state = unknown
 			case ch == '.':
 				state = propOrIndex
+			case ch == '[':
+				state = index
 			default:
 				return path, false
 			}

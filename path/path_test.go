@@ -77,6 +77,14 @@ func Test_SplitPath(t *testing.T) {
 			input: ".foo['bar']['baz\\'']",
 			want:  []any{"foo", "bar", "baz\\'"},
 		},
+		{
+			input: "[42]",
+			want:  []any{42},
+		},
+		{
+			input: "[42].foo",
+			want:  []any{42, "foo"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
