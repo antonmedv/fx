@@ -90,6 +90,14 @@ async function transform(json, code) {
       return (${fold(code.split('[]'))})(this)
     })`).call(json)
 
+  function fold(s) {
+    if (s.length === 1)
+      return 'x => x' + s[0]
+    let obj = s.shift()
+    obj = obj === '.' ? 'x' : 'x' + obj
+    return `x => Object.values(${obj}).flatMap(${fold(s)})`
+  }
+
   if (/^\.\[/.test(code))
     return eval(`(function () {
       return this${code.substring(1)}
@@ -100,7 +108,7 @@ async function transform(json, code) {
       return this${code}
     })`).call(json)
 
-  if (/^map\(.+?\)$/.test(code)) {
+  if (/^[a-z]+\(.+?\)$/i.test(code)) {
     let s = code.substring(4, code.length - 1)
     if (s[0] === '.') s = 'x' + s
     return eval(`(function () {
@@ -113,40 +121,48 @@ async function transform(json, code) {
     return ${code}
   })`).call(json)
 
-  return apply(fn, json)
-
   function apply(fn, ...args) {
     if (typeof fn === 'function') return fn(...args)
     return fn
   }
 
-  function fold(s) {
-    if (s.length === 1)
-      return 'x => x' + s[0]
-    let obj = s.shift()
-    obj = obj === '.' ? 'x' : 'x' + obj
-    return `x => Object.values(${obj}).flatMap(${fold(s)})`
+  return apply(fn, json)
+
+  function len(x) {
+    if (Array.isArray(x)) return x.length
+    if (typeof x === 'string') return x.length
+    if (typeof x === 'object' && x !== null) return Object.keys(x).length
+    throw new Error(`Cannot get length of ${typeof x}`)
   }
 
-  function len(array) {
-    return array.length
+  function uniq(x) {
+    if (Array.isArray(x)) return [...new Set(x)]
+    throw new Error(`Cannot get unique values of ${typeof x}`)
   }
 
-  function uniq(array) {
-    return [...new Set(array)]
+  function sort(x) {
+    if (Array.isArray(x)) return x.sort()
+    throw new Error(`Cannot sort ${typeof x}`)
   }
 
-  function sort(array) {
-    return array.sort()
+  function sortBy(func) {
+    return function (x) {
+      if (Array.isArray(x)) return x.sort((a, b) => {
+        const fa = func(a)
+        const fb = func(b)
+        return fa < fb ? -1 : fa > fb ? 1 : 0
+      })
+      throw new Error(`Cannot sort ${typeof x}`)
+    }
   }
 
-  function groupBy(keyOrFunction) {
-    return array => {
+  function groupBy(keyFn) {
+    return function (x) {
       const grouped = {}
-      for (const item of array) {
-        const key = typeof keyOrFunction === 'function'
-          ? keyOrFunction(item)
-          : item[keyOrFunction]
+      for (const item of x) {
+        const key = typeof keyFn === 'function'
+          ? keyFn(item)
+          : item[keyFn]
         if (!grouped.hasOwnProperty(key))
           grouped[key] = []
         grouped[key].push(item)
@@ -156,23 +172,33 @@ async function transform(json, code) {
   }
 
   function chunk(size) {
-    return function (arr) {
+    return function (x) {
       const res = []
       let i = 0
-      while (i < arr.length) {
-        res.push(arr.slice(i, i += size))
+      while (i < x.length) {
+        res.push(x.slice(i, i += size))
       }
       return res
     }
   }
 
-  function zip(...arrays) {
-    const length = Math.min(...arrays.map(a => a.length))
+  function zip(...x) {
+    const length = Math.min(...x.map(a => a.length))
     const res = []
     for (let i = 0; i < length; i++) {
-      res.push(arrays.map(a => a[i]))
+      res.push(x.map(a => a[i]))
     }
     return res
+  }
+
+  function flatten(x) {
+    if (Array.isArray(x)) return x.flat()
+    throw new Error(`Cannot flatten ${typeof x}`)
+  }
+
+  function reverse(x) {
+    if (Array.isArray(x)) return x.reverse()
+    throw new Error(`Cannot reverse ${typeof x}`)
   }
 }
 
