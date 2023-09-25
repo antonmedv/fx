@@ -291,8 +291,10 @@ func (m *model) handleDigKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	default:
 		if key.Matches(msg, key.NewBinding(key.WithKeys("."))) {
-			m.digInput.SetValue(m.cursorPath())
-			m.digInput.CursorEnd()
+			if m.digInput.Position() == len(m.digInput.Value()) {
+				m.digInput.SetValue(m.cursorPath())
+				m.digInput.CursorEnd()
+			}
 		}
 
 		m.digInput, cmd = m.digInput.Update(msg)
