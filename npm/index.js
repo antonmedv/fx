@@ -82,9 +82,6 @@ async function transform(json, code) {
   if ('.' === code)
     return json
 
-  if ('?' === code)
-    return Object.keys(json)
-
   if (/^(\.\w*)+\[]/.test(code))
     return eval(`(function () {
       return (${fold(code.split('[]'))})(this)
@@ -100,15 +97,17 @@ async function transform(json, code) {
 
   if (/^\.\[/.test(code))
     return eval(`(function () {
+      const x = this
       return this${code.substring(1)}
     })`).call(json)
 
   if (/^\./.test(code))
     return eval(`(function () {
+      const x = this
       return this${code}
     })`).call(json)
 
-  if (/^[a-z]+\(.+?\)$/i.test(code)) {
+  if (/^map\(.+?\)$/i.test(code)) {
     let s = code.substring(4, code.length - 1)
     if (s[0] === '.') s = 'x' + s
     return eval(`(function () {
@@ -121,12 +120,12 @@ async function transform(json, code) {
     return ${code}
   })`).call(json)
 
+  return apply(fn, json)
+
   function apply(fn, ...args) {
     if (typeof fn === 'function') return fn(...args)
     return fn
   }
-
-  return apply(fn, json)
 
   function len(x) {
     if (Array.isArray(x)) return x.length
@@ -145,11 +144,18 @@ async function transform(json, code) {
     throw new Error(`Cannot sort ${typeof x}`)
   }
 
-  function sortBy(func) {
+  function map(fn) {
+    return function (x) {
+      if (Array.isArray(x)) return x.map((v, i) => fn(v, i))
+      throw new Error(`Cannot map ${typeof x}`)
+    }
+  }
+
+  function sortBy(fn) {
     return function (x) {
       if (Array.isArray(x)) return x.sort((a, b) => {
-        const fa = func(a)
-        const fb = func(b)
+        const fa = fn(a)
+        const fb = fn(b)
         return fa < fb ? -1 : fa > fb ? 1 : 0
       })
       throw new Error(`Cannot sort ${typeof x}`)
@@ -160,11 +166,8 @@ async function transform(json, code) {
     return function (x) {
       const grouped = {}
       for (const item of x) {
-        const key = typeof keyFn === 'function'
-          ? keyFn(item)
-          : item[keyFn]
-        if (!grouped.hasOwnProperty(key))
-          grouped[key] = []
+        const key = typeof keyFn === 'function' ? keyFn(item) : item[keyFn]
+        if (!grouped.hasOwnProperty(key)) grouped[key] = []
         grouped[key].push(item)
       }
       return grouped
@@ -199,6 +202,16 @@ async function transform(json, code) {
   function reverse(x) {
     if (Array.isArray(x)) return x.reverse()
     throw new Error(`Cannot reverse ${typeof x}`)
+  }
+
+  function keys(x) {
+    if (typeof x === 'object' && x !== null) return Object.keys(x)
+    throw new Error(`Cannot get keys of ${typeof x}`)
+  }
+
+  function values(x) {
+    if (typeof x === 'object' && x !== null) return Object.values(x)
+    throw new Error(`Cannot get values of ${typeof x}`)
   }
 }
 
