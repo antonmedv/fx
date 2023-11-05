@@ -1,4 +1,4 @@
-package main
+package model
 
 type ring struct {
 	buf        [100]byte
