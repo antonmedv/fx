@@ -6,7 +6,7 @@ Set Height 1200
 Set TypingSpeed 200ms
 
 Hide
-Type "fx testdata/example.json"
+Type "fx pkg/model/testdata/example.json"
 Enter
 Show
 

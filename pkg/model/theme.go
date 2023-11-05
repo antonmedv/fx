@@ -1,4 +1,4 @@
-package main
+package model
 
 import (
 	"encoding/json"
@@ -11,7 +11,7 @@ import (
 	"github.com/muesli/termenv"
 )
 
-type theme struct {
+type Theme struct {
 	Cursor    color
 	Syntax    color
 	Preview   color
@@ -83,7 +83,7 @@ func init() {
 
 var (
 	themeNames       []string
-	currentTheme     theme
+	currentTheme     Theme
 	defaultCursor    = toColor(lipgloss.NewStyle().Reverse(true).Render)
 	defaultPreview   = toColor(lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render)
 	defaultStatusBar = toColor(lipgloss.NewStyle().Background(lipgloss.Color("7")).Foreground(lipgloss.Color("0")).Render)
@@ -101,7 +101,12 @@ var (
 	closeSquareBracket []byte
 )
 
-var themes = map[string]theme{
+// SetCurrentThemeByID sets the current global theme.
+func SetCurrentThemeByID(id string) {
+	currentTheme = themes[id]
+}
+
+var themes = map[string]Theme{
 	"0": {
 		Cursor:    defaultCursor,
 		Syntax:    noColor,
@@ -257,7 +262,7 @@ func boldFg(color string) color {
 	return toColor(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(color)).Render)
 }
 
-func themeTester() {
+func ThemeTester() {
 	title := lipgloss.NewStyle().Bold(true)
 	for _, name := range themeNames {
 		t := themes[name]
@@ -294,7 +299,7 @@ func themeTester() {
 	}
 }
 
-func exportThemes() {
+func ExportThemes() {
 	lipgloss.SetColorProfile(termenv.ANSI256) // Export in Terminal.app compatible colors
 	placeholder := []byte{'_'}
 	extract := func(b []byte) string {
@@ -307,7 +312,7 @@ func exportThemes() {
 			return matches[1]
 		}
 	}
-	var export = map[string][]string{}
+	export := map[string][]string{}
 	for _, name := range themeNames {
 		t := themes[name]
 		export[name] = append(export[name], extract(t.Syntax(placeholder)))

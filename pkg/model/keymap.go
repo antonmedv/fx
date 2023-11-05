@@ -1,4 +1,4 @@
-package main
+package model
 
 import "github.com/charmbracelet/bubbles/key"
 
@@ -29,6 +29,11 @@ type KeyMap struct {
 }
 
 var keyMap KeyMap
+
+// GetKeyMap is a getter for global keyMap. Do not modify.
+func GetKeyMap() KeyMap {
+	return keyMap
+}
 
 func init() {
 	keyMap = KeyMap{

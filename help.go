@@ -5,11 +5,13 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/antonmedv/fx/pkg/model"
+
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/lipgloss"
 )
 
-func usage(keyMap KeyMap) string {
+func usage(keyMap model.KeyMap) string {
 	title := lipgloss.NewStyle().Bold(true)
 	pad := lipgloss.NewStyle().PaddingLeft(4)
 	return fmt.Sprintf(`
@@ -43,7 +45,7 @@ func usage(keyMap KeyMap) string {
 	)
 }
 
-func keyMapInfo(keyMap KeyMap, style lipgloss.Style) []string {
+func keyMapInfo(keyMap model.KeyMap, style lipgloss.Style) []string {
 	v := reflect.ValueOf(keyMap)
 	fields := reflect.VisibleFields(v.Type())
 
