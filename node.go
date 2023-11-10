@@ -20,6 +20,7 @@ type node struct {
 	index           int
 }
 
+// append ands a node as a child to the current node (body of {...} or [...]).
 func (n *node) append(child *node) {
 	if n.end == nil {
 		n.end = n
@@ -31,6 +32,16 @@ func (n *node) append(child *node) {
 	} else {
 		n.end = child.end
 	}
+}
+
+// adjacent adds a node as a sibling to the current node ({}{}{} or [][][]).
+func (n *node) adjacent(child *node) {
+	end := n.end
+	if end == nil {
+		end = n
+	}
+	end.next = child
+	child.prev = end
 }
 
 func (n *node) insertChunk(chunk *node) {

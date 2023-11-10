@@ -15,7 +15,7 @@ type jsonParser struct {
 	skipFirstIdent bool
 }
 
-func parse(data []byte) (line *node, err error) {
+func parse(data []byte) (head *node, err error) {
 	p := &jsonParser{
 		data:       data,
 		lineNumber: 1,
@@ -27,9 +27,17 @@ func parse(data []byte) (line *node, err error) {
 		}
 	}()
 	p.next()
-	line = p.parseValue()
-	if p.lastChar != 0 {
-		panic(fmt.Sprintf("Unexpected character %q after root node", p.lastChar))
+	var next *node
+	for p.lastChar != 0 {
+		value := p.parseValue()
+		if head == nil {
+			head = value
+			next = head
+		} else {
+			value.index = -1
+			next.adjacent(value)
+			next = value
+		}
 	}
 	return
 }

@@ -444,14 +444,30 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.showCursor = true
 
 	case key.Matches(msg, keyMap.CollapseAll):
-		m.top.collapseRecursively()
+		n := m.top
+		for n != nil {
+			n.collapseRecursively()
+			if n.end == nil {
+				n = nil
+			} else {
+				n = n.end.next
+			}
+		}
 		m.cursor = 0
 		m.head = m.top
 		m.showCursor = true
 
 	case key.Matches(msg, keyMap.ExpandAll):
 		at := m.cursorPointsTo()
-		m.top.expandRecursively()
+		n := m.top
+		for n != nil {
+			n.expandRecursively()
+			if n.end == nil {
+				n = nil
+			} else {
+				n = n.end.next
+			}
+		}
 		m.selectNode(at)
 
 	case key.Matches(msg, keyMap.ToggleWrap):
@@ -851,7 +867,7 @@ func (m *model) cursorKey() string {
 }
 
 func (m *model) selectByPath(path []any) *node {
-	n := m.top
+	n := m.currentTopNode()
 	for _, part := range path {
 		if n == nil {
 			return nil
@@ -864,6 +880,17 @@ func (m *model) selectByPath(path []any) *node {
 		}
 	}
 	return n
+}
+
+func (m *model) currentTopNode() *node {
+	at := m.cursorPointsTo()
+	if at == nil {
+		return nil
+	}
+	for at.parent() != nil {
+		at = at.parent()
+	}
+	return at
 }
 
 func (m *model) doSearch(s string) {
