@@ -1,6 +1,6 @@
 {
   "name": "fx",
-  "version": "30.2.0",
+  "version": "31.0.0",
   "bin": {
     "fx": "index.js"
   },
