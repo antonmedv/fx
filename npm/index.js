@@ -48,9 +48,14 @@ const skip = Symbol('skip')
 
 async function runTransforms(json, args, theme) {
   const process = await import('node:process')
-  let i, code, output = json
+  let i, code, jsCode, output = json
   for ([i, code] of args.entries()) try {
-    output = await transform(output, code)
+    jsCode = transpile(code)
+    const fn = `(function () {
+      const x = this
+      return ${jsCode}
+    })`
+    output = await run(output, fn)
   } catch (err) {
     printErr(err)
     process.exit(1)
@@ -73,52 +78,50 @@ async function runTransforms(json, args, theme) {
     console.error(
       `\n  ${pre} ${code} ${post}\n` +
       `  ${' '.repeat(pre.length + 1)}${'^'.repeat(code.length)}\n` +
+      (jsCode !== code ? `\n${jsCode}\n` : ``) +
       `\n${err.stack || err}`,
     )
   }
 }
 
-async function transform(json, code) {
+function transpile(code) {
   if ('.' === code)
-    return json
+    return 'x'
 
   if (/^(\.\w*)+\[]/.test(code))
-    return eval(`(function () {
-      return (${fold(code.split('[]'))})(this)
-    })`).call(json)
+    return `(${fold(code.split('[]'))})(x)`
 
   function fold(s) {
     if (s.length === 1)
       return 'x => x' + s[0]
     let obj = s.shift()
     obj = obj === '.' ? 'x' : 'x' + obj
-    return `x => Object.values(${obj}).flatMap(${fold(s)})`
+    return `x => ${obj}.flatMap(${fold(s)})`
   }
 
   if (/^\.\[/.test(code))
-    return eval(`(function () {
-      const x = this
-      return this${code.substring(1)}
-    })`).call(json)
+    return `x${code.substring(1)}`
 
   if (/^\./.test(code))
-    return eval(`(function () {
-      const x = this
-      return this${code}
-    })`).call(json)
+    return `x${code}`
 
+  // deprecated
   if (/^map\(.+?\)$/i.test(code)) {
     let s = code.substring(4, code.length - 1)
     if (s[0] === '.') s = 'x' + s
-    return eval(`(function () {
-      return this.map((x, i) => apply(${s}, x, i))
-    })`).call(json)
+    return `x.map((x, i) => apply(${s}, x, i))`
   }
 
-  const fn = eval(`(function () {
-    const x = this
-    return ${code}
-  })`).call(json)
+  if (/^@/.test(code)) {
+    const jsCode = transpile(code.substring(1))
+    return `x.map((x, i) => apply(${jsCode}, x, i))`
+  }
+
+  return code
+}
+
+async function run(json, code) {
+  const fn = eval(code).call(json)
 
   return apply(fn, json)
 

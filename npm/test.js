@@ -139,6 +139,16 @@ void async function main() {
     t.deepEqual(JSON.parse(stdout), [0, 2, 6])
   })
 
+  await test('transform - @ works', async t => {
+    const {stdout} = await run([1, 2, 3], `'@x * 2'`)
+    t.deepEqual(JSON.parse(stdout), [2, 4, 6])
+  })
+
+  await test('transform - @ works with dot', async t => {
+    const {stdout} = await run([{foo: 'bar'}], `@.foo`)
+    t.deepEqual(JSON.parse(stdout), ['bar'])
+  })
+
   await test('transform - flat map works', async t => {
     const {stdout} = await run({master: {foo: [{bar: [{val: 1}]}]}}, '.master.foo[].bar[].val')
     t.deepEqual(JSON.parse(stdout), [1])
