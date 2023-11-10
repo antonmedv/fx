@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"strconv"
+	"strings"
+	"unicode/utf8"
 )
 
 type jsonParser struct {
@@ -48,6 +50,9 @@ func (p *jsonParser) next() {
 		p.end++
 	} else {
 		p.lastChar = 0
+	}
+	if p.lastChar == '\n' {
+		p.lineNumber++
 	}
 	p.sourceTail.writeByte(p.lastChar)
 }
@@ -357,5 +362,20 @@ func (p *jsonParser) skipComment() {
 }
 
 func (p *jsonParser) errorSnippet(message string) error {
-	return fmt.Errorf("%s on node %d.\n%s\n", message, p.lineNumber, p.sourceTail.string())
+	lines := strings.Split(p.sourceTail.string(), "\n")
+	lastLineLen := utf8.RuneCountInString(lines[len(lines)-1])
+	pointer := strings.Repeat(".", lastLineLen-1) + "^"
+	lines = append(lines, pointer)
+
+	paddedLines := make([]string, len(lines))
+	for i, line := range lines {
+		paddedLines[i] = "   " + line
+	}
+
+	return fmt.Errorf(
+		"%s on line %d.\n\n%s\n\n",
+		message,
+		p.lineNumber,
+		strings.Join(paddedLines, "\n"),
+	)
 }
