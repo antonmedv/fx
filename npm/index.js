@@ -46,6 +46,14 @@ void async function main() {
 
 const skip = Symbol('skip')
 
+const wrap = fn => new Proxy(fn, {
+  get(_, prop) {
+    return wrap(x => fn(x)?.[prop])
+  },
+})
+
+const _ = wrap(x => x)
+
 async function runTransforms(json, args, theme) {
   const process = await import('node:process')
   let i, code, jsCode, output = json
