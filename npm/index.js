@@ -51,7 +51,7 @@ async function runTransforms(json, args, theme) {
   let i, code, jsCode, output = json
   for ([i, code] of args.entries()) try {
     jsCode = transpile(code)
-    const fn = `(function () {
+    const fn = `(async function () {
       const x = this
       return ${jsCode}
     })`
@@ -109,19 +109,19 @@ function transpile(code) {
   if (/^map\(.+?\)$/i.test(code)) {
     let s = code.substring(4, code.length - 1)
     if (s[0] === '.') s = 'x' + s
-    return `x.map((x, i) => apply(${s}, x, i))`
+    return `Promise.all(x.map((x, i) => apply(${s}, x, i)))`
   }
 
   if (/^@/.test(code)) {
     const jsCode = transpile(code.substring(1))
-    return `x.map((x, i) => apply(${jsCode}, x, i))`
+    return `Promise.all(x.map((x, i) => apply(${jsCode}, x, i)))`
   }
 
   return code
 }
 
 async function run(json, code) {
-  const fn = eval(code).call(json)
+  const fn = await eval(code).call(json)
 
   return apply(fn, json)
 

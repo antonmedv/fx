@@ -211,4 +211,28 @@ void async function main() {
     const {stdout} = await runSimple(`.name package.json`)
     t.equal(stdout, 'fx\n')
   })
+
+  await test("promises - promise output", async (t) => {
+    const { stdout } = await run(
+      [{ greeting: "hello world" }],
+      "'Promise.resolve(x)'",
+    );
+    t.deepEqual(stdout, '[\n  {\n    "greeting": "hello world"\n  }\n]\n');
+  });
+
+  await test("promises - map promises", async (t) => {
+    const { stdout } = await run(
+      ["foo", "bar"],
+      "'map(x=>Promise.resolve(x))'",
+    );
+    t.deepEqual(JSON.parse(stdout), ["foo", "bar"]);
+
+  });
+  await test("promises - nested promises", async (t) => {
+    const { stdout } = await run(
+      ["foo", "bar"],
+      "'map(async x=>({name: await Promise.resolve(x)}))'",
+    );
+    t.deepEqual(JSON.parse(stdout), [{ name: "foo" }, { name: "bar" }]);
+  });
 }()
