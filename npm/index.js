@@ -5,73 +5,65 @@ void async function main() {
   const os = await import('node:os')
   const fs = await import('node:fs')
   const process = await import('node:process')
+
   let flagHelp = false
   let flagRaw = false
   let flagSlurp = false
+  let flagYaml = false
   const args = []
   for (const arg of process.argv.slice(2)) {
     if (arg === '--help' || arg === '-h') flagHelp = true
     else if (arg === '--raw' || arg === '-r') flagRaw = true
     else if (arg === '--slurp' || arg === '-s') flagSlurp = true
     else if (arg === '-rs' || arg === '-sr') flagRaw = flagSlurp = true
+    else if (arg === '--yaml') flagYaml = true
     else args.push(arg)
   }
-  if (flagHelp || (args.length === 0 && process.stdin.isTTY))
+
+  if (flagHelp || (args.length === 0 && process.stdin.isTTY)) {
     return printUsage()
+  }
+
   const theme = themes(process.stdout.isTTY ? (process.env.FX_THEME || '1') : '0')
+
   await importFxrc(process.cwd())
   await importFxrc(os.homedir())
+
   let fd = 0 // stdin
-  let filename
   if (args.length > 0) {
-    if (await isFile(args[0])) {
-      filename = args.shift()
+    let filename =
+      isFile(fs, args[0]) ? args.shift() :
+        isFile(fs, args.at(-1)) ? args.pop() : false
+    if (filename) {
       fd = fs.openSync(filename, 'r')
-    } else if (await isFile(args.at(-1))) {
-      filename = args.pop()
-      fd = fs.openSync(filename, 'r')
+      if (!flagYaml) flagYaml = /\.ya?ml$/i.test(filename)
     }
   }
+
   const gen = await read(fd)
-  const input = flagRaw ? readLine(gen) : parseJson(gen)
-  try {
-    if (flagSlurp) {
-      const array = []
-      for (const json of input) {
-        array.push(json)
-      }
-      await runTransforms(array, args, theme)
-    } else {
-      for (const json of input) {
-        await runTransforms(json, args, theme)
-      }
+  const input =
+    flagRaw
+      ? readLine(gen)
+      : flagYaml
+        ? parseYaml(gen)
+        : parseJson(gen)
+
+  if (flagSlurp) {
+    const array = []
+    for (const json of input) {
+      array.push(json)
     }
-  } catch (err) {
-    if (err instanceof SyntaxError) {
-      if (filename) fd = fs.openSync(filename, 'r')
-      const json = YAML.parse(fs.readFileSync(fd, 'utf8'))
-      if (typeof json !== 'object') {
-        throw err
-      }
-      await runTransforms(json, args, theme)
-    } else {
-      throw err
+    await transform(array, args, theme)
+  } else {
+    for (const json of input) {
+      await transform(json, args, theme)
     }
   }
 }()
 
 const skip = Symbol('skip')
 
-const wrap = fn => new Proxy(fn, {
-  get(_, prop) {
-    return wrap(x => fn(x)?.[prop])
-  },
-})
-
-const _ = wrap(x => x)
-
-async function runTransforms(json, args, theme) {
-  const process = await import('node:process')
+async function transform(json, args, theme) {
   let i, code, jsCode, output = json
   for ([i, code] of args.entries()) try {
     jsCode = transpile(code)
@@ -81,8 +73,7 @@ async function runTransforms(json, args, theme) {
     })`
     output = await run(output, fn)
   } catch (err) {
-    printErr(err)
-    process.exit(1)
+    await printErr(err)
   }
 
   if (typeof output === 'undefined')
@@ -94,7 +85,8 @@ async function runTransforms(json, args, theme) {
   else
     console.log(stringify(output, theme))
 
-  function printErr(err) {
+  async function printErr(err) {
+    const process = await import('node:process')
     let pre = args.slice(0, i).join(' ')
     let post = args.slice(i + 1).join(' ')
     if (pre.length > 20) pre = '...' + pre.substring(pre.length - 20)
@@ -105,6 +97,7 @@ async function runTransforms(json, args, theme) {
       (jsCode !== code ? `\n${jsCode}\n` : ``) +
       `\n${err.stack || err}`,
     )
+    process.exit(1)
   }
 }
 
@@ -270,8 +263,7 @@ async function read(fd = 0) {
   }()
 }
 
-async function isFile(path) {
-  const fs = await import('node:fs')
+function isFile(fs, path) {
   const stat = fs.statSync(path, {throwIfNoEntry: false})
   return stat !== undefined && stat.isFile()
 }
@@ -291,6 +283,18 @@ function* readLine(stdin) {
     }
   }
   return buffer
+}
+
+function* parseYaml(gen) {
+  let buffer = ''
+  for (const ch of gen) {
+    buffer += ch
+  }
+  try {
+    yield YAML.parse(buffer)
+  } catch (err) {
+    throw new SyntaxError(err.message)
+  }
 }
 
 function* parseJson(gen) {
@@ -673,11 +677,13 @@ function printUsage() {
 Flags
   -h, --help    Display this help message
   -r, --raw     Treat input as a raw string
-  -s, --slurp   Read all inputs into an array`
+  -s, --slurp   Read all inputs into an array
+  --yaml        Parse input as YAML`
   console.log(usage)
 }
 
-// yaml version: 2.4.0
+// yaml v2.4.0
+// @formatter:off
 void function () {var ALIAS=Symbol.for("yaml.alias");var DOC=Symbol.for("yaml.document");var MAP=Symbol.for("yaml.map");var PAIR=Symbol.for("yaml.pair");var SCALAR=Symbol.for("yaml.scalar");var SEQ=Symbol.for("yaml.seq");var NODE_TYPE=Symbol.for("yaml.node.type");var isAlias=node=>!!node&&typeof node==="object"&&node[NODE_TYPE]===ALIAS;var isDocument=node=>!!node&&typeof node==="object"&&node[NODE_TYPE]===DOC;var isMap=node=>!!node&&typeof node==="object"&&node[NODE_TYPE]===MAP;var isPair=node=>!!node&&typeof node==="object"&&node[NODE_TYPE]===PAIR;var isScalar=node=>!!node&&typeof node==="object"&&node[NODE_TYPE]===SCALAR;var isSeq=node=>!!node&&typeof node==="object"&&node[NODE_TYPE]===SEQ;function isCollection(node){if(node&&typeof node==="object")switch(node[NODE_TYPE]){case MAP:case SEQ:return true}return false}function isNode(node){if(node&&typeof node==="object")switch(node[NODE_TYPE]){case ALIAS:case MAP:case SCALAR:case SEQ:return true}return false}var hasAnchor=node=>(isScalar(node)||isCollection(node))&&!!node.anchor;var BREAK=Symbol("break visit");var SKIP=Symbol("skip children");var REMOVE=Symbol("remove node");function visit(node,visitor){const visitor_=initVisitor(visitor);if(isDocument(node)){const cd=visit_(null,node.contents,visitor_,Object.freeze([node]));if(cd===REMOVE)node.contents=null}else visit_(null,node,visitor_,Object.freeze([]))}visit.BREAK=BREAK;visit.SKIP=SKIP;visit.REMOVE=REMOVE;function visit_(key,node,visitor,path){const ctrl=callVisitor(key,node,visitor,path);if(isNode(ctrl)||isPair(ctrl)){replaceNode(key,path,ctrl);return visit_(key,ctrl,visitor,path)}if(typeof ctrl!=="symbol"){if(isCollection(node)){path=Object.freeze(path.concat(node));for(let i=0;i<node.items.length;++i){const ci=visit_(i,node.items[i],visitor,path);if(typeof ci==="number")i=ci-1;else if(ci===BREAK)return BREAK;else if(ci===REMOVE){node.items.splice(i,1);i-=1}}}else if(isPair(node)){path=Object.freeze(path.concat(node));const ck=visit_("key",node.key,visitor,path);if(ck===BREAK)return BREAK;else if(ck===REMOVE)node.key=null;const cv=visit_("value",node.value,visitor,path);if(cv===BREAK)return BREAK;else if(cv===REMOVE)node.value=null}}return ctrl}async function visitAsync(node,visitor){const visitor_=initVisitor(visitor);if(isDocument(node)){const cd=await visitAsync_(null,node.contents,visitor_,Object.freeze([node]));if(cd===REMOVE)node.contents=null}else await visitAsync_(null,node,visitor_,Object.freeze([]))}visitAsync.BREAK=BREAK;visitAsync.SKIP=SKIP;visitAsync.REMOVE=REMOVE;async function visitAsync_(key,node,visitor,path){const ctrl=await callVisitor(key,node,visitor,path);if(isNode(ctrl)||isPair(ctrl)){replaceNode(key,path,ctrl);return visitAsync_(key,ctrl,visitor,path)}if(typeof ctrl!=="symbol"){if(isCollection(node)){path=Object.freeze(path.concat(node));for(let i=0;i<node.items.length;++i){const ci=await visitAsync_(i,node.items[i],visitor,path);if(typeof ci==="number")i=ci-1;else if(ci===BREAK)return BREAK;else if(ci===REMOVE){node.items.splice(i,1);i-=1}}}else if(isPair(node)){path=Object.freeze(path.concat(node));const ck=await visitAsync_("key",node.key,visitor,path);if(ck===BREAK)return BREAK;else if(ck===REMOVE)node.key=null;const cv=await visitAsync_("value",node.value,visitor,path);if(cv===BREAK)return BREAK;else if(cv===REMOVE)node.value=null}}return ctrl}function initVisitor(visitor){if(typeof visitor==="object"&&(visitor.Collection||visitor.Node||visitor.Value)){return Object.assign({Alias:visitor.Node,Map:visitor.Node,Scalar:visitor.Node,Seq:visitor.Node},visitor.Value&&{Map:visitor.Value,Scalar:visitor.Value,Seq:visitor.Value},visitor.Collection&&{Map:visitor.Collection,Seq:visitor.Collection},visitor)}return visitor}function callVisitor(key,node,visitor,path){if(typeof visitor==="function")return visitor(key,node,path);if(isMap(node))return visitor.Map?.(key,node,path);if(isSeq(node))return visitor.Seq?.(key,node,path);if(isPair(node))return visitor.Pair?.(key,node,path);if(isScalar(node))return visitor.Scalar?.(key,node,path);if(isAlias(node))return visitor.Alias?.(key,node,path);return void 0}function replaceNode(key,path,node){const parent=path[path.length-1];if(isCollection(parent)){parent.items[key]=node}else if(isPair(parent)){if(key==="key")parent.key=node;else parent.value=node}else if(isDocument(parent)){parent.contents=node}else{const pt=isAlias(parent)?"alias":"scalar";throw new Error(`Cannot replace node with ${pt} parent`)}}var escapeChars={"!":"%21",",":"%2C","[":"%5B","]":"%5D","{":"%7B","}":"%7D"};var escapeTagName=tn=>tn.replace(/[!,[\]{}]/g,ch=>escapeChars[ch]);var Directives=class _Directives{constructor(yaml,tags){this.docStart=null;this.docEnd=false;this.yaml=Object.assign({},_Directives.defaultYaml,yaml);this.tags=Object.assign({},_Directives.defaultTags,tags)}clone(){const copy=new _Directives(this.yaml,this.tags);copy.docStart=this.docStart;return copy}atDocument(){const res=new _Directives(this.yaml,this.tags);switch(this.yaml.version){case"1.1":this.atNextDocument=true;break;case"1.2":this.atNextDocument=false;this.yaml={explicit:_Directives.defaultYaml.explicit,version:"1.2"};this.tags=Object.assign({},_Directives.defaultTags);break}return res}add(line,onError){if(this.atNextDocument){this.yaml={explicit:_Directives.defaultYaml.explicit,version:"1.1"};this.tags=Object.assign({},_Directives.defaultTags);this.atNextDocument=false}const parts=line.trim().split(/[ \t]+/);const name=parts.shift();switch(name){case"%TAG":{if(parts.length!==2){onError(0,"%TAG directive should contain exactly two parts");if(parts.length<2)return false}const[handle,prefix]=parts;this.tags[handle]=prefix;return true}case"%YAML":{this.yaml.explicit=true;if(parts.length!==1){onError(0,"%YAML directive should contain exactly one part");return false}const[version]=parts;if(version==="1.1"||version==="1.2"){this.yaml.version=version;return true}else{const isValid=/^\d+\.\d+$/.test(version);onError(6,`Unsupported YAML version ${version}`,isValid);return false}}default:onError(0,`Unknown directive ${name}`,true);return false}}tagName(source,onError){if(source==="!")return"!";if(source[0]!=="!"){onError(`Not a valid tag: ${source}`);return null}if(source[1]==="<"){const verbatim=source.slice(2,-1);if(verbatim==="!"||verbatim==="!!"){onError(`Verbatim tags aren't resolved, so ${source} is invalid.`);return null}if(source[source.length-1]!==">")onError("Verbatim tags must end with a >");return verbatim}const[,handle,suffix]=source.match(/^(.*!)([^!]*)$/s);if(!suffix)onError(`The ${source} tag has no suffix`);const prefix=this.tags[handle];if(prefix){try{return prefix+decodeURIComponent(suffix)}catch(error){onError(String(error));return null}}if(handle==="!")return source;onError(`Could not resolve tag: ${source}`);return null}tagString(tag){for(const[handle,prefix]of Object.entries(this.tags)){if(tag.startsWith(prefix))return handle+escapeTagName(tag.substring(prefix.length))}return tag[0]==="!"?tag:`!<${tag}>`}toString(doc){const lines=this.yaml.explicit?[`%YAML ${this.yaml.version||"1.2"}`]:[];const tagEntries=Object.entries(this.tags);let tagNames;if(doc&&tagEntries.length>0&&isNode(doc.contents)){const tags={};visit(doc.contents,(_key,node)=>{if(isNode(node)&&node.tag)tags[node.tag]=true});tagNames=Object.keys(tags)}else tagNames=[];for(const[handle,prefix]of tagEntries){if(handle==="!!"&&prefix==="tag:yaml.org,2002:")continue;if(!doc||tagNames.some(tn=>tn.startsWith(prefix)))lines.push(`%TAG ${handle} ${prefix}`)}return lines.join("\n")}};Directives.defaultYaml={explicit:false,version:"1.2"};Directives.defaultTags={"!!":"tag:yaml.org,2002:"};function anchorIsValid(anchor){if(/[\x00-\x19\s,[\]{}]/.test(anchor)){const sa=JSON.stringify(anchor);const msg=`Anchor must not contain whitespace or control characters: ${sa}`;throw new Error(msg)}return true}function anchorNames(root){const anchors=new Set;visit(root,{Value(_key,node){if(node.anchor)anchors.add(node.anchor)}});return anchors}function findNewAnchor(prefix,exclude){for(let i=1;true;++i){const name=`${prefix}${i}`;if(!exclude.has(name))return name}}function createNodeAnchors(doc,prefix){const aliasObjects=[];const sourceObjects=new Map;let prevAnchors=null;return{onAnchor:source=>{aliasObjects.push(source);if(!prevAnchors)prevAnchors=anchorNames(doc);const anchor=findNewAnchor(prefix,prevAnchors);prevAnchors.add(anchor);return anchor},setAnchors:()=>{for(const source of aliasObjects){const ref=sourceObjects.get(source);if(typeof ref==="object"&&ref.anchor&&(isScalar(ref.node)||isCollection(ref.node))){ref.node.anchor=ref.anchor}else{const error=new Error("Failed to resolve repeated object (this should not happen)");error.source=source;throw error}}},sourceObjects}}function applyReviver(reviver,obj,key,val){if(val&&typeof val==="object"){if(Array.isArray(val)){for(let i=0,len=val.length;i<len;++i){const v0=val[i];const v1=applyReviver(reviver,val,String(i),v0);if(v1===void 0)delete val[i];else if(v1!==v0)val[i]=v1}}else if(val instanceof Map){for(const k of Array.from(val.keys())){const v0=val.get(k);const v1=applyReviver(reviver,val,k,v0);if(v1===void 0)val.delete(k);else if(v1!==v0)val.set(k,v1)}}else if(val instanceof Set){for(const v0 of Array.from(val)){const v1=applyReviver(reviver,val,v0,v0);if(v1===void 0)val.delete(v0);else if(v1!==v0){val.delete(v0);val.add(v1)}}}else{for(const[k,v0]of Object.entries(val)){const v1=applyReviver(reviver,val,k,v0);if(v1===void 0)delete val[k];else if(v1!==v0)val[k]=v1}}}return reviver.call(obj,key,val)}function toJS(value,arg,ctx){if(Array.isArray(value))return value.map((v,i)=>toJS(v,String(i),ctx));if(value&&typeof value.toJSON==="function"){if(!ctx||!hasAnchor(value))return value.toJSON(arg,ctx);const data={aliasCount:0,count:1,res:void 0};ctx.anchors.set(value,data);ctx.onCreate=res2=>{data.res=res2;delete ctx.onCreate};const res=value.toJSON(arg,ctx);if(ctx.onCreate)ctx.onCreate(res);return res}if(typeof value==="bigint"&&!ctx?.keep)return Number(value);return value}var NodeBase=class{constructor(type){Object.defineProperty(this,NODE_TYPE,{value:type})}clone(){const copy=Object.create(Object.getPrototypeOf(this),Object.getOwnPropertyDescriptors(this));if(this.range)copy.range=this.range.slice();return copy}toJS(doc,{mapAsMap,maxAliasCount,onAnchor,reviver}={}){if(!isDocument(doc))throw new TypeError("A document argument is required");const ctx={anchors:new Map,doc,keep:true,mapAsMap:mapAsMap===true,mapKeyWarned:false,maxAliasCount:typeof maxAliasCount==="number"?maxAliasCount:100};const res=toJS(this,"",ctx);if(typeof onAnchor==="function")for(const{count,res:res2}of ctx.anchors.values())onAnchor(res2,count);return typeof reviver==="function"?applyReviver(reviver,{"":res},"",res):res}};var Alias=class extends NodeBase{constructor(source){super(ALIAS);this.source=source;Object.defineProperty(this,"tag",{set(){throw new Error("Alias nodes cannot have tags")}})}resolve(doc){let found=void 0;visit(doc,{Node:(_key,node)=>{if(node===this)return visit.BREAK;if(node.anchor===this.source)found=node}});return found}toJSON(_arg,ctx){if(!ctx)return{source:this.source};const{anchors,doc,maxAliasCount}=ctx;const source=this.resolve(doc);if(!source){const msg=`Unresolved alias (the anchor must be set before the alias): ${this.source}`;throw new ReferenceError(msg)}let data=anchors.get(source);if(!data){toJS(source,null,ctx);data=anchors.get(source)}if(!data||data.res===void 0){const msg="This should not happen: Alias anchor was not resolved?";throw new ReferenceError(msg)}if(maxAliasCount>=0){data.count+=1;if(data.aliasCount===0)data.aliasCount=getAliasCount(doc,source,anchors);if(data.count*data.aliasCount>maxAliasCount){const msg="Excessive alias count indicates a resource exhaustion attack";throw new ReferenceError(msg)}}return data.res}toString(ctx,_onComment,_onChompKeep){const src=`*${this.source}`;if(ctx){anchorIsValid(this.source);if(ctx.options.verifyAliasOrder&&!ctx.anchors.has(this.source)){const msg=`Unresolved alias (the anchor must be set before the alias): ${this.source}`;throw new Error(msg)}if(ctx.implicitKey)return`${src} `}return src}};function getAliasCount(doc,node,anchors){if(isAlias(node)){const source=node.resolve(doc);const anchor=anchors&&source&&anchors.get(source);return anchor?anchor.count*anchor.aliasCount:0}else if(isCollection(node)){let count=0;for(const item of node.items){const c=getAliasCount(doc,item,anchors);if(c>count)count=c}return count}else if(isPair(node)){const kc=getAliasCount(doc,node.key,anchors);const vc=getAliasCount(doc,node.value,anchors);return Math.max(kc,vc)}return 1}var isScalarValue=value=>!value||typeof value!=="function"&&typeof value!=="object";var Scalar=class extends NodeBase{constructor(value){super(SCALAR);this.value=value}toJSON(arg,ctx){return ctx?.keep?this.value:toJS(this.value,arg,ctx)}toString(){return String(this.value)}};Scalar.BLOCK_FOLDED="BLOCK_FOLDED";Scalar.BLOCK_LITERAL="BLOCK_LITERAL";Scalar.PLAIN="PLAIN";Scalar.QUOTE_DOUBLE="QUOTE_DOUBLE";Scalar.QUOTE_SINGLE="QUOTE_SINGLE";var defaultTagPrefix="tag:yaml.org,2002:";function findTagObject(value,tagName,tags){if(tagName){const match=tags.filter(t=>t.tag===tagName);const tagObj=match.find(t=>!t.format)??match[0];if(!tagObj)throw new Error(`Tag ${tagName} not found`);return tagObj}return tags.find(t=>t.identify?.(value)&&!t.format)}function createNode(value,tagName,ctx){if(isDocument(value))value=value.contents;if(isNode(value))return value;if(isPair(value)){const map2=ctx.schema[MAP].createNode?.(ctx.schema,null,ctx);map2.items.push(value);return map2}if(value instanceof String||value instanceof Number||value instanceof Boolean||typeof BigInt!=="undefined"&&value instanceof BigInt){value=value.valueOf()}const{aliasDuplicateObjects,onAnchor,onTagObj,schema:schema4,sourceObjects}=ctx;let ref=void 0;if(aliasDuplicateObjects&&value&&typeof value==="object"){ref=sourceObjects.get(value);if(ref){if(!ref.anchor)ref.anchor=onAnchor(value);return new Alias(ref.anchor)}else{ref={anchor:null,node:null};sourceObjects.set(value,ref)}}if(tagName?.startsWith("!!"))tagName=defaultTagPrefix+tagName.slice(2);let tagObj=findTagObject(value,tagName,schema4.tags);if(!tagObj){if(value&&typeof value.toJSON==="function"){value=value.toJSON()}if(!value||typeof value!=="object"){const node2=new Scalar(value);if(ref)ref.node=node2;return node2}tagObj=value instanceof Map?schema4[MAP]:Symbol.iterator in Object(value)?schema4[SEQ]:schema4[MAP]}if(onTagObj){onTagObj(tagObj);delete ctx.onTagObj}const node=tagObj?.createNode?tagObj.createNode(ctx.schema,value,ctx):typeof tagObj?.nodeClass?.from==="function"?tagObj.nodeClass.from(ctx.schema,value,ctx):new Scalar(value);if(tagName)node.tag=tagName;else if(!tagObj.default)node.tag=tagObj.tag;if(ref)ref.node=node;return node}function collectionFromPath(schema4,path,value){let v=value;for(let i=path.length-1;i>=0;--i){const k=path[i];if(typeof k==="number"&&Number.isInteger(k)&&k>=0){const a=[];a[k]=v;v=a}else{v=new Map([[k,v]])}}return createNode(v,void 0,{aliasDuplicateObjects:false,keepUndefined:false,onAnchor:()=>{throw new Error("This should not happen, please report a bug.")},schema:schema4,sourceObjects:new Map})}var isEmptyPath=path=>path==null||typeof path==="object"&&!!path[Symbol.iterator]().next().done;var Collection=class extends NodeBase{constructor(type,schema4){super(type);Object.defineProperty(this,"schema",{value:schema4,configurable:true,enumerable:false,writable:true})}clone(schema4){const copy=Object.create(Object.getPrototypeOf(this),Object.getOwnPropertyDescriptors(this));if(schema4)copy.schema=schema4;copy.items=copy.items.map(it=>isNode(it)||isPair(it)?it.clone(schema4):it);if(this.range)copy.range=this.range.slice();return copy}addIn(path,value){if(isEmptyPath(path))this.add(value);else{const[key,...rest]=path;const node=this.get(key,true);if(isCollection(node))node.addIn(rest,value);else if(node===void 0&&this.schema)this.set(key,collectionFromPath(this.schema,rest,value));else throw new Error(`Expected YAML collection at ${key}. Remaining path: ${rest}`)}}deleteIn(path){const[key,...rest]=path;if(rest.length===0)return this.delete(key);const node=this.get(key,true);if(isCollection(node))return node.deleteIn(rest);else throw new Error(`Expected YAML collection at ${key}. Remaining path: ${rest}`)}getIn(path,keepScalar){const[key,...rest]=path;const node=this.get(key,true);if(rest.length===0)return!keepScalar&&isScalar(node)?node.value:node;else return isCollection(node)?node.getIn(rest,keepScalar):void 0}hasAllNullValues(allowScalar){return this.items.every(node=>{if(!isPair(node))return false;const n=node.value;return n==null||allowScalar&&isScalar(n)&&n.value==null&&!n.commentBefore&&!n.comment&&!n.tag})}hasIn(path){const[key,...rest]=path;if(rest.length===0)return this.has(key);const node=this.get(key,true);return isCollection(node)?node.hasIn(rest):false}setIn(path,value){const[key,...rest]=path;if(rest.length===0){this.set(key,value)}else{const node=this.get(key,true);if(isCollection(node))node.setIn(rest,value);else if(node===void 0&&this.schema)this.set(key,collectionFromPath(this.schema,rest,value));else throw new Error(`Expected YAML collection at ${key}. Remaining path: ${rest}`)}}};Collection.maxFlowStringSingleLineLength=60;var stringifyComment=str=>str.replace(/^(?!$)(?: $)?/gm,"#");function indentComment(comment,indent){if(/^\n+$/.test(comment))return comment.substring(1);return indent?comment.replace(/^(?! *$)/gm,indent):comment}var lineComment=(str,indent,comment)=>str.endsWith("\n")?indentComment(comment,indent):comment.includes("\n")?"\n"+indentComment(comment,indent):(str.endsWith(" ")?"":" ")+comment;var FOLD_FLOW="flow";var FOLD_BLOCK="block";var FOLD_QUOTED="quoted";function foldFlowLines(text,indent,mode="flow",{indentAtStart,lineWidth=80,minContentWidth=20,onFold,onOverflow}={}){if(!lineWidth||lineWidth<0)return text;const endStep=Math.max(1+minContentWidth,1+lineWidth-indent.length);if(text.length<=endStep)return text;const folds=[];const escapedFolds={};let end=lineWidth-indent.length;if(typeof indentAtStart==="number"){if(indentAtStart>lineWidth-Math.max(2,minContentWidth))folds.push(0);else end=lineWidth-indentAtStart}let split=void 0;let prev=void 0;let overflow=false;let i=-1;let escStart=-1;let escEnd=-1;if(mode===FOLD_BLOCK){i=consumeMoreIndentedLines(text,i);if(i!==-1)end=i+endStep}for(let ch;ch=text[i+=1];){if(mode===FOLD_QUOTED&&ch==="\\"){escStart=i;switch(text[i+1]){case"x":i+=3;break;case"u":i+=5;break;case"U":i+=9;break;default:i+=1}escEnd=i}if(ch==="\n"){if(mode===FOLD_BLOCK)i=consumeMoreIndentedLines(text,i);end=i+endStep;split=void 0}else{if(ch===" "&&prev&&prev!==" "&&prev!=="\n"&&prev!=="	"){const next=text[i+1];if(next&&next!==" "&&next!=="\n"&&next!=="	")split=i}if(i>=end){if(split){folds.push(split);end=split+endStep;split=void 0}else if(mode===FOLD_QUOTED){while(prev===" "||prev==="	"){prev=ch;ch=text[i+=1];overflow=true}const j=i>escEnd+1?i-2:escStart-1;if(escapedFolds[j])return text;folds.push(j);escapedFolds[j]=true;end=j+endStep;split=void 0}else{overflow=true}}}prev=ch}if(overflow&&onOverflow)onOverflow();if(folds.length===0)return text;if(onFold)onFold();let res=text.slice(0,folds[0]);for(let i2=0;i2<folds.length;++i2){const fold=folds[i2];const end2=folds[i2+1]||text.length;if(fold===0)res=`
 ${indent}${text.slice(0,end2)}`;else{if(mode===FOLD_QUOTED&&escapedFolds[fold])res+=`${text[fold]}\\`;res+=`
 ${indent}${text.slice(fold+1,end2)}`}}return res}function consumeMoreIndentedLines(text,i){let ch=text[i+1];while(ch===" "||ch==="	"){do{ch=text[i+=1]}while(ch&&ch!=="\n");ch=text[i+1]}return i}var getFoldOptions=(ctx,isBlock2)=>({indentAtStart:isBlock2?ctx.indent.length:ctx.indentAtStart,lineWidth:ctx.options.lineWidth,minContentWidth:ctx.options.minContentWidth});var containsDocumentMarker=str=>/^(%|---|\.\.\.)/m.test(str);function lineLengthOverLimit(str,lineWidth,indentLength){if(!lineWidth||lineWidth<0)return false;const limit=lineWidth-indentLength;const strLen=str.length;if(strLen<=limit)return false;for(let i=0,start=0;i<strLen;++i){if(str[i]==="\n"){if(i-start>limit)return true;start=i+1;if(strLen-start<=limit)return false}}return true}function doubleQuotedString(value,ctx){const json=JSON.stringify(value);if(ctx.options.doubleQuotedAsJSON)return json;const{implicitKey}=ctx;const minMultiLineLength=ctx.options.doubleQuotedMinMultiLineLength;const indent=ctx.indent||(containsDocumentMarker(value)?"  ":"");let str="";let start=0;for(let i=0,ch=json[i];ch;ch=json[++i]){if(ch===" "&&json[i+1]==="\\"&&json[i+2]==="n"){str+=json.slice(start,i)+"\\ ";i+=1;start=i;ch="\\"}if(ch==="\\")switch(json[i+1]){case"u":{str+=json.slice(start,i);const code=json.substr(i+2,4);switch(code){case"0000":str+="\\0";break;case"0007":str+="\\a";break;case"000b":str+="\\v";break;case"001b":str+="\\e";break;case"0085":str+="\\N";break;case"00a0":str+="\\_";break;case"2028":str+="\\L";break;case"2029":str+="\\P";break;default:if(code.substr(0,2)==="00")str+="\\x"+code.substr(2);else str+=json.substr(i,6)}i+=5;start=i+1}break;case"n":if(implicitKey||json[i+2]==='"'||json.length<minMultiLineLength){i+=1}else{str+=json.slice(start,i)+"\n\n";while(json[i+2]==="\\"&&json[i+3]==="n"&&json[i+4]!=='"'){str+="\n";i+=2}str+=indent;if(json[i+2]===" ")str+="\\";i+=1;start=i+1}break;default:i+=1}}str=start?str+json.slice(start):json;return implicitKey?str:foldFlowLines(str,indent,FOLD_QUOTED,getFoldOptions(ctx,false))}function singleQuotedString(value,ctx){if(ctx.options.singleQuote===false||ctx.implicitKey&&value.includes("\n")||/[ \t]\n|\n[ \t]/.test(value))return doubleQuotedString(value,ctx);const indent=ctx.indent||(containsDocumentMarker(value)?"  ":"");const res="'"+value.replace(/'/g,"''").replace(/\n+/g,`$&
