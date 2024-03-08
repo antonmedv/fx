@@ -18,6 +18,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/goccy/go-yaml"
 	"github.com/mattn/go-isatty"
 	"github.com/sahilm/fuzzy"
 
@@ -27,6 +28,7 @@ import (
 var (
 	flagHelp    bool
 	flagVersion bool
+	flagYaml    bool
 )
 
 func main() {
@@ -60,6 +62,8 @@ func main() {
 		case "--export-themes":
 			exportThemes()
 			return
+		case "--yaml":
+			flagYaml = true
 		default:
 			args = append(args, arg)
 		}
@@ -97,6 +101,10 @@ func main() {
 		}
 		fileName = path.Base(filePath)
 		src = f
+		hasYamlExt, _ := regexp.MatchString(`(?i)\.ya?ml$`, fileName)
+		if !flagYaml && hasYamlExt {
+			flagYaml = true
+		}
 	} else if !stdinIsTty && len(args) == 0 {
 		src = os.Stdin
 	} else {
@@ -107,6 +115,15 @@ func main() {
 	data, err := io.ReadAll(src)
 	if err != nil {
 		panic(err)
+	}
+
+	if flagYaml {
+		data, err = yaml.YAMLToJSON(data)
+		if err != nil {
+			fmt.Print(err.Error())
+			os.Exit(1)
+			return
+		}
 	}
 
 	head, err := parse(data)

@@ -675,10 +675,10 @@ function printUsage() {
   fx [flags] [code...]
 
 Flags
-  -h, --help    Display this help message
-  -r, --raw     Treat input as a raw string
-  -s, --slurp   Read all inputs into an array
-  --yaml        Parse input as YAML`
+  -h, --help    print help
+  -r, --raw     treat input as a raw string
+  -s, --slurp   read all inputs into an array
+  --yaml        parse input as YAML`
   console.log(usage)
 }
 
