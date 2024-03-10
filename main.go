@@ -926,8 +926,14 @@ func (m *model) cursorValue() string {
 		return ""
 	}
 	parent := at.parent()
-	if parent != nil && at.chunk != nil {
-		at = parent
+	if parent != nil {
+		// wrapped string part
+		if at.chunk != nil && at.value == nil {
+			at = parent
+		}
+		if len(at.value) == 1 && at.value[0] == '}' || at.value[0] == ']' {
+			at = parent
+		}
 	}
 
 	if len(at.value) > 0 && at.value[0] == '"' {
@@ -952,9 +958,7 @@ func (m *model) cursorValue() string {
 				out.Write(it.key)
 				out.WriteString(": ")
 			}
-			if it.chunk != nil {
-				out.Write(it.chunk)
-			} else {
+			if it.value != nil {
 				out.Write(it.value)
 			}
 			if it == at.end {
@@ -964,7 +968,9 @@ func (m *model) cursorValue() string {
 				out.WriteString(",")
 			}
 			out.WriteString("\n")
-			if it.isCollapsed() {
+			if it.chunkEnd != nil {
+				it = it.chunkEnd.next
+			} else if it.isCollapsed() {
 				it = it.collapsed
 			} else {
 				it = it.next
