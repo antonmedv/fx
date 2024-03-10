@@ -360,7 +360,7 @@ func (m *model) handleHelpKey(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	if msg, ok := msg.(tea.KeyMsg); ok {
 		switch {
-		case key.Matches(msg, keyMap.Quit):
+		case key.Matches(msg, keyMap.Quit), key.Matches(msg, keyMap.Help):
 			m.showHelp = false
 		}
 	}
@@ -658,7 +658,7 @@ func (m *model) scrollIntoView() {
 
 func (m *model) View() string {
 	if m.showHelp {
-		statusBar := flex(m.termWidth, ": press q or esc to close help", "")
+		statusBar := flex(m.termWidth, ": press q or ? to close help", "")
 		return m.help.View() + "\n" + string(currentTheme.StatusBar([]byte(statusBar)))
 	}
 
