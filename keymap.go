@@ -27,6 +27,7 @@ type KeyMap struct {
 	Search              key.Binding
 	SearchNext          key.Binding
 	SearchPrev          key.Binding
+	Preview             key.Binding
 	Dig                 key.Binding
 }
 
@@ -129,6 +130,10 @@ func init() {
 		SearchPrev: key.NewBinding(
 			key.WithKeys("N"),
 			key.WithHelp("", "prev search result"),
+		),
+		Preview: key.NewBinding(
+			key.WithKeys("p"),
+			key.WithHelp("", "preview string"),
 		),
 		Dig: key.NewBinding(
 			key.WithKeys("."),

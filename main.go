@@ -182,6 +182,8 @@ type model struct {
 	yank                  bool
 	showHelp              bool
 	help                  viewport.Model
+	showPreview           bool
+	preview               viewport.Model
 }
 
 func (m *model) Init() tea.Cmd {
@@ -194,12 +196,18 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.termHeight = msg.Height
 		m.help.Width = m.termWidth
 		m.help.Height = m.termHeight - 1
+		m.preview.Width = m.termWidth
+		m.preview.Height = m.termHeight - 1
 		wrapAll(m.top, m.termWidth)
 		m.redoSearch()
 	}
 
 	if m.showHelp {
 		return m.handleHelpKey(msg)
+	}
+
+	if m.showPreview {
+		return m.handlePreviewKey(msg)
 	}
 
 	switch msg := msg.(type) {
@@ -346,6 +354,18 @@ func (m *model) handleHelpKey(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	m.help, cmd = m.help.Update(msg)
+	return m, cmd
+}
+
+func (m *model) handlePreviewKey(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	if msg, ok := msg.(tea.KeyMsg); ok {
+		switch {
+		case key.Matches(msg, keyMap.Quit):
+			m.showPreview = false
+		}
+	}
+	m.preview, cmd = m.preview.Update(msg)
 	return m, cmd
 }
 
@@ -543,6 +563,23 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keyMap.Yank):
 		m.yank = true
 
+	case key.Matches(msg, keyMap.Preview):
+		at := m.cursorPointsTo()
+		parent := at.parent()
+		if parent != nil && parent.chunk != nil {
+			at = parent
+		}
+		if at != nil && len(at.value) > 0 && at.value[0] == '"' {
+			m.showPreview = true
+			str, err := strconv.Unquote(string(at.value))
+			if err == nil {
+				m.preview.SetContent(str)
+			} else {
+				m.preview.SetContent(err.Error())
+			}
+			m.preview.GotoTop()
+		}
+
 	case key.Matches(msg, keyMap.Dig):
 		m.digInput.SetValue(m.cursorPath() + ".")
 		m.digInput.CursorEnd()
@@ -616,6 +653,11 @@ func (m *model) View() string {
 	if m.showHelp {
 		statusBar := flex(m.termWidth, ": press q or esc to close help", "")
 		return m.help.View() + "\n" + string(currentTheme.StatusBar([]byte(statusBar)))
+	}
+
+	if m.showPreview {
+		statusBar := flex(m.termWidth, m.cursorPath(), m.fileName)
+		return m.preview.View() + "\n" + string(currentTheme.StatusBar([]byte(statusBar)))
 	}
 
 	var screen []byte
