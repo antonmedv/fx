@@ -44,6 +44,18 @@ func usage(keyMap KeyMap) string {
 	)
 }
 
+func help(keyMap KeyMap) string {
+	title := lipgloss.NewStyle().Bold(true)
+	pad := lipgloss.NewStyle().PaddingLeft(4)
+	return fmt.Sprintf(`
+  %v
+%v
+`,
+		title.Render("Key Bindings"),
+		strings.Join(keyMapInfo(keyMap, pad), "\n"),
+	)
+}
+
 func keyMapInfo(keyMap KeyMap, style lipgloss.Style) []string {
 	v := reflect.ValueOf(keyMap)
 	fields := reflect.VisibleFields(v.Type())

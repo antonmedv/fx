@@ -387,7 +387,7 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 
 	case key.Matches(msg, keyMap.Help):
-		m.help.SetContent(strings.Join(keyMapInfo(keyMap, lipgloss.NewStyle().Padding(1, 2)), "\n"))
+		m.help.SetContent(help(keyMap))
 		m.showHelp = true
 
 	case key.Matches(msg, keyMap.Up):
