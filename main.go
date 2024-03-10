@@ -16,6 +16,7 @@ import (
 	"github.com/antonmedv/clipboard"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/goccy/go-yaml"
@@ -145,6 +146,9 @@ func main() {
 	searchInput := textinput.New()
 	searchInput.Prompt = "/"
 
+	help := viewport.New(80, 40)
+	help.HighPerformanceRendering = false
+
 	m := &model{
 		head:        head,
 		top:         head,
@@ -175,6 +179,8 @@ type model struct {
 	searchInput           textinput.Model
 	search                *search
 	yank                  bool
+	showHelp              bool
+	help                  viewport.Model
 }
 
 func (m *model) Init() tea.Cmd {
@@ -182,13 +188,20 @@ func (m *model) Init() tea.Cmd {
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
+	if msg, ok := msg.(tea.WindowSizeMsg); ok {
 		m.termWidth = msg.Width
 		m.termHeight = msg.Height
+		m.help.Width = m.termWidth
+		m.help.Height = m.termHeight - 1
 		wrapAll(m.top, m.termWidth)
 		m.redoSearch()
+	}
 
+	if m.showHelp {
+		return m.handleHelpKey(msg)
+	}
+
+	switch msg := msg.(type) {
 	case tea.MouseMsg:
 		switch msg.Type {
 		case tea.MouseWheelUp:
@@ -323,6 +336,18 @@ func (m *model) handleDigKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+func (m *model) handleHelpKey(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	if msg, ok := msg.(tea.KeyMsg); ok {
+		switch {
+		case key.Matches(msg, keyMap.Quit):
+			m.showHelp = false
+		}
+	}
+	m.help, cmd = m.help.Update(msg)
+	return m, cmd
+}
+
 func (m *model) handleSearchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch {
@@ -359,6 +384,10 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, keyMap.Quit):
 		return m, tea.Quit
+
+	case key.Matches(msg, keyMap.Help):
+		m.help.SetContent(strings.Join(keyMapInfo(keyMap, lipgloss.NewStyle().Padding(1, 2)), "\n"))
+		m.showHelp = true
 
 	case key.Matches(msg, keyMap.Up):
 		m.up()
@@ -574,6 +603,11 @@ func (m *model) scrollIntoView() {
 }
 
 func (m *model) View() string {
+	if m.showHelp {
+		statusBar := flex(m.termWidth, ": press q or esc to close help", "")
+		return m.help.View() + "\n" + string(currentTheme.StatusBar([]byte(statusBar)))
+	}
+
 	var screen []byte
 	n := m.head
 

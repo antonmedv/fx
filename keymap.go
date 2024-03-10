@@ -12,6 +12,7 @@ type KeyMap struct {
 	GotoBottom          key.Binding
 	Down                key.Binding
 	Up                  key.Binding
+	Help                key.Binding
 	Expand              key.Binding
 	Collapse            key.Binding
 	ExpandRecursively   key.Binding
@@ -67,6 +68,10 @@ func init() {
 		Up: key.NewBinding(
 			key.WithKeys("up", "k"),
 			key.WithHelp("", "up"),
+		),
+		Help: key.NewBinding(
+			key.WithKeys("?"),
+			key.WithHelp("", "show help"),
 		),
 		Expand: key.NewBinding(
 			key.WithKeys("right", "l", "enter"),
