@@ -580,7 +580,8 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keyMap.Preview):
 		m.showPreview = true
-		m.preview.SetContent(m.cursorValue())
+		content := lipgloss.NewStyle().Width(m.termWidth).Render(m.cursorValue())
+		m.preview.SetContent(content)
 		m.preview.GotoTop()
 
 	case key.Matches(msg, keyMap.Print):
