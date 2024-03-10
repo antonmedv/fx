@@ -19,6 +19,7 @@ type KeyMap struct {
 	CollapseRecursively key.Binding
 	ExpandAll           key.Binding
 	CollapseAll         key.Binding
+	CollapseLevel       key.Binding
 	NextSibling         key.Binding
 	PrevSibling         key.Binding
 	ToggleWrap          key.Binding
@@ -96,6 +97,10 @@ func init() {
 		CollapseAll: key.NewBinding(
 			key.WithKeys("E"),
 			key.WithHelp("", "collapse all"),
+		),
+		CollapseLevel: key.NewBinding(
+			key.WithKeys("1", "2", "3", "4", "5", "6", "7", "8", "9"),
+			key.WithHelp("", "collapse to nth level"),
 		),
 		NextSibling: key.NewBinding(
 			key.WithKeys("J", "shift+down"),

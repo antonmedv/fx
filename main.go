@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"math"
 	"os"
 	"path"
 	"regexp"
@@ -485,7 +486,7 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keyMap.ExpandRecursively):
 		n := m.cursorPointsTo()
 		if n.hasChildren() {
-			n.expandRecursively()
+			n.expandRecursively(0, math.MaxInt)
 		}
 		m.showCursor = true
 
@@ -507,7 +508,7 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		at := m.cursorPointsTo()
 		n := m.top
 		for n != nil {
-			n.expandRecursively()
+			n.expandRecursively(0, math.MaxInt)
 			if n.end == nil {
 				n = nil
 			} else {
@@ -515,6 +516,15 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 		m.selectNode(at)
+
+	case key.Matches(msg, keyMap.CollapseLevel):
+		at := m.cursorPointsTo()
+		if at != nil && at.hasChildren() {
+			toLevel, _ := strconv.Atoi(msg.String())
+			at.collapseRecursively()
+			at.expandRecursively(0, toLevel)
+			m.showCursor = true
+		}
 
 	case key.Matches(msg, keyMap.ToggleWrap):
 		at := m.cursorPointsTo()

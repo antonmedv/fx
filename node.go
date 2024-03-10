@@ -137,11 +137,21 @@ func (n *node) expand() {
 	}
 }
 
-func (n *node) expandRecursively() {
-	at := n
-	for at != nil && at != n.end {
-		at.expand()
-		at = at.next
+func (n *node) expandRecursively(level, maxLevel int) {
+	if level >= maxLevel {
+		return
+	}
+	if n.isCollapsed() {
+		n.expand()
+	}
+	it := n.next
+	for it != nil && it != n.end {
+		if it.hasChildren() {
+			it.expandRecursively(level+1, maxLevel)
+			it = it.end.next
+		} else {
+			it = it.next
+		}
 	}
 }
 

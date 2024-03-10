@@ -53,7 +53,11 @@ func keyMapInfo(keyMap KeyMap, style lipgloss.Style) []string {
 		k := v.Field(i).Interface().(key.Binding)
 		str := k.Help().Key
 		if len(str) == 0 {
-			str = strings.Join(k.Keys(), ", ")
+			if len(k.Keys()) > 5 {
+				str = fmt.Sprintf("%v-%v", k.Keys()[0], k.Keys()[len(k.Keys())-1])
+			} else {
+				str = strings.Join(k.Keys(), ", ")
+			}
 		}
 		keys = append(keys, fmt.Sprintf("%v    ", str))
 	}

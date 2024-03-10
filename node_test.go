@@ -24,3 +24,12 @@ func TestNode_children(t *testing.T) {
 	paths, _ := n.children()
 	assert.Equal(t, []string{"a", "b", "c"}, paths)
 }
+
+func TestNode_expandRecursively(t *testing.T) {
+	n, err := parse([]byte(`{"a": {"b": {"c": 1}}}`))
+	require.NoError(t, err)
+
+	n.collapseRecursively()
+	n.expandRecursively(0, 3)
+	assert.Equal(t, `"c"`, string(n.next.next.next.key))
+}
