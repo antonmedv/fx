@@ -28,6 +28,7 @@ type KeyMap struct {
 	SearchNext          key.Binding
 	SearchPrev          key.Binding
 	Preview             key.Binding
+	Print               key.Binding
 	Dig                 key.Binding
 }
 
@@ -133,11 +134,15 @@ func init() {
 		),
 		Preview: key.NewBinding(
 			key.WithKeys("p"),
-			key.WithHelp("", "preview string"),
+			key.WithHelp("", "preview"),
+		),
+		Print: key.NewBinding(
+			key.WithKeys("P"),
+			key.WithHelp("", "print"),
 		),
 		Dig: key.NewBinding(
 			key.WithKeys("."),
-			key.WithHelp("", "dig json"),
+			key.WithHelp("", "dig"),
 		),
 	}
 }

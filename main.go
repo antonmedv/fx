@@ -22,6 +22,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/goccy/go-yaml"
 	"github.com/mattn/go-isatty"
+	"github.com/muesli/termenv"
 	"github.com/sahilm/fuzzy"
 
 	jsonpath "github.com/antonmedv/fx/path"
@@ -161,10 +162,21 @@ func main() {
 		search:      newSearch(),
 	}
 
-	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion(), tea.WithOutput(os.Stderr))
+	output := termenv.NewOutput(os.Stderr)
+	lipgloss.SetColorProfile(output.ColorProfile())
+
+	p := tea.NewProgram(m,
+		tea.WithAltScreen(),
+		tea.WithMouseCellMotion(),
+		tea.WithOutput(os.Stderr),
+	)
 	_, err = p.Run()
 	if err != nil {
 		panic(err)
+	}
+
+	if m.printOnExit {
+		fmt.Println(m.cursorValue())
 	}
 }
 
@@ -184,6 +196,7 @@ type model struct {
 	help                  viewport.Model
 	showPreview           bool
 	preview               viewport.Model
+	printOnExit           bool
 }
 
 func (m *model) Init() tea.Cmd {
@@ -364,6 +377,9 @@ func (m *model) handlePreviewKey(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keyMap.Quit),
 			key.Matches(msg, keyMap.Preview):
 			m.showPreview = false
+
+		case key.Matches(msg, keyMap.Print):
+			return m, m.print()
 		}
 	}
 	m.preview, cmd = m.preview.Update(msg)
@@ -568,6 +584,9 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.showPreview = true
 		m.preview.SetContent(m.cursorValue())
 		m.preview.GotoTop()
+
+	case key.Matches(msg, keyMap.Print):
+		return m, m.print()
 
 	case key.Matches(msg, keyMap.Dig):
 		m.digInput.SetValue(m.cursorPath() + ".")
@@ -1125,4 +1144,10 @@ func (m *model) dig(v string) *node {
 	}
 
 	return nodes[matches[0].Index]
+}
+
+func (m *model) print() tea.Cmd {
+	m.printOnExit = true
+	return tea.Quit
+
 }
