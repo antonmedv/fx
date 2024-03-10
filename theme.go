@@ -50,6 +50,10 @@ func valueStyle(b []byte, selected, chunk bool) color {
 	}
 }
 
+var (
+	termOutput = termenv.NewOutput(os.Stderr)
+)
+
 func init() {
 	themeNames = make([]string, 0, len(themes))
 	for name := range themes {
@@ -68,7 +72,7 @@ func init() {
 		os.Exit(1)
 	}
 
-	if termenv.ColorProfile() == termenv.Ascii {
+	if termOutput.ColorProfile() == termenv.Ascii {
 		currentTheme = themes["0"]
 	}
 

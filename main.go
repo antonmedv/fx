@@ -22,7 +22,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/goccy/go-yaml"
 	"github.com/mattn/go-isatty"
-	"github.com/muesli/termenv"
 	"github.com/sahilm/fuzzy"
 
 	jsonpath "github.com/antonmedv/fx/path"
@@ -162,8 +161,7 @@ func main() {
 		search:      newSearch(),
 	}
 
-	output := termenv.NewOutput(os.Stderr)
-	lipgloss.SetColorProfile(output.ColorProfile())
+	lipgloss.SetColorProfile(termOutput.ColorProfile())
 
 	p := tea.NewProgram(m,
 		tea.WithAltScreen(),
