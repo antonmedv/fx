@@ -161,7 +161,7 @@ func main() {
 		search:      newSearch(),
 	}
 
-	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
+	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion(), tea.WithOutput(os.Stderr))
 	_, err = p.Run()
 	if err != nil {
 		panic(err)
@@ -361,7 +361,8 @@ func (m *model) handlePreviewKey(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	if msg, ok := msg.(tea.KeyMsg); ok {
 		switch {
-		case key.Matches(msg, keyMap.Quit):
+		case key.Matches(msg, keyMap.Quit),
+			key.Matches(msg, keyMap.Preview):
 			m.showPreview = false
 		}
 	}
@@ -564,21 +565,9 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.yank = true
 
 	case key.Matches(msg, keyMap.Preview):
-		at := m.cursorPointsTo()
-		parent := at.parent()
-		if parent != nil && parent.chunk != nil {
-			at = parent
-		}
-		if at != nil && len(at.value) > 0 && at.value[0] == '"' {
-			m.showPreview = true
-			str, err := strconv.Unquote(string(at.value))
-			if err == nil {
-				m.preview.SetContent(str)
-			} else {
-				m.preview.SetContent(err.Error())
-			}
-			m.preview.GotoTop()
-		}
+		m.showPreview = true
+		m.preview.SetContent(m.cursorValue())
+		m.preview.GotoTop()
 
 	case key.Matches(msg, keyMap.Dig):
 		m.digInput.SetValue(m.cursorPath() + ".")
@@ -919,17 +908,29 @@ func (m *model) cursorValue() string {
 	if at == nil {
 		return ""
 	}
-	var out strings.Builder
-	if at.chunk != nil && at.value == nil {
-		at = at.parent()
+	parent := at.parent()
+	if parent != nil && at.chunk != nil {
+		at = parent
 	}
+
+	if len(at.value) > 0 && at.value[0] == '"' {
+		str, err := strconv.Unquote(string(at.value))
+		if err == nil {
+			return str
+		}
+		return string(at.value)
+	}
+
+	var out strings.Builder
 	out.Write(at.value)
+	out.WriteString("\n")
 	if at.hasChildren() {
 		it := at.next
 		if at.isCollapsed() {
 			it = at.collapsed
 		}
 		for it != nil {
+			out.WriteString(strings.Repeat("  ", int(it.depth-at.depth)))
 			if it.key != nil {
 				out.Write(it.key)
 				out.WriteString(": ")
@@ -943,8 +944,9 @@ func (m *model) cursorValue() string {
 				break
 			}
 			if it.comma {
-				out.WriteString(", ")
+				out.WriteString(",")
 			}
+			out.WriteString("\n")
 			if it.isCollapsed() {
 				it = it.collapsed
 			} else {
