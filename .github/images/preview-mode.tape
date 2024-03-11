@@ -1,4 +1,4 @@
-Output print.gif
+Output preview-mode.gif
 
 Set FontSize 32
 Set Width 1800
