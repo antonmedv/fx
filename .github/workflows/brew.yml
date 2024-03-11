@@ -12,16 +12,7 @@ jobs:
         with:
           test-bot: false
 
-      - name: Cache Homebrew Bundler RubyGems
-        id: cache
-        uses: actions/cache@v2
-        with:
-          path: ${{ steps.set-up-homebrew.outputs.gems-path }}
-          key: ${{ runner.os }}-rubygems-${{ steps.set-up-homebrew.outputs.gems-hash }}
-          restore-keys: ${{ runner.os }}-rubygems-
-
       - name: Install Homebrew Bundler RubyGems
-        if: steps.cache.outputs.cache-hit != 'true'
         run: brew install-bundler-gems
 
       - name: Configure Git user
@@ -31,7 +22,8 @@ jobs:
         run: brew update
 
       - name: Bump formulae
-        uses: Homebrew/actions/bump-formulae@master
+        uses: Homebrew/actions/bump-packages@master
         with:
           token: ${{ secrets.MY_HOMEBREW_RELEASE_GITHUB_TOKEN }}
-          formulae: fx
+          formulae: |
+            fx
