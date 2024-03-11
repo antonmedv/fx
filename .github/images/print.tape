@@ -6,7 +6,7 @@ Set Height 1200
 Set TypingSpeed 200ms
 
 Hide
-Type "fx testdata/example.json"
+Type "fx testdata/blog.json"
 Enter
 Show
 
@@ -17,7 +17,21 @@ Down
 Sleep 1s
 
 Type "p"
-Sleep 6s
+Sleep 1s
+Down
+Sleep 300ms
+Down
+Sleep 300ms
+Down
+Sleep 300ms
+Down
+Sleep 300ms
+Down
+Sleep 300ms
+Down
+Sleep 300ms
+Down
+Sleep 4s
 Type "p"
 
 Sleep 1s
