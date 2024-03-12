@@ -51,6 +51,8 @@ func main() {
 		defer pprof.WriteHeapProfile(memProf)
 	}
 
+	complete()
+
 	var args []string
 	for _, arg := range os.Args[1:] {
 		switch arg {
