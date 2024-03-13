@@ -9,8 +9,10 @@ Object.prototype.__keys = function () {
   if (this instanceof String) return
   if (typeof this === 'object' && this !== null)
     Object.keys(this)
-      .filter(x => /^\w+$/.test(x))
-      .forEach(x => __keys.add('.' + x))
+      .forEach(x => /^\w+$/.test(x) ?
+        __keys.add('.' + x) :
+        __keys.add('.[' + JSON.stringify(x) + ']')
+      )
 }
 
 function apply(fn, ...args) {
