@@ -25,9 +25,10 @@ func usage(keyMap KeyMap) string {
     -h, --help            print help
     -v, --version         print version
     --themes              print themes
-    --yaml                parse input as YAML
+    --comp <shell>        print completion script
     -r, --raw             treat input as a raw string
     -s, --slurp           read all inputs into an array
+    --yaml                parse input as YAML
 
   %v
 %v

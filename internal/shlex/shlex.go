@@ -408,3 +408,19 @@ func Split(s string) ([]string, error) {
 		subStrings = append(subStrings, word)
 	}
 }
+
+// Parse removes the shell-style quoting from a string.
+func Parse(s string) string {
+	l := NewLexer(strings.NewReader(s))
+	var b strings.Builder
+	for {
+		word, err := l.Next()
+		if err != nil {
+			if err == io.EOF {
+				return b.String()
+			}
+			return ""
+		}
+		b.WriteString(word)
+	}
+}

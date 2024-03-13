@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"io/fs"
@@ -24,13 +25,13 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/sahilm/fuzzy"
 
+	"github.com/antonmedv/fx/internal/complete"
 	jsonpath "github.com/antonmedv/fx/path"
 )
 
 var (
-	flagHelp    bool
-	flagVersion bool
-	flagYaml    bool
+	flagYaml bool
+	flagComp bool
 )
 
 func main() {
@@ -51,36 +52,46 @@ func main() {
 		defer pprof.WriteHeapProfile(memProf)
 	}
 
-	complete()
+	if complete.Complete() {
+		os.Exit(0)
+		return
+	}
 
 	var args []string
 	for _, arg := range os.Args[1:] {
+		if strings.HasPrefix(arg, "--comp") {
+			flagComp = true
+			continue
+		}
 		switch arg {
 		case "-h", "--help":
-			flagHelp = true
+			fmt.Println(usage(keyMap))
+			return
 		case "-v", "-V", "--version":
-			flagVersion = true
+			fmt.Println(version)
+			return
 		case "--themes":
 			themeTester()
 			return
 		case "--export-themes":
 			exportThemes()
 			return
-		case "--yaml":
-			flagYaml = true
 		default:
 			args = append(args, arg)
 		}
-
 	}
 
-	if flagHelp {
-		fmt.Println(usage(keyMap))
-		return
-	}
-
-	if flagVersion {
-		fmt.Println(version)
+	if flagComp {
+		shell := flag.String("comp", "", "")
+		flag.Parse()
+		switch *shell {
+		case "bash":
+			fmt.Print(complete.Bash())
+		case "zsh":
+			fmt.Print(complete.Zsh())
+		default:
+			fmt.Println("unknown shell type")
+		}
 		return
 	}
 
@@ -112,7 +123,7 @@ func main() {
 	} else if !stdinIsTty && len(args) == 0 {
 		src = os.Stdin
 	} else {
-		reduce(args)
+		reduce(os.Args[1:])
 		return
 	}
 
