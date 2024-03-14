@@ -8,11 +8,7 @@ Object.prototype.__keys = function () {
   if (typeof this === 'string') return
   if (this instanceof String) return
   if (typeof this === 'object' && this !== null)
-    Object.keys(this)
-      .forEach(x => /^\w+$/.test(x) ?
-        __keys.add('.' + x) :
-        __keys.add('.[' + JSON.stringify(x) + ']')
-      )
+    Object.keys(this).forEach(x => __keys.add(x))
 }
 
 function apply(fn, ...args) {

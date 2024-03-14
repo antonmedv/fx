@@ -37,6 +37,7 @@ var globals = []string{
 	"Object.fromEntries",
 	"Array.isArray",
 	"Array.from",
+	"console.log",
 	"len",
 	"uniq",
 	"sort",
@@ -49,12 +50,13 @@ var globals = []string{
 	"reverse",
 	"keys",
 	"values",
+	"skip",
 }
 
 func Complete() bool {
 	compLine, ok := os.LookupEnv("COMP_LINE")
 
-	if ok && len(os.Args) == 3 {
+	if ok && len(os.Args) >= 3 {
 		doComplete(compLine, os.Args[2])
 		return true
 	}
@@ -62,6 +64,12 @@ func Complete() bool {
 	compZsh, ok := os.LookupEnv("COMP_ZSH")
 	if ok {
 		doComplete(compZsh, lastWord(compZsh))
+		return true
+	}
+
+	compFish, ok := os.LookupEnv("COMP_FISH")
+	if ok {
+		doComplete(compFish, lastWord(compFish))
 		return true
 	}
 
@@ -108,11 +116,11 @@ func doComplete(compLine string, compWord string) {
 		isSecondArgIsFile = isFile(args[1])
 	}
 
-	if isSecondArgIsFile {
-		if globalsComplete(compWord) {
-			return
-		}
+	if globalsComplete(compWord) {
+		return
+	}
 
+	if isSecondArgIsFile {
 		file := args[1]
 
 		hasYamlExt, _ := regexp.MatchString(`(?i)\.ya?ml$`, file)
@@ -190,9 +198,22 @@ func codeComplete(input string, args []string, compWord string) {
 		prefix := dropTail(compWord)
 		var reply []string
 		for _, key := range array {
-			reply = append(reply, prefix+key.(string))
+			reply = append(reply, join(prefix, key.(string)))
 		}
 		compReply(filterReply(reply, compWord))
+	}
+}
+
+var alphaRe = regexp.MustCompile(`^\w+$`)
+
+func join(prefix, key string) string {
+	if alphaRe.MatchString(key) {
+		return prefix + "." + key
+	} else {
+		if prefix == "" {
+			return fmt.Sprintf(".[%q]", key)
+		}
+		return fmt.Sprintf("%s[%q]", prefix, key)
 	}
 }
 

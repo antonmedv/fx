@@ -3,14 +3,11 @@ package complete
 import (
 	"fmt"
 	"os"
-	"regexp"
 	"strings"
 )
 
 func compReply(reply []string) {
-	for _, word := range reply {
-		fmt.Println(word)
-	}
+	fmt.Print(strings.Join(reply, "\n"))
 }
 
 func filterReply(reply []string, compWord string) []string {
@@ -31,10 +28,9 @@ func isFile(path string) bool {
 	return !info.IsDir()
 }
 
-var tailRe = regexp.MustCompile(`\.?\w*$`)
-
 func dropTail(s string) string {
-	return tailRe.ReplaceAllString(s, "")
+	parts := strings.Split(s, ".")
+	return strings.Join(parts[:len(parts)-1], ".")
 }
 
 func balanceBrackets(code string) string {

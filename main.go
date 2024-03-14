@@ -89,6 +89,8 @@ func main() {
 			fmt.Print(complete.Bash())
 		case "zsh":
 			fmt.Print(complete.Zsh())
+		case "fish":
+			fmt.Print(complete.Fish())
 		default:
 			fmt.Println("unknown shell type")
 		}
@@ -176,9 +178,14 @@ func main() {
 
 	lipgloss.SetColorProfile(termOutput.ColorProfile())
 
+	withMouse := tea.WithMouseCellMotion()
+	if _, ok := os.LookupEnv("FX_NO_MOUSE"); ok {
+		withMouse = tea.WithAltScreen()
+	}
+
 	p := tea.NewProgram(m,
 		tea.WithAltScreen(),
-		tea.WithMouseCellMotion(),
+		withMouse,
 		tea.WithOutput(os.Stderr),
 	)
 	_, err = p.Run()
@@ -422,7 +429,7 @@ func (m *model) handleYankKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		_ = clipboard.WriteAll(m.cursorPath())
 	case key.Matches(msg, yankKey):
 		_ = clipboard.WriteAll(m.cursorKey())
-	case key.Matches(msg, yankValue):
+	case key.Matches(msg, yankValueY, yankValueV):
 		_ = clipboard.WriteAll(m.cursorValue())
 	}
 	m.yank = false
