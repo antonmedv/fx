@@ -14,6 +14,7 @@ type node struct {
 	depth           uint8
 	key             []byte
 	value           []byte
+	size            int
 	chunk           []byte
 	chunkEnd        *node
 	comma           bool
