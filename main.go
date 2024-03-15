@@ -732,8 +732,10 @@ func (m *model) View() string {
 			screen = append(screen, comma...)
 		}
 
-		if showSizes && n.isCollapsed() && (n.value[0] == '{' || n.value[0] == '[') {
-			screen = append(screen, currentTheme.Size([]byte(fmt.Sprintf(" // %d", n.size)))...)
+		if showSizes && len(n.value) > 0 && (n.value[0] == '{' || n.value[0] == '[') {
+			if n.isCollapsed() || n.size > 1 {
+				screen = append(screen, currentTheme.Size([]byte(fmt.Sprintf(" // %d", n.size)))...)
+			}
 		}
 
 		screen = append(screen, '\n')
