@@ -6,6 +6,7 @@ import (
 	"os"
 	"regexp"
 	"sort"
+	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/termenv"
@@ -22,6 +23,7 @@ type theme struct {
 	Null      color
 	Boolean   color
 	Number    color
+	Size      color
 }
 
 type color func(s []byte) []byte
@@ -66,6 +68,12 @@ func init() {
 		themeId = "1"
 	}
 
+	showSizesValue, ok := os.LookupEnv("FX_SHOWSIZES")
+	if ok {
+		showSizesValue := strings.ToLower(showSizesValue)
+		showSizes = showSizesValue == "true" || showSizesValue == "yes" || showSizesValue == "on" || showSizesValue == "1"
+	}
+
 	currentTheme, ok = themes[themeId]
 	if !ok {
 		_, _ = fmt.Fprintf(os.Stderr, "fx: unknown theme %q, available themes: %v\n", themeId, themeNames)
@@ -93,6 +101,8 @@ var (
 	defaultStatusBar = toColor(lipgloss.NewStyle().Background(lipgloss.Color("7")).Foreground(lipgloss.Color("0")).Render)
 	defaultSearch    = toColor(lipgloss.NewStyle().Background(lipgloss.Color("11")).Foreground(lipgloss.Color("16")).Render)
 	defaultNull      = fg("243")
+	defaultSize      = toColor(lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render)
+	showSizes        = false
 )
 
 var (
@@ -117,6 +127,7 @@ var themes = map[string]theme{
 		Null:      noColor,
 		Boolean:   noColor,
 		Number:    noColor,
+		Size:      noColor,
 	},
 	"1": {
 		Cursor:    defaultCursor,
@@ -129,6 +140,7 @@ var themes = map[string]theme{
 		Null:      defaultNull,
 		Boolean:   fg("5"),
 		Number:    fg("6"),
+		Size:      defaultSize,
 	},
 	"2": {
 		Cursor:    defaultCursor,
@@ -141,6 +153,7 @@ var themes = map[string]theme{
 		Null:      defaultNull,
 		Boolean:   fg("5"),
 		Number:    fg("6"),
+		Size:      defaultSize,
 	},
 	"3": {
 		Cursor:    defaultCursor,
@@ -153,6 +166,7 @@ var themes = map[string]theme{
 		Null:      defaultNull,
 		Boolean:   fg("1"),
 		Number:    fg("14"),
+		Size:      defaultSize,
 	},
 	"4": {
 		Cursor:    defaultCursor,
@@ -165,6 +179,7 @@ var themes = map[string]theme{
 		Null:      defaultNull,
 		Boolean:   fg("#F15BB5"),
 		Number:    fg("#9B5DE5"),
+		Size:      defaultSize,
 	},
 	"5": {
 		Cursor:    defaultCursor,
@@ -177,6 +192,7 @@ var themes = map[string]theme{
 		Null:      defaultNull,
 		Boolean:   fg("#ee964b"),
 		Number:    fg("#ee964b"),
+		Size:      defaultSize,
 	},
 	"6": {
 		Cursor:    defaultCursor,
@@ -189,6 +205,7 @@ var themes = map[string]theme{
 		Null:      defaultNull,
 		Boolean:   fg("#FF6B6B"),
 		Number:    fg("#FFD93D"),
+		Size:      defaultSize,
 	},
 	"7": {
 		Cursor:    defaultCursor,
@@ -201,6 +218,7 @@ var themes = map[string]theme{
 		Null:      defaultNull,
 		Boolean:   boldFg("201"),
 		Number:    boldFg("201"),
+		Size:      defaultSize,
 	},
 	"8": {
 		Cursor:    defaultCursor,
@@ -213,6 +231,7 @@ var themes = map[string]theme{
 		Null:      defaultNull,
 		Boolean:   fg("50"),
 		Number:    fg("123"),
+		Size:      defaultSize,
 	},
 	"🔵": {
 		Cursor: toColor(lipgloss.NewStyle().
@@ -228,6 +247,7 @@ var themes = map[string]theme{
 		Null:      noColor,
 		Boolean:   noColor,
 		Number:    noColor,
+		Size:      defaultSize,
 	},
 	"🥝": {
 		Cursor:    defaultCursor,
@@ -240,6 +260,7 @@ var themes = map[string]theme{
 		Null:      fg("230"),
 		Boolean:   fg("226"),
 		Number:    fg("226"),
+		Size:      defaultSize,
 	},
 }
 

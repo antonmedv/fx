@@ -101,3 +101,16 @@ func TestCollapseRecursive(t *testing.T) {
 	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
 	tm.WaitFinished(t, teatest.WithFinalTimeout(time.Second))
 }
+
+func TestCollapseRecursiveWithSizes(t *testing.T) {
+	showSizes = true
+	defer func() { showSizes = true }()
+
+	tm := prepare(t)
+
+	tm.Send(tea.KeyMsg{Type: tea.KeyShiftLeft})
+	teatest.RequireEqualOutput(t, read(t, tm))
+
+	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
+	tm.WaitFinished(t, teatest.WithFinalTimeout(time.Second))
+}

@@ -200,6 +200,7 @@ func (p *jsonParser) parseObject() *node {
 		p.depth++
 		key := p.parseString()
 		key.key, key.value = key.value, nil
+		object.size += 1
 		key.directParent = object
 
 		p.skipWhitespace()
@@ -216,6 +217,7 @@ func (p *jsonParser) parseObject() *node {
 		p.depth--
 
 		key.value = value.value
+		key.size = value.size
 		key.next = value.next
 		if key.next != nil {
 			key.next.prev = key
@@ -268,6 +270,7 @@ func (p *jsonParser) parseArray() *node {
 		p.depth++
 		value := p.parseValue()
 		value.directParent = arr
+		arr.size += 1
 		value.index = i
 		p.depth--
 
