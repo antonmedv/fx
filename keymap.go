@@ -148,9 +148,10 @@ func init() {
 }
 
 var (
-	yankValue = key.NewBinding(key.WithKeys("y"))
-	yankKey   = key.NewBinding(key.WithKeys("k"))
-	yankPath  = key.NewBinding(key.WithKeys("p"))
-	arrowUp   = key.NewBinding(key.WithKeys("up"))
-	arrowDown = key.NewBinding(key.WithKeys("down"))
+	yankValueY = key.NewBinding(key.WithKeys("y"))
+	yankValueV = key.NewBinding(key.WithKeys("v"))
+	yankKey    = key.NewBinding(key.WithKeys("k"))
+	yankPath   = key.NewBinding(key.WithKeys("p"))
+	arrowUp    = key.NewBinding(key.WithKeys("up"))
+	arrowDown  = key.NewBinding(key.WithKeys("down"))
 )
