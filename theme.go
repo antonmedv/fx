@@ -68,7 +68,7 @@ func init() {
 		themeId = "1"
 	}
 
-	showSizesValue, ok := os.LookupEnv("FX_SHOWSIZES")
+	showSizesValue, ok := os.LookupEnv("FX_SHOW_SIZE")
 	if ok {
 		showSizesValue := strings.ToLower(showSizesValue)
 		showSizes = showSizesValue == "true" || showSizesValue == "yes" || showSizesValue == "on" || showSizesValue == "1"
