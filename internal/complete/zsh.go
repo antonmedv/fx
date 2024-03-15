@@ -5,8 +5,11 @@ func Zsh() string {
     if [[ $CURRENT -eq 2 ]]; then
         _files
     else
-		_values=("${(@f)$(COMP_ZSH="${LBUFFER}" fx)}")
-        compadd -a _values
+        reply="$(COMP_ZSH="${LBUFFER}" fx)"
+        if [[ -n "$reply" ]]; then 
+            _values=("${(@f)reply}")
+            compadd -a _values
+        fi
     fi
 }
 
