@@ -1,4 +1,5 @@
 Output preview-mode.gif
+Output preview-mode.mp4
 
 Set FontSize 32
 Set Width 1800
