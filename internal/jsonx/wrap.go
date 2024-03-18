@@ -8,7 +8,7 @@ import (
 
 func DropWrapAll(n *Node) {
 	for n != nil {
-		if n.Value != nil && n.Value[0] == '"' {
+		if n.Value != nil && (n.Value[0] == '"' || n.Kind == HttpHeader) {
 			n.dropChunks()
 		}
 		if n.IsCollapsed() {
@@ -24,7 +24,7 @@ func WrapAll(n *Node, termWidth int) {
 		return
 	}
 	for n != nil {
-		if n.Value != nil && n.Value[0] == '"' {
+		if n.Value != nil && (n.Value[0] == '"' || n.Kind == HttpHeader) {
 			n.dropChunks()
 			lines, count := doWrap(n, termWidth)
 			if count > 1 {

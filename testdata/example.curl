@@ -1,0 +1,13 @@
+HTTP/1.1 200 OK
+date: Sun, 17 Mar 2024 21:58:03 GMT
+content-type: application/json; charset=utf-8
+content-length: 35
+age: 32
+x-multiline: a
+  b
+  c
+x-multivalue: value1
+x-multivalue: value2
+
+
+{"key1": "value1","key2": "value2"}

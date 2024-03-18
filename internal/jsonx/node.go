@@ -6,6 +6,16 @@ import (
 	jsonpath "github.com/antonmedv/fx/path"
 )
 
+type NodeKind uint8
+
+const (
+	Unspecified NodeKind = iota
+	HttpStatus
+	HttpHeader
+	HttpHeaderContinuation
+	HttpBlank
+)
+
 type Node struct {
 	Prev, Next, End *Node
 	directParent    *Node
@@ -19,6 +29,7 @@ type Node struct {
 	ChunkEnd        *Node
 	Comma           bool
 	Index           int
+	Kind            NodeKind
 }
 
 // append ands a node as a child to the current node (body of {...} or [...]).

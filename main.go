@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/antonmedv/fx/http_response"
 	"io"
 	"io/fs"
 	"math"
@@ -136,6 +138,8 @@ func main() {
 		panic(err)
 	}
 
+	var head *Node
+
 	if flagYaml {
 		data, err = yaml.YAMLToJSON(data)
 		if err != nil {
@@ -143,13 +147,26 @@ func main() {
 			os.Exit(1)
 			return
 		}
-	}
-
-	head, err := Parse(data)
-	if err != nil {
-		fmt.Print(err.Error())
-		os.Exit(1)
-		return
+		head, err = Parse(data)
+		if err != nil {
+			fmt.Print(err.Error())
+			os.Exit(1)
+			return
+		}
+	} else if string(data[0:5]) == "HTTP/" {
+		head, err = formatHttpResponse(data)
+		if err != nil {
+			fmt.Print(err.Error())
+			os.Exit(1)
+			return
+		}
+	} else {
+		head, err = Parse(data)
+		if err != nil {
+			fmt.Print(err.Error())
+			os.Exit(1)
+			return
+		}
 	}
 
 	digInput := textinput.New()
@@ -198,6 +215,59 @@ func main() {
 	if m.printOnExit {
 		fmt.Println(m.cursorValue())
 	}
+}
+
+func formatHttpResponse(data []byte) (*Node, error) {
+	response, err := http_response.NewHttpResponseFromText(data)
+	if err != nil {
+		return nil, err
+	}
+
+	result := &Node{
+		Value: response.Status(),
+		Kind:  HttpStatus,
+	}
+
+	lastNode := result
+
+	for _, header := range response.Headers() {
+		for i, value := range bytes.Split(header.Value(), []byte{'\n'}) {
+			var key []byte
+			kind := HttpHeaderContinuation
+
+			if i == 0 {
+				key = header.Name()
+				kind = HttpHeader
+			}
+
+			child := &Node{
+				Key:   key,
+				Value: value,
+				Kind:  kind,
+			}
+
+			lastNode.Next = child
+			child.Prev = lastNode
+			lastNode = child
+		}
+	}
+
+	blank := &Node{
+		Kind: HttpBlank,
+	}
+	lastNode.Next = blank
+	blank.Prev = lastNode
+	lastNode = blank
+
+	body, err := Parse(response.Body())
+	if err != nil {
+		return nil, err
+	}
+
+	lastNode.Next = body
+	body.Prev = lastNode
+
+	return result, nil
 }
 
 type model struct {
@@ -706,37 +776,55 @@ func (m *model) View() string {
 			isSelected = false // don't highlight the cursor while iterating search results
 		}
 
-		if n.Key != nil {
-			screen = append(screen, m.prettyKey(n, isSelected)...)
+		switch true {
+		case n.Kind == HttpStatus:
+			screen = append(screen, m.prettyHttpElement(n.Value, theme.CurrentTheme.HttpStatus, isSelected, m.search.values[n])...)
+		case n.Kind == HttpHeader:
+			screen = append(screen, m.prettyHttpElement(n.Key, theme.CurrentTheme.HttpHeaderName, isSelected, m.search.keys[n])...)
 			screen = append(screen, theme.Colon...)
-			isSelected = false // don't highlight the key's value
-		}
-
-		screen = append(screen, m.prettyPrint(n, isSelected)...)
-
-		if n.IsCollapsed() {
-			if n.Value[0] == '{' {
-				if n.Collapsed.Key != nil {
-					screen = append(screen, theme.CurrentTheme.Preview(n.Collapsed.Key)...)
-					screen = append(screen, theme.ColonPreview...)
-				}
-				screen = append(screen, theme.Dot3...)
-				screen = append(screen, theme.CloseCurlyBracket...)
-			} else if n.Value[0] == '[' {
-				screen = append(screen, theme.Dot3...)
-				screen = append(screen, theme.CloseSquareBracket...)
+			screen = append(screen, m.prettyHttpElement(n.Value, theme.CurrentTheme.HttpHeaderValue, false, m.search.values[n])...)
+		case n.Kind == HttpHeaderContinuation:
+			screen = append(screen, m.prettyHttpElement([]byte{' '}, theme.CurrentTheme.HttpHeaderName, isSelected, m.search.keys[n])...)
+			screen = append(screen, m.prettyHttpElement(n.Value[1:], theme.CurrentTheme.HttpHeaderValue, false, m.search.values[n])...)
+		case n.Kind == HttpBlank:
+			if isSelected {
+				screen = append(screen, theme.CurrentTheme.Cursor([]byte{' '})...)
 			}
-			if n.End != nil && n.End.Comma {
+		case n.Kind == Unspecified:
+			fallthrough
+		default:
+			if n.Key != nil {
+				screen = append(screen, m.prettyKey(n, isSelected)...)
+				screen = append(screen, theme.Colon...)
+				isSelected = false // don't highlight the key's value
+			}
+
+			screen = append(screen, m.prettyPrint(n, isSelected)...)
+
+			if n.IsCollapsed() {
+				if n.Value[0] == '{' {
+					if n.Collapsed.Key != nil {
+						screen = append(screen, theme.CurrentTheme.Preview(n.Collapsed.Key)...)
+						screen = append(screen, theme.ColonPreview...)
+					}
+					screen = append(screen, theme.Dot3...)
+					screen = append(screen, theme.CloseCurlyBracket...)
+				} else if n.Value[0] == '[' {
+					screen = append(screen, theme.Dot3...)
+					screen = append(screen, theme.CloseSquareBracket...)
+				}
+				if n.End != nil && n.End.Comma {
+					screen = append(screen, theme.Comma...)
+				}
+			}
+			if n.Comma {
 				screen = append(screen, theme.Comma...)
 			}
-		}
-		if n.Comma {
-			screen = append(screen, theme.Comma...)
-		}
 
-		if theme.ShowSizes && len(n.Value) > 0 && (n.Value[0] == '{' || n.Value[0] == '[') {
-			if n.IsCollapsed() || n.Size > 1 {
-				screen = append(screen, theme.CurrentTheme.Size([]byte(fmt.Sprintf(" // %d", n.Size)))...)
+			if theme.ShowSizes && len(n.Value) > 0 && (n.Value[0] == '{' || n.Value[0] == '[') {
+				if n.IsCollapsed() || n.Size > 1 {
+					screen = append(screen, theme.CurrentTheme.Size([]byte(fmt.Sprintf(" // %d", n.Size)))...)
+				}
 			}
 		}
 
@@ -839,6 +927,32 @@ func (m *model) prettyPrint(node *Node, selected bool) []byte {
 	}
 }
 
+func (m *model) prettyHttpElement(text []byte, style theme.Color, selected bool, indexes []match) (out []byte) {
+	if len(text) == 0 {
+		return text
+	}
+
+	if selected {
+		style = theme.CurrentTheme.Cursor
+	}
+
+	if indexes == nil {
+		return style(text)
+	}
+
+	for i, p := range splitBytesByIndexes(text, indexes) {
+		if i%2 == 0 {
+			out = append(out, style(p.b)...)
+		} else if p.index == m.search.cursor {
+			out = append(out, theme.CurrentTheme.Cursor(p.b)...)
+		} else {
+			out = append(out, theme.CurrentTheme.Search(p.b)...)
+		}
+	}
+
+	return
+}
+
 func (m *model) viewHeight() int {
 	if m.searchInput.Focused() || m.searchInput.Value() != "" {
 		return m.termHeight - 2
@@ -927,8 +1041,8 @@ func (m *model) selectNode(n *Node) {
 func (m *model) cursorPath() string {
 	path := ""
 	at := m.cursorPointsTo()
-	for at != nil {
-		if at.Prev != nil {
+	for at != nil && at.Kind == Unspecified {
+		if at.Prev != nil && at.Prev.Kind == Unspecified {
 			if at.Chunk != nil && at.Value == nil {
 				at = at.Parent()
 			}
