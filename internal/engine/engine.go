@@ -111,5 +111,16 @@ func Reduce(args []string) {
 		return
 	}
 
-	fmt.Println(output)
+	node, err := jsonx.Parse([]byte(output))
+	if err != nil {
+		println(err.Error())
+		os.Exit(1)
+	}
+
+	if len(node.Value) > 0 && node.Value[0] == '"' {
+		s, _ := strconv.Unquote(string(node.Value))
+		fmt.Println(s)
+		return
+	}
+	fmt.Print(node.PrettyPrint())
 }

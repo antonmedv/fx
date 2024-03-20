@@ -1,4 +1,4 @@
-package main
+package theme
 
 import (
 	"encoding/json"
@@ -10,42 +10,44 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/termenv"
+
+	"github.com/antonmedv/fx/internal/utils"
 )
 
-type theme struct {
-	Cursor    color
-	Syntax    color
-	Preview   color
-	StatusBar color
-	Search    color
-	Key       color
-	String    color
-	Null      color
-	Boolean   color
-	Number    color
-	Size      color
+type Theme struct {
+	Cursor    Color
+	Syntax    Color
+	Preview   Color
+	StatusBar Color
+	Search    Color
+	Key       Color
+	String    Color
+	Null      Color
+	Boolean   Color
+	Number    Color
+	Size      Color
 }
 
-type color func(s []byte) []byte
+type Color func(s []byte) []byte
 
-func valueStyle(b []byte, selected, chunk bool) color {
+func Value(b []byte, selected, chunk bool) Color {
 	if selected {
-		return currentTheme.Cursor
+		return CurrentTheme.Cursor
 	} else if chunk {
-		return currentTheme.String
+		return CurrentTheme.String
 	} else {
 		switch b[0] {
 		case '"':
-			return currentTheme.String
+			return CurrentTheme.String
 		case 't', 'f':
-			return currentTheme.Boolean
+			return CurrentTheme.Boolean
 		case 'n':
-			return currentTheme.Null
+			return CurrentTheme.Null
 		case '{', '[', '}', ']':
-			return currentTheme.Syntax
+			return CurrentTheme.Syntax
 		default:
-			if isDigit(b[0]) || b[0] == '-' {
-				return currentTheme.Number
+			if utils.IsDigit(b[0]) || b[0] == '-' {
+				return CurrentTheme.Number
 			}
 			return noColor
 		}
@@ -53,7 +55,7 @@ func valueStyle(b []byte, selected, chunk bool) color {
 }
 
 var (
-	termOutput = termenv.NewOutput(os.Stderr)
+	TermOutput = termenv.NewOutput(os.Stderr)
 )
 
 func init() {
@@ -71,51 +73,51 @@ func init() {
 	showSizesValue, ok := os.LookupEnv("FX_SHOW_SIZE")
 	if ok {
 		showSizesValue := strings.ToLower(showSizesValue)
-		showSizes = showSizesValue == "true" || showSizesValue == "yes" || showSizesValue == "on" || showSizesValue == "1"
+		ShowSizes = showSizesValue == "true" || showSizesValue == "yes" || showSizesValue == "on" || showSizesValue == "1"
 	}
 
-	currentTheme, ok = themes[themeId]
+	CurrentTheme, ok = themes[themeId]
 	if !ok {
 		_, _ = fmt.Fprintf(os.Stderr, "fx: unknown theme %q, available themes: %v\n", themeId, themeNames)
 		os.Exit(1)
 	}
 
-	if termOutput.ColorProfile() == termenv.Ascii {
-		currentTheme = themes["0"]
+	if TermOutput.ColorProfile() == termenv.Ascii {
+		CurrentTheme = themes["0"]
 	}
 
-	colon = currentTheme.Syntax([]byte{':', ' '})
-	colonPreview = currentTheme.Preview([]byte{':'})
-	comma = currentTheme.Syntax([]byte{','})
-	empty = currentTheme.Preview([]byte{'~'})
-	dot3 = currentTheme.Preview([]byte("…"))
-	closeCurlyBracket = currentTheme.Syntax([]byte{'}'})
-	closeSquareBracket = currentTheme.Syntax([]byte{']'})
+	Colon = CurrentTheme.Syntax([]byte{':', ' '})
+	ColonPreview = CurrentTheme.Preview([]byte{':'})
+	Comma = CurrentTheme.Syntax([]byte{','})
+	Empty = CurrentTheme.Preview([]byte{'~'})
+	Dot3 = CurrentTheme.Preview([]byte("…"))
+	CloseCurlyBracket = CurrentTheme.Syntax([]byte{'}'})
+	CloseSquareBracket = CurrentTheme.Syntax([]byte{']'})
 }
 
 var (
 	themeNames       []string
-	currentTheme     theme
+	CurrentTheme     Theme
 	defaultCursor    = toColor(lipgloss.NewStyle().Reverse(true).Render)
 	defaultPreview   = toColor(lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render)
 	defaultStatusBar = toColor(lipgloss.NewStyle().Background(lipgloss.Color("7")).Foreground(lipgloss.Color("0")).Render)
 	defaultSearch    = toColor(lipgloss.NewStyle().Background(lipgloss.Color("11")).Foreground(lipgloss.Color("16")).Render)
 	defaultNull      = fg("243")
 	defaultSize      = toColor(lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render)
-	showSizes        = false
+	ShowSizes        = false
 )
 
 var (
-	colon              []byte
-	colonPreview       []byte
-	comma              []byte
-	empty              []byte
-	dot3               []byte
-	closeCurlyBracket  []byte
-	closeSquareBracket []byte
+	Colon              []byte
+	ColonPreview       []byte
+	Comma              []byte
+	Empty              []byte
+	Dot3               []byte
+	CloseCurlyBracket  []byte
+	CloseSquareBracket []byte
 )
 
-var themes = map[string]theme{
+var themes = map[string]Theme{
 	"0": {
 		Cursor:    defaultCursor,
 		Syntax:    noColor,
@@ -268,21 +270,21 @@ func noColor(s []byte) []byte {
 	return s
 }
 
-func toColor(f func(s ...string) string) color {
+func toColor(f func(s ...string) string) Color {
 	return func(s []byte) []byte {
 		return []byte(f(string(s)))
 	}
 }
 
-func fg(color string) color {
+func fg(color string) Color {
 	return toColor(lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Render)
 }
 
-func boldFg(color string) color {
+func boldFg(color string) Color {
 	return toColor(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(color)).Render)
 }
 
-func themeTester() {
+func ThemeTester() {
 	title := lipgloss.NewStyle().Bold(true)
 	for _, name := range themeNames {
 		t := themes[name]
@@ -319,7 +321,7 @@ func themeTester() {
 	}
 }
 
-func exportThemes() {
+func ExportThemes() {
 	lipgloss.SetColorProfile(termenv.ANSI256) // Export in Terminal.app compatible colors
 	placeholder := []byte{'_'}
 	extract := func(b []byte) string {

@@ -27,6 +27,7 @@ import (
 
 	"github.com/antonmedv/fx/internal/complete"
 	. "github.com/antonmedv/fx/internal/jsonx"
+	"github.com/antonmedv/fx/internal/theme"
 	jsonpath "github.com/antonmedv/fx/path"
 )
 
@@ -72,10 +73,10 @@ func main() {
 			fmt.Println(version)
 			return
 		case "--themes":
-			themeTester()
+			theme.ThemeTester()
 			return
 		case "--export-themes":
-			exportThemes()
+			theme.ExportThemes()
 			return
 		default:
 			args = append(args, arg)
@@ -177,7 +178,7 @@ func main() {
 		search:      newSearch(),
 	}
 
-	lipgloss.SetColorProfile(termOutput.ColorProfile())
+	lipgloss.SetColorProfile(theme.TermOutput.ColorProfile())
 
 	withMouse := tea.WithMouseCellMotion()
 	if _, ok := os.LookupEnv("FX_NO_MOUSE"); ok {
@@ -680,12 +681,12 @@ func (m *model) scrollIntoView() {
 func (m *model) View() string {
 	if m.showHelp {
 		statusBar := flex(m.termWidth, ": press q or ? to close help", "")
-		return m.help.View() + "\n" + string(currentTheme.StatusBar([]byte(statusBar)))
+		return m.help.View() + "\n" + string(theme.CurrentTheme.StatusBar([]byte(statusBar)))
 	}
 
 	if m.showPreview {
 		statusBar := flex(m.termWidth, m.cursorPath(), m.fileName)
-		return m.preview.View() + "\n" + string(currentTheme.StatusBar([]byte(statusBar)))
+		return m.preview.View() + "\n" + string(theme.CurrentTheme.StatusBar([]byte(statusBar)))
 	}
 
 	var screen []byte
@@ -707,7 +708,7 @@ func (m *model) View() string {
 
 		if n.Key != nil {
 			screen = append(screen, m.prettyKey(n, isSelected)...)
-			screen = append(screen, colon...)
+			screen = append(screen, theme.Colon...)
 			isSelected = false // don't highlight the key's value
 		}
 
@@ -716,26 +717,26 @@ func (m *model) View() string {
 		if n.IsCollapsed() {
 			if n.Value[0] == '{' {
 				if n.Collapsed.Key != nil {
-					screen = append(screen, currentTheme.Preview(n.Collapsed.Key)...)
-					screen = append(screen, colonPreview...)
+					screen = append(screen, theme.CurrentTheme.Preview(n.Collapsed.Key)...)
+					screen = append(screen, theme.ColonPreview...)
 				}
-				screen = append(screen, dot3...)
-				screen = append(screen, closeCurlyBracket...)
+				screen = append(screen, theme.Dot3...)
+				screen = append(screen, theme.CloseCurlyBracket...)
 			} else if n.Value[0] == '[' {
-				screen = append(screen, dot3...)
-				screen = append(screen, closeSquareBracket...)
+				screen = append(screen, theme.Dot3...)
+				screen = append(screen, theme.CloseSquareBracket...)
 			}
 			if n.End != nil && n.End.Comma {
-				screen = append(screen, comma...)
+				screen = append(screen, theme.Comma...)
 			}
 		}
 		if n.Comma {
-			screen = append(screen, comma...)
+			screen = append(screen, theme.Comma...)
 		}
 
-		if showSizes && len(n.Value) > 0 && (n.Value[0] == '{' || n.Value[0] == '[') {
+		if theme.ShowSizes && len(n.Value) > 0 && (n.Value[0] == '{' || n.Value[0] == '[') {
 			if n.IsCollapsed() || n.Size > 1 {
-				screen = append(screen, currentTheme.Size([]byte(fmt.Sprintf(" // %d", n.Size)))...)
+				screen = append(screen, theme.CurrentTheme.Size([]byte(fmt.Sprintf(" // %d", n.Size)))...)
 			}
 		}
 
@@ -745,7 +746,7 @@ func (m *model) View() string {
 	}
 
 	for i := printedLines; i < m.viewHeight(); i++ {
-		screen = append(screen, empty...)
+		screen = append(screen, theme.Empty...)
 		screen = append(screen, '\n')
 	}
 
@@ -753,7 +754,7 @@ func (m *model) View() string {
 		screen = append(screen, m.digInput.View()...)
 	} else {
 		statusBar := flex(m.termWidth, m.cursorPath(), m.fileName)
-		screen = append(screen, currentTheme.StatusBar([]byte(statusBar))...)
+		screen = append(screen, theme.CurrentTheme.StatusBar([]byte(statusBar))...)
 	}
 
 	if m.yank {
@@ -785,9 +786,9 @@ func (m *model) View() string {
 func (m *model) prettyKey(node *Node, selected bool) []byte {
 	b := node.Key
 
-	style := currentTheme.Key
+	style := theme.CurrentTheme.Key
 	if selected {
-		style = currentTheme.Cursor
+		style = theme.CurrentTheme.Cursor
 	}
 
 	if indexes, ok := m.search.keys[node]; ok {
@@ -796,9 +797,9 @@ func (m *model) prettyKey(node *Node, selected bool) []byte {
 			if i%2 == 0 {
 				out = append(out, style(p.b)...)
 			} else if p.index == m.search.cursor {
-				out = append(out, currentTheme.Cursor(p.b)...)
+				out = append(out, theme.CurrentTheme.Cursor(p.b)...)
 			} else {
-				out = append(out, currentTheme.Search(p.b)...)
+				out = append(out, theme.CurrentTheme.Search(p.b)...)
 			}
 		}
 		return out
@@ -819,7 +820,7 @@ func (m *model) prettyPrint(node *Node, selected bool) []byte {
 		return b
 	}
 
-	style := valueStyle(b, selected, node.Chunk != nil)
+	style := theme.Value(b, selected, node.Chunk != nil)
 
 	if indexes, ok := m.search.values[node]; ok {
 		var out []byte
@@ -827,9 +828,9 @@ func (m *model) prettyPrint(node *Node, selected bool) []byte {
 			if i%2 == 0 {
 				out = append(out, style(p.b)...)
 			} else if p.index == m.search.cursor {
-				out = append(out, currentTheme.Cursor(p.b)...)
+				out = append(out, theme.CurrentTheme.Cursor(p.b)...)
 			} else {
-				out = append(out, currentTheme.Search(p.b)...)
+				out = append(out, theme.CurrentTheme.Search(p.b)...)
 			}
 		}
 		return out

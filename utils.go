@@ -4,10 +4,6 @@ import (
 	"strings"
 )
 
-func isDigit(ch byte) bool {
-	return ch >= '0' && ch <= '9'
-}
-
 func regexCase(code string) (string, bool) {
 	if strings.HasSuffix(code, "/i") {
 		return code[:len(code)-2], true

@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/antonmedv/fx/internal/utils"
 )
 
 type jsonParser struct {
@@ -96,7 +98,7 @@ func (p *jsonParser) parseString() *Node {
 				var unicode string
 				for i := 0; i < 4; i++ {
 					p.next()
-					if !isHexDigit(p.lastChar) {
+					if !utils.IsHexDigit(p.lastChar) {
 						panic(fmt.Sprintf("Invalid Unicode escape sequence '\\u%s%c'", unicode, p.lastChar))
 					}
 					unicode += string(p.lastChar)
@@ -134,7 +136,7 @@ func (p *jsonParser) parseNumber() *Node {
 	// Handle negative numbers
 	if p.lastChar == '-' {
 		p.next()
-		if !isDigit(p.lastChar) {
+		if !utils.IsDigit(p.lastChar) {
 			panic(fmt.Sprintf("Invalid character %q in number", p.lastChar))
 		}
 	}
@@ -143,7 +145,7 @@ func (p *jsonParser) parseNumber() *Node {
 	if p.lastChar == '0' {
 		p.next()
 	} else {
-		for isDigit(p.lastChar) {
+		for utils.IsDigit(p.lastChar) {
 			p.next()
 		}
 	}
@@ -151,10 +153,10 @@ func (p *jsonParser) parseNumber() *Node {
 	// Decimal portion
 	if p.lastChar == '.' {
 		p.next()
-		if !isDigit(p.lastChar) {
+		if !utils.IsDigit(p.lastChar) {
 			panic(fmt.Sprintf("Invalid character %q in number", p.lastChar))
 		}
-		for isDigit(p.lastChar) {
+		for utils.IsDigit(p.lastChar) {
 			p.next()
 		}
 	}
@@ -165,10 +167,10 @@ func (p *jsonParser) parseNumber() *Node {
 		if p.lastChar == '+' || p.lastChar == '-' {
 			p.next()
 		}
-		if !isDigit(p.lastChar) {
+		if !utils.IsDigit(p.lastChar) {
 			panic(fmt.Sprintf("Invalid character %q in number", p.lastChar))
 		}
-		for isDigit(p.lastChar) {
+		for utils.IsDigit(p.lastChar) {
 			p.next()
 		}
 	}

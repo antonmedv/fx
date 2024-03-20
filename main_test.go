@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/antonmedv/fx/internal/jsonx"
+	"github.com/antonmedv/fx/internal/theme"
 )
 
 func init() {
@@ -105,8 +106,8 @@ func TestCollapseRecursive(t *testing.T) {
 }
 
 func TestCollapseRecursiveWithSizes(t *testing.T) {
-	showSizes = true
-	defer func() { showSizes = true }()
+	theme.showSizes = true
+	defer func() { theme.showSizes = true }()
 
 	tm := prepare(t)
 
