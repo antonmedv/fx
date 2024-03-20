@@ -10,6 +10,8 @@ import (
 
 	"github.com/dop251/goja"
 	"github.com/goccy/go-yaml"
+
+	"github.com/antonmedv/fx/internal/jsonx"
 )
 
 //go:embed stdlib.js
@@ -74,7 +76,12 @@ func Reduce(args []string) {
 			os.Exit(1)
 		}
 	} else {
-
+		node, err := jsonx.Parse(data)
+		if err != nil {
+			println(err.Error())
+			os.Exit(1)
+		}
+		data = []byte(node.String())
 	}
 
 	var code strings.Builder
