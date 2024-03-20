@@ -1,4 +1,4 @@
-package main
+package jsonx
 
 import (
 	"fmt"
@@ -17,7 +17,7 @@ type jsonParser struct {
 	skipFirstIdent bool
 }
 
-func parse(data []byte) (head *node, err error) {
+func Parse(data []byte) (head *Node, err error) {
 	p := &jsonParser{
 		data:       data,
 		lineNumber: 1,
@@ -29,14 +29,14 @@ func parse(data []byte) (head *node, err error) {
 		}
 	}()
 	p.next()
-	var next *node
+	var next *Node
 	for p.lastChar != 0 {
 		value := p.parseValue()
 		if head == nil {
 			head = value
 			next = head
 		} else {
-			value.index = -1
+			value.Index = -1
 			next.adjacent(value)
 			next = value
 		}
@@ -57,10 +57,10 @@ func (p *jsonParser) next() {
 	p.sourceTail.writeByte(p.lastChar)
 }
 
-func (p *jsonParser) parseValue() *node {
+func (p *jsonParser) parseValue() *Node {
 	p.skipWhitespace()
 
-	var l *node
+	var l *Node
 	switch p.lastChar {
 	case '"':
 		l = p.parseString()
@@ -84,8 +84,8 @@ func (p *jsonParser) parseValue() *node {
 	return l
 }
 
-func (p *jsonParser) parseString() *node {
-	str := &node{depth: p.depth}
+func (p *jsonParser) parseString() *Node {
+	str := &Node{Depth: p.depth}
 	start := p.end - 1
 	p.next()
 	escaped := false
@@ -122,13 +122,13 @@ func (p *jsonParser) parseString() *node {
 		p.next()
 	}
 
-	str.value = p.data[start:p.end]
+	str.Value = p.data[start:p.end]
 	p.next()
 	return str
 }
 
-func (p *jsonParser) parseNumber() *node {
-	num := &node{depth: p.depth}
+func (p *jsonParser) parseNumber() *Node {
+	num := &Node{Depth: p.depth}
 	start := p.end - 1
 
 	// Handle negative numbers
@@ -173,20 +173,20 @@ func (p *jsonParser) parseNumber() *node {
 		}
 	}
 
-	num.value = p.data[start : p.end-1]
+	num.Value = p.data[start : p.end-1]
 	return num
 }
 
-func (p *jsonParser) parseObject() *node {
-	object := &node{depth: p.depth}
-	object.value = []byte{'{'}
+func (p *jsonParser) parseObject() *Node {
+	object := &Node{Depth: p.depth}
+	object.Value = []byte{'{'}
 
 	p.next()
 	p.skipWhitespace()
 
 	// Empty object
 	if p.lastChar == '}' {
-		object.value = append(object.value, '}')
+		object.Value = append(object.Value, '}')
 		p.next()
 		return object
 	}
@@ -199,8 +199,8 @@ func (p *jsonParser) parseObject() *node {
 
 		p.depth++
 		key := p.parseString()
-		key.key, key.value = key.value, nil
-		object.size += 1
+		key.Key, key.Value = key.Value, nil
+		object.Size += 1
 		key.directParent = object
 
 		p.skipWhitespace()
@@ -216,34 +216,34 @@ func (p *jsonParser) parseObject() *node {
 		value := p.parseValue()
 		p.depth--
 
-		key.value = value.value
-		key.size = value.size
-		key.next = value.next
-		if key.next != nil {
-			key.next.prev = key
+		key.Value = value.Value
+		key.Size = value.Size
+		key.Next = value.Next
+		if key.Next != nil {
+			key.Next.Prev = key
 		}
-		key.end = value.end
+		key.End = value.End
 		value.indirectParent = key
 		object.append(key)
 
 		p.skipWhitespace()
 
 		if p.lastChar == ',' {
-			object.end.comma = true
+			object.End.Comma = true
 			p.next()
 			p.skipWhitespace()
 			if p.lastChar == '}' {
-				object.end.comma = false
+				object.End.Comma = false
 			} else {
 				continue
 			}
 		}
 
 		if p.lastChar == '}' {
-			closeBracket := &node{depth: p.depth}
-			closeBracket.value = []byte{'}'}
+			closeBracket := &Node{Depth: p.depth}
+			closeBracket.Value = []byte{'}'}
 			closeBracket.directParent = object
-			closeBracket.index = -1
+			closeBracket.Index = -1
 			object.append(closeBracket)
 			p.next()
 			return object
@@ -253,15 +253,15 @@ func (p *jsonParser) parseObject() *node {
 	}
 }
 
-func (p *jsonParser) parseArray() *node {
-	arr := &node{depth: p.depth}
-	arr.value = []byte{'['}
+func (p *jsonParser) parseArray() *Node {
+	arr := &Node{Depth: p.depth}
+	arr.Value = []byte{'['}
 
 	p.next()
 	p.skipWhitespace()
 
 	if p.lastChar == ']' {
-		arr.value = append(arr.value, ']')
+		arr.Value = append(arr.Value, ']')
 		p.next()
 		return arr
 	}
@@ -270,29 +270,29 @@ func (p *jsonParser) parseArray() *node {
 		p.depth++
 		value := p.parseValue()
 		value.directParent = arr
-		arr.size += 1
-		value.index = i
+		arr.Size += 1
+		value.Index = i
 		p.depth--
 
 		arr.append(value)
 		p.skipWhitespace()
 
 		if p.lastChar == ',' {
-			arr.end.comma = true
+			arr.End.Comma = true
 			p.next()
 			p.skipWhitespace()
 			if p.lastChar == ']' {
-				arr.end.comma = false
+				arr.End.Comma = false
 			} else {
 				continue
 			}
 		}
 
 		if p.lastChar == ']' {
-			closeBracket := &node{depth: p.depth}
-			closeBracket.value = []byte{']'}
+			closeBracket := &Node{Depth: p.depth}
+			closeBracket.Value = []byte{']'}
 			closeBracket.directParent = arr
-			closeBracket.index = -1
+			closeBracket.Index = -1
 			arr.append(closeBracket)
 			p.next()
 			return arr
@@ -302,7 +302,7 @@ func (p *jsonParser) parseArray() *node {
 	}
 }
 
-func (p *jsonParser) parseKeyword(name string) *node {
+func (p *jsonParser) parseKeyword(name string) *Node {
 	for i := 1; i < len(name); i++ {
 		p.next()
 		if p.lastChar != name[i] {
@@ -313,8 +313,8 @@ func (p *jsonParser) parseKeyword(name string) *node {
 
 	nextCharIsSpecial := isWhitespace(p.lastChar) || p.lastChar == ',' || p.lastChar == '}' || p.lastChar == ']' || p.lastChar == 0
 	if nextCharIsSpecial {
-		keyword := &node{depth: p.depth}
-		keyword.value = []byte(name)
+		keyword := &Node{Depth: p.depth}
+		keyword.Value = []byte(name)
 		return keyword
 	}
 

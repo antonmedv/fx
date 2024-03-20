@@ -1,4 +1,4 @@
-package main
+package jsonx
 
 import (
 	"strings"

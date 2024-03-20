@@ -1,4 +1,4 @@
-package main
+package jsonx
 
 import (
 	"unicode/utf8"
@@ -6,56 +6,56 @@ import (
 	"github.com/mattn/go-runewidth"
 )
 
-func dropWrapAll(n *node) {
+func DropWrapAll(n *Node) {
 	for n != nil {
-		if n.value != nil && n.value[0] == '"' {
+		if n.Value != nil && n.Value[0] == '"' {
 			n.dropChunks()
 		}
-		if n.isCollapsed() {
-			n = n.collapsed
+		if n.IsCollapsed() {
+			n = n.Collapsed
 		} else {
-			n = n.next
+			n = n.Next
 		}
 	}
 }
 
-func wrapAll(n *node, termWidth int) {
+func WrapAll(n *Node, termWidth int) {
 	if termWidth <= 0 {
 		return
 	}
 	for n != nil {
-		if n.value != nil && n.value[0] == '"' {
+		if n.Value != nil && n.Value[0] == '"' {
 			n.dropChunks()
 			lines, count := doWrap(n, termWidth)
 			if count > 1 {
-				n.chunk = lines[0]
+				n.Chunk = lines[0]
 				for i := 1; i < count; i++ {
-					child := &node{
+					child := &Node{
 						directParent: n,
-						depth:        n.depth,
-						chunk:        lines[i],
+						Depth:        n.Depth,
+						Chunk:        lines[i],
 					}
-					if n.comma && i == count-1 {
-						child.comma = true
+					if n.Comma && i == count-1 {
+						child.Comma = true
 					}
 					n.insertChunk(child)
 				}
 			}
 		}
-		if n.isCollapsed() {
-			n = n.collapsed
+		if n.IsCollapsed() {
+			n = n.Collapsed
 		} else {
-			n = n.next
+			n = n.Next
 		}
 	}
 }
 
-func doWrap(n *node, termWidth int) ([][]byte, int) {
+func doWrap(n *Node, termWidth int) ([][]byte, int) {
 	lines := make([][]byte, 0, 1)
-	width := int(n.depth) * 2
+	width := int(n.Depth) * 2
 
-	if n.key != nil {
-		for _, ch := range string(n.key) {
+	if n.Key != nil {
+		for _, ch := range string(n.Key) {
 			width += runewidth.RuneWidth(ch)
 		}
 		width += 2 // for ": "
@@ -63,15 +63,15 @@ func doWrap(n *node, termWidth int) ([][]byte, int) {
 
 	linesCount := 0
 	start, end := 0, 0
-	b := n.value
+	b := n.Value
 
 	for len(b) > 0 {
 		r, size := utf8.DecodeRune(b)
 		w := runewidth.RuneWidth(r)
 		if width+w > termWidth {
-			lines = append(lines, n.value[start:end])
+			lines = append(lines, n.Value[start:end])
 			start = end
-			width = int(n.depth) * 2
+			width = int(n.Depth) * 2
 			linesCount++
 		}
 		width += w
@@ -80,7 +80,7 @@ func doWrap(n *node, termWidth int) ([][]byte, int) {
 	}
 
 	if start < end {
-		lines = append(lines, n.value[start:])
+		lines = append(lines, n.Value[start:])
 		linesCount++
 	}
 

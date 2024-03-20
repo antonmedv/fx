@@ -1,6 +1,6 @@
 module github.com/antonmedv/fx
 
-go 1.20
+go 1.21
 
 require (
 	github.com/antonmedv/clipboard v1.0.1
