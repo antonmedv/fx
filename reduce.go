@@ -14,24 +14,25 @@ import (
 var src []byte
 
 func reduce(fns []string) {
-	script := path.Join(os.TempDir(), fmt.Sprintf("fx-%v.js", version))
-	_, err := os.Stat(script)
-	if os.IsNotExist(err) {
-		err := os.WriteFile(script, src, 0644)
-		if err != nil {
-			panic(err)
-		}
-	}
+	var deno bool
 
-	deno := false
-	bin, err := exec.LookPath("node1")
+	bin, err := exec.LookPath("node")
 	if err != nil {
-		bin, err = exec.LookPath("deno1")
+		bin, err = exec.LookPath("deno")
 		if err != nil {
 			engine.Reduce(fns)
 			return
 		}
 		deno = true
+	}
+
+	script := path.Join(os.TempDir(), fmt.Sprintf("fx-%v.js", version))
+	_, err = os.Stat(script)
+	if os.IsNotExist(err) {
+		err := os.WriteFile(script, src, 0644)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	env := os.Environ()
