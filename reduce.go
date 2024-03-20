@@ -6,6 +6,8 @@ import (
 	"os"
 	"os/exec"
 	"path"
+
+	"github.com/antonmedv/fx/internal/engine"
 )
 
 //go:embed npm/index.js
@@ -22,12 +24,12 @@ func reduce(fns []string) {
 	}
 
 	deno := false
-	bin, err := exec.LookPath("node")
+	bin, err := exec.LookPath("node1")
 	if err != nil {
-		bin, err = exec.LookPath("deno")
+		bin, err = exec.LookPath("deno1")
 		if err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "Node.js or Deno is required to run fx with reducers.\n")
-			os.Exit(1)
+			engine.Reduce(fns)
+			return
 		}
 		deno = true
 	}
