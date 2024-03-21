@@ -13,6 +13,9 @@ import (
 	"github.com/charmbracelet/x/exp/teatest"
 	"github.com/muesli/termenv"
 	"github.com/stretchr/testify/require"
+
+	"github.com/antonmedv/fx/internal/jsonx"
+	"github.com/antonmedv/fx/internal/theme"
 )
 
 func init() {
@@ -26,7 +29,7 @@ func prepare(t *testing.T) *teatest.TestModel {
 	json, err := io.ReadAll(file)
 	require.NoError(t, err)
 
-	head, err := parse(json)
+	head, err := jsonx.Parse(json)
 	require.NoError(t, err)
 
 	m := &model{
@@ -103,8 +106,8 @@ func TestCollapseRecursive(t *testing.T) {
 }
 
 func TestCollapseRecursiveWithSizes(t *testing.T) {
-	showSizes = true
-	defer func() { showSizes = true }()
+	theme.ShowSizes = true
+	defer func() { theme.ShowSizes = true }()
 
 	tm := prepare(t)
 

@@ -1,16 +1,3 @@
-package complete
-
-const prelude = `
-const __keys = new Set()
-
-Object.prototype.__keys = function () {
-  if (Array.isArray(this)) return
-  if (typeof this === 'string') return
-  if (this instanceof String) return
-  if (typeof this === 'object' && this !== null)
-    Object.keys(this).forEach(x => __keys.add(x))
-}
-
 function apply(fn, ...args) {
   if (typeof fn === 'function') return fn(...args)
   return fn
@@ -20,23 +7,23 @@ function len(x) {
   if (Array.isArray(x)) return x.length
   if (typeof x === 'string') return x.length
   if (typeof x === 'object' && x !== null) return Object.keys(x).length
-  throw new Error()
+  throw new Error(`Cannot get length of ${typeof x}`)
 }
 
 function uniq(x) {
   if (Array.isArray(x)) return [...new Set(x)]
-  throw new Error()
+  throw new Error(`Cannot get unique values of ${typeof x}`)
 }
 
 function sort(x) {
   if (Array.isArray(x)) return x.sort()
-  throw new Error()
+  throw new Error(`Cannot sort ${typeof x}`)
 }
 
 function map(fn) {
   return function (x) {
     if (Array.isArray(x)) return x.map((v, i) => fn(v, i))
-    throw new Error()
+    throw new Error(`Cannot map ${typeof x}`)
   }
 }
 
@@ -47,7 +34,7 @@ function sortBy(fn) {
       const fb = fn(b)
       return fa < fb ? -1 : fa > fb ? 1 : 0
     })
-    throw new Error()
+    throw new Error(`Cannot sort ${typeof x}`)
   }
 }
 
@@ -85,21 +72,20 @@ function zip(...x) {
 
 function flatten(x) {
   if (Array.isArray(x)) return x.flat()
-  throw new Error()
+  throw new Error(`Cannot flatten ${typeof x}`)
 }
 
 function reverse(x) {
   if (Array.isArray(x)) return x.reverse()
-  throw new Error()
+  throw new Error(`Cannot reverse ${typeof x}`)
 }
 
 function keys(x) {
   if (typeof x === 'object' && x !== null) return Object.keys(x)
-  throw new Error()
+  throw new Error(`Cannot get keys of ${typeof x}`)
 }
 
 function values(x) {
   if (typeof x === 'object' && x !== null) return Object.values(x)
-  throw new Error()
+  throw new Error(`Cannot get values of ${typeof x}`)
 }
-`

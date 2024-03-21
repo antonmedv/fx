@@ -6,30 +6,33 @@ import (
 	"os"
 	"os/exec"
 	"path"
+
+	"github.com/antonmedv/fx/internal/engine"
 )
 
 //go:embed npm/index.js
 var src []byte
 
 func reduce(fns []string) {
+	var deno bool
+
+	bin, err := exec.LookPath("node")
+	if err != nil {
+		bin, err = exec.LookPath("deno")
+		if err != nil {
+			engine.Reduce(fns)
+			return
+		}
+		deno = true
+	}
+
 	script := path.Join(os.TempDir(), fmt.Sprintf("fx-%v.js", version))
-	_, err := os.Stat(script)
+	_, err = os.Stat(script)
 	if os.IsNotExist(err) {
 		err := os.WriteFile(script, src, 0644)
 		if err != nil {
 			panic(err)
 		}
-	}
-
-	deno := false
-	bin, err := exec.LookPath("node")
-	if err != nil {
-		bin, err = exec.LookPath("deno")
-		if err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "Node.js or Deno is required to run fx with reducers.\n")
-			os.Exit(1)
-		}
-		deno = true
 	}
 
 	env := os.Environ()

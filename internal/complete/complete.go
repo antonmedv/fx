@@ -1,6 +1,7 @@
 package complete
 
 import (
+	_ "embed"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 	"github.com/dop251/goja"
 	"github.com/goccy/go-yaml"
 
+	"github.com/antonmedv/fx/internal/engine"
 	"github.com/antonmedv/fx/internal/shlex"
 )
 
@@ -52,6 +54,9 @@ var globals = []string{
 	"values",
 	"skip",
 }
+
+//go:embed prelude.js
+var prelude string
 
 func Complete() bool {
 	compLine, ok := os.LookupEnv("COMP_LINE")
@@ -145,7 +150,7 @@ func doComplete(compLine string, compWord string) {
 			}
 		}
 
-		codeComplete(string(input), args, compWord)
+		codeComplete(input, args, compWord)
 	}
 }
 
@@ -163,7 +168,7 @@ func globalsComplete(compWord string) bool {
 	return false
 }
 
-func codeComplete(input string, args []string, compWord string) {
+func codeComplete(input []byte, args []string, compWord string) {
 	args = args[2:] // Drop binary & file from the args.
 
 	if compWord == "" {
@@ -180,21 +185,24 @@ func codeComplete(input string, args []string, compWord string) {
 
 	var code strings.Builder
 	code.WriteString(prelude)
-	code.WriteString(fmt.Sprintf("let json = %s\n", input))
+	code.WriteString(engine.Stdlib)
+	code.WriteString("let json = ")
+	code.Write(input)
 	for _, arg := range args {
-		if arg == "" {
+		if arg == "" { // After dropTail, we can have empty strings.
 			continue
 		}
-		code.WriteString(Transform(arg))
+		code.WriteString(engine.Transform(arg))
 	}
 	code.WriteString("\n__keys\n")
 
-	out, err := goja.New().RunString(code.String())
+	vm := goja.New()
+	value, err := vm.RunString(code.String())
 	if err != nil {
 		return
 	}
 
-	if array, ok := out.Export().([]interface{}); ok {
+	if array, ok := value.Export().([]interface{}); ok {
 		prefix := dropTail(compWord)
 		var reply []string
 		for _, key := range array {

@@ -26,6 +26,8 @@ import (
 	"github.com/sahilm/fuzzy"
 
 	"github.com/antonmedv/fx/internal/complete"
+	. "github.com/antonmedv/fx/internal/jsonx"
+	"github.com/antonmedv/fx/internal/theme"
 	jsonpath "github.com/antonmedv/fx/path"
 )
 
@@ -71,10 +73,10 @@ func main() {
 			fmt.Println(version)
 			return
 		case "--themes":
-			themeTester()
+			theme.ThemeTester()
 			return
 		case "--export-themes":
-			exportThemes()
+			theme.ExportThemes()
 			return
 		default:
 			args = append(args, arg)
@@ -143,7 +145,7 @@ func main() {
 		}
 	}
 
-	head, err := parse(data)
+	head, err := Parse(data)
 	if err != nil {
 		fmt.Print(err.Error())
 		os.Exit(1)
@@ -176,7 +178,7 @@ func main() {
 		search:      newSearch(),
 	}
 
-	lipgloss.SetColorProfile(termOutput.ColorProfile())
+	lipgloss.SetColorProfile(theme.TermOutput.ColorProfile())
 
 	withMouse := tea.WithMouseCellMotion()
 	if _, ok := os.LookupEnv("FX_NO_MOUSE"); ok {
@@ -200,7 +202,7 @@ func main() {
 
 type model struct {
 	termWidth, termHeight int
-	head, top             *node
+	head, top             *Node
 	cursor                int // cursor position [0, termHeight)
 	showCursor            bool
 	wrap                  bool
@@ -229,7 +231,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.help.Height = m.termHeight - 1
 		m.preview.Width = m.termWidth
 		m.preview.Height = m.termHeight - 1
-		wrapAll(m.top, m.termWidth)
+		WrapAll(m.top, m.termWidth)
 		m.redoSearch()
 	}
 
@@ -257,18 +259,18 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.cursor == msg.Y {
 					to := m.cursorPointsTo()
 					if to != nil {
-						if to.isCollapsed() {
-							to.expand()
+						if to.IsCollapsed() {
+							to.Expand()
 						} else {
-							to.collapse()
+							to.Collapse()
 						}
 					}
 				} else {
 					to := m.at(msg.Y)
 					if to != nil {
 						m.cursor = msg.Y
-						if to.isCollapsed() {
-							to.expand()
+						if to.IsCollapsed() {
+							to.Expand()
 						}
 					}
 				}
@@ -490,11 +492,11 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keyMap.NextSibling):
 		pointsTo := m.cursorPointsTo()
-		var nextSibling *node
-		if pointsTo.end != nil && pointsTo.end.next != nil {
-			nextSibling = pointsTo.end.next
+		var nextSibling *Node
+		if pointsTo.End != nil && pointsTo.End.Next != nil {
+			nextSibling = pointsTo.End.Next
 		} else {
-			nextSibling = pointsTo.next
+			nextSibling = pointsTo.Next
 		}
 		if nextSibling != nil {
 			m.selectNode(nextSibling)
@@ -502,13 +504,13 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keyMap.PrevSibling):
 		pointsTo := m.cursorPointsTo()
-		var prevSibling *node
-		if pointsTo.parent() != nil && pointsTo.parent().end == pointsTo {
-			prevSibling = pointsTo.parent()
-		} else if pointsTo.prev != nil {
-			prevSibling = pointsTo.prev
-			parent := prevSibling.parent()
-			if parent != nil && parent.end == prevSibling {
+		var prevSibling *Node
+		if pointsTo.Parent() != nil && pointsTo.Parent().End == pointsTo {
+			prevSibling = pointsTo.Parent()
+		} else if pointsTo.Prev != nil {
+			prevSibling = pointsTo.Prev
+			parent := prevSibling.Parent()
+			if parent != nil && parent.End == prevSibling {
 				prevSibling = parent
 			}
 		}
@@ -518,41 +520,41 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keyMap.Collapse):
 		n := m.cursorPointsTo()
-		if n.hasChildren() && !n.isCollapsed() {
-			n.collapse()
+		if n.HasChildren() && !n.IsCollapsed() {
+			n.Collapse()
 		} else {
-			if n.parent() != nil {
-				n = n.parent()
+			if n.Parent() != nil {
+				n = n.Parent()
 			}
 		}
 		m.selectNode(n)
 
 	case key.Matches(msg, keyMap.Expand):
-		m.cursorPointsTo().expand()
+		m.cursorPointsTo().Expand()
 		m.showCursor = true
 
 	case key.Matches(msg, keyMap.CollapseRecursively):
 		n := m.cursorPointsTo()
-		if n.hasChildren() {
-			n.collapseRecursively()
+		if n.HasChildren() {
+			n.CollapseRecursively()
 		}
 		m.showCursor = true
 
 	case key.Matches(msg, keyMap.ExpandRecursively):
 		n := m.cursorPointsTo()
-		if n.hasChildren() {
-			n.expandRecursively(0, math.MaxInt)
+		if n.HasChildren() {
+			n.ExpandRecursively(0, math.MaxInt)
 		}
 		m.showCursor = true
 
 	case key.Matches(msg, keyMap.CollapseAll):
 		n := m.top
 		for n != nil {
-			n.collapseRecursively()
-			if n.end == nil {
+			n.CollapseRecursively()
+			if n.End == nil {
 				n = nil
 			} else {
-				n = n.end.next
+				n = n.End.Next
 			}
 		}
 		m.cursor = 0
@@ -563,21 +565,21 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		at := m.cursorPointsTo()
 		n := m.top
 		for n != nil {
-			n.expandRecursively(0, math.MaxInt)
-			if n.end == nil {
+			n.ExpandRecursively(0, math.MaxInt)
+			if n.End == nil {
 				n = nil
 			} else {
-				n = n.end.next
+				n = n.End.Next
 			}
 		}
 		m.selectNode(at)
 
 	case key.Matches(msg, keyMap.CollapseLevel):
 		at := m.cursorPointsTo()
-		if at != nil && at.hasChildren() {
+		if at != nil && at.HasChildren() {
 			toLevel, _ := strconv.Atoi(msg.String())
-			at.collapseRecursively()
-			at.expandRecursively(0, toLevel)
+			at.CollapseRecursively()
+			at.ExpandRecursively(0, toLevel)
 			m.showCursor = true
 		}
 
@@ -585,12 +587,12 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		at := m.cursorPointsTo()
 		m.wrap = !m.wrap
 		if m.wrap {
-			wrapAll(m.top, m.termWidth)
+			WrapAll(m.top, m.termWidth)
 		} else {
-			dropWrapAll(m.top)
+			DropWrapAll(m.top)
 		}
-		if at.chunk != nil && at.value == nil {
-			at = at.parent()
+		if at.Chunk != nil && at.Value == nil {
+			at = at.Parent()
 		}
 		m.redoSearch()
 		m.selectNode(at)
@@ -632,8 +634,8 @@ func (m *model) up() {
 	m.cursor--
 	if m.cursor < 0 {
 		m.cursor = 0
-		if m.head.prev != nil {
-			m.head = m.head.prev
+		if m.head.Prev != nil {
+			m.head = m.head.Prev
 		}
 	}
 }
@@ -648,8 +650,8 @@ func (m *model) down() {
 	}
 	if m.cursor >= m.viewHeight() {
 		m.cursor = m.viewHeight() - 1
-		if m.head.next != nil {
-			m.head = m.head.next
+		if m.head.Next != nil {
+			m.head = m.head.Next
 		}
 	}
 }
@@ -659,7 +661,7 @@ func (m *model) visibleLines() int {
 	n := m.head
 	for n != nil && visibleLines < m.viewHeight() {
 		visibleLines++
-		n = n.next
+		n = n.Next
 	}
 	return visibleLines
 }
@@ -669,22 +671,22 @@ func (m *model) scrollIntoView() {
 	if m.cursor >= visibleLines {
 		m.cursor = visibleLines - 1
 	}
-	for visibleLines < m.viewHeight() && m.head.prev != nil {
+	for visibleLines < m.viewHeight() && m.head.Prev != nil {
 		visibleLines++
 		m.cursor++
-		m.head = m.head.prev
+		m.head = m.head.Prev
 	}
 }
 
 func (m *model) View() string {
 	if m.showHelp {
 		statusBar := flex(m.termWidth, ": press q or ? to close help", "")
-		return m.help.View() + "\n" + string(currentTheme.StatusBar([]byte(statusBar)))
+		return m.help.View() + "\n" + string(theme.CurrentTheme.StatusBar([]byte(statusBar)))
 	}
 
 	if m.showPreview {
 		statusBar := flex(m.termWidth, m.cursorPath(), m.fileName)
-		return m.preview.View() + "\n" + string(currentTheme.StatusBar([]byte(statusBar)))
+		return m.preview.View() + "\n" + string(theme.CurrentTheme.StatusBar([]byte(statusBar)))
 	}
 
 	var screen []byte
@@ -695,7 +697,7 @@ func (m *model) View() string {
 		if n == nil {
 			break
 		}
-		for ident := 0; ident < int(n.depth); ident++ {
+		for ident := 0; ident < int(n.Depth); ident++ {
 			screen = append(screen, ' ', ' ')
 		}
 
@@ -704,47 +706,47 @@ func (m *model) View() string {
 			isSelected = false // don't highlight the cursor while iterating search results
 		}
 
-		if n.key != nil {
+		if n.Key != nil {
 			screen = append(screen, m.prettyKey(n, isSelected)...)
-			screen = append(screen, colon...)
+			screen = append(screen, theme.Colon...)
 			isSelected = false // don't highlight the key's value
 		}
 
 		screen = append(screen, m.prettyPrint(n, isSelected)...)
 
-		if n.isCollapsed() {
-			if n.value[0] == '{' {
-				if n.collapsed.key != nil {
-					screen = append(screen, currentTheme.Preview(n.collapsed.key)...)
-					screen = append(screen, colonPreview...)
+		if n.IsCollapsed() {
+			if n.Value[0] == '{' {
+				if n.Collapsed.Key != nil {
+					screen = append(screen, theme.CurrentTheme.Preview(n.Collapsed.Key)...)
+					screen = append(screen, theme.ColonPreview...)
 				}
-				screen = append(screen, dot3...)
-				screen = append(screen, closeCurlyBracket...)
-			} else if n.value[0] == '[' {
-				screen = append(screen, dot3...)
-				screen = append(screen, closeSquareBracket...)
+				screen = append(screen, theme.Dot3...)
+				screen = append(screen, theme.CloseCurlyBracket...)
+			} else if n.Value[0] == '[' {
+				screen = append(screen, theme.Dot3...)
+				screen = append(screen, theme.CloseSquareBracket...)
 			}
-			if n.end != nil && n.end.comma {
-				screen = append(screen, comma...)
+			if n.End != nil && n.End.Comma {
+				screen = append(screen, theme.Comma...)
 			}
 		}
-		if n.comma {
-			screen = append(screen, comma...)
+		if n.Comma {
+			screen = append(screen, theme.Comma...)
 		}
 
-		if showSizes && len(n.value) > 0 && (n.value[0] == '{' || n.value[0] == '[') {
-			if n.isCollapsed() || n.size > 1 {
-				screen = append(screen, currentTheme.Size([]byte(fmt.Sprintf(" // %d", n.size)))...)
+		if theme.ShowSizes && len(n.Value) > 0 && (n.Value[0] == '{' || n.Value[0] == '[') {
+			if n.IsCollapsed() || n.Size > 1 {
+				screen = append(screen, theme.CurrentTheme.Size([]byte(fmt.Sprintf(" // %d", n.Size)))...)
 			}
 		}
 
 		screen = append(screen, '\n')
 		printedLines++
-		n = n.next
+		n = n.Next
 	}
 
 	for i := printedLines; i < m.viewHeight(); i++ {
-		screen = append(screen, empty...)
+		screen = append(screen, theme.Empty...)
 		screen = append(screen, '\n')
 	}
 
@@ -752,7 +754,7 @@ func (m *model) View() string {
 		screen = append(screen, m.digInput.View()...)
 	} else {
 		statusBar := flex(m.termWidth, m.cursorPath(), m.fileName)
-		screen = append(screen, currentTheme.StatusBar([]byte(statusBar))...)
+		screen = append(screen, theme.CurrentTheme.StatusBar([]byte(statusBar))...)
 	}
 
 	if m.yank {
@@ -781,12 +783,12 @@ func (m *model) View() string {
 	return string(screen)
 }
 
-func (m *model) prettyKey(node *node, selected bool) []byte {
-	b := node.key
+func (m *model) prettyKey(node *Node, selected bool) []byte {
+	b := node.Key
 
-	style := currentTheme.Key
+	style := theme.CurrentTheme.Key
 	if selected {
-		style = currentTheme.Cursor
+		style = theme.CurrentTheme.Cursor
 	}
 
 	if indexes, ok := m.search.keys[node]; ok {
@@ -795,9 +797,9 @@ func (m *model) prettyKey(node *node, selected bool) []byte {
 			if i%2 == 0 {
 				out = append(out, style(p.b)...)
 			} else if p.index == m.search.cursor {
-				out = append(out, currentTheme.Cursor(p.b)...)
+				out = append(out, theme.CurrentTheme.Cursor(p.b)...)
 			} else {
-				out = append(out, currentTheme.Search(p.b)...)
+				out = append(out, theme.CurrentTheme.Search(p.b)...)
 			}
 		}
 		return out
@@ -806,19 +808,19 @@ func (m *model) prettyKey(node *node, selected bool) []byte {
 	}
 }
 
-func (m *model) prettyPrint(node *node, selected bool) []byte {
+func (m *model) prettyPrint(node *Node, selected bool) []byte {
 	var b []byte
-	if node.chunk != nil {
-		b = node.chunk
+	if node.Chunk != nil {
+		b = node.Chunk
 	} else {
-		b = node.value
+		b = node.Value
 	}
 
 	if len(b) == 0 {
 		return b
 	}
 
-	style := valueStyle(b, selected, node.chunk != nil)
+	style := theme.Value(b, selected, node.Chunk != nil)
 
 	if indexes, ok := m.search.values[node]; ok {
 		var out []byte
@@ -826,9 +828,9 @@ func (m *model) prettyPrint(node *node, selected bool) []byte {
 			if i%2 == 0 {
 				out = append(out, style(p.b)...)
 			} else if p.index == m.search.cursor {
-				out = append(out, currentTheme.Cursor(p.b)...)
+				out = append(out, theme.CurrentTheme.Cursor(p.b)...)
 			} else {
-				out = append(out, currentTheme.Search(p.b)...)
+				out = append(out, theme.CurrentTheme.Search(p.b)...)
 			}
 		}
 		return out
@@ -847,34 +849,34 @@ func (m *model) viewHeight() int {
 	return m.termHeight - 1
 }
 
-func (m *model) cursorPointsTo() *node {
+func (m *model) cursorPointsTo() *Node {
 	return m.at(m.cursor)
 }
 
-func (m *model) at(pos int) *node {
+func (m *model) at(pos int) *Node {
 	head := m.head
 	for i := 0; i < pos; i++ {
 		if head == nil {
 			break
 		}
-		head = head.next
+		head = head.Next
 	}
 	return head
 }
 
-func (m *model) findBottom() *node {
+func (m *model) findBottom() *Node {
 	n := m.head
-	for n.next != nil {
-		if n.end != nil {
-			n = n.end
+	for n.Next != nil {
+		if n.End != nil {
+			n = n.End
 		} else {
-			n = n.next
+			n = n.Next
 		}
 	}
 	return n
 }
 
-func (m *model) nodeInsideView(n *node) bool {
+func (m *model) nodeInsideView(n *Node) bool {
 	if n == nil {
 		return false
 	}
@@ -886,12 +888,12 @@ func (m *model) nodeInsideView(n *node) bool {
 		if head == n {
 			return true
 		}
-		head = head.next
+		head = head.Next
 	}
 	return false
 }
 
-func (m *model) selectNodeInView(n *node) {
+func (m *model) selectNodeInView(n *Node) {
 	head := m.head
 	for i := 0; i < m.viewHeight(); i++ {
 		if head == nil {
@@ -901,11 +903,11 @@ func (m *model) selectNodeInView(n *node) {
 			m.cursor = i
 			return
 		}
-		head = head.next
+		head = head.Next
 	}
 }
 
-func (m *model) selectNode(n *node) {
+func (m *model) selectNode(n *Node) {
 	m.showCursor = true
 	if m.nodeInsideView(n) {
 		m.selectNodeInView(n)
@@ -915,10 +917,10 @@ func (m *model) selectNode(n *node) {
 		m.head = n
 		m.scrollIntoView()
 	}
-	parent := n.parent()
+	parent := n.Parent()
 	for parent != nil {
-		parent.expand()
-		parent = parent.parent()
+		parent.Expand()
+		parent = parent.Parent()
 	}
 }
 
@@ -926,23 +928,23 @@ func (m *model) cursorPath() string {
 	path := ""
 	at := m.cursorPointsTo()
 	for at != nil {
-		if at.prev != nil {
-			if at.chunk != nil && at.value == nil {
-				at = at.parent()
+		if at.Prev != nil {
+			if at.Chunk != nil && at.Value == nil {
+				at = at.Parent()
 			}
-			if at.key != nil {
-				quoted := string(at.key)
+			if at.Key != nil {
+				quoted := string(at.Key)
 				unquoted, err := strconv.Unquote(quoted)
 				if err == nil && jsonpath.Identifier.MatchString(unquoted) {
 					path = "." + unquoted + path
 				} else {
 					path = "[" + quoted + "]" + path
 				}
-			} else if at.index >= 0 {
-				path = "[" + strconv.Itoa(at.index) + "]" + path
+			} else if at.Index >= 0 {
+				path = "[" + strconv.Itoa(at.Index) + "]" + path
 			}
 		}
-		at = at.parent()
+		at = at.Parent()
 	}
 	return path
 }
@@ -952,55 +954,55 @@ func (m *model) cursorValue() string {
 	if at == nil {
 		return ""
 	}
-	parent := at.parent()
+	parent := at.Parent()
 	if parent != nil {
 		// wrapped string part
-		if at.chunk != nil && at.value == nil {
+		if at.Chunk != nil && at.Value == nil {
 			at = parent
 		}
-		if len(at.value) == 1 && at.value[0] == '}' || at.value[0] == ']' {
+		if len(at.Value) == 1 && at.Value[0] == '}' || at.Value[0] == ']' {
 			at = parent
 		}
 	}
 
-	if len(at.value) > 0 && at.value[0] == '"' {
-		str, err := strconv.Unquote(string(at.value))
+	if len(at.Value) > 0 && at.Value[0] == '"' {
+		str, err := strconv.Unquote(string(at.Value))
 		if err == nil {
 			return str
 		}
-		return string(at.value)
+		return string(at.Value)
 	}
 
 	var out strings.Builder
-	out.Write(at.value)
+	out.Write(at.Value)
 	out.WriteString("\n")
-	if at.hasChildren() {
-		it := at.next
-		if at.isCollapsed() {
-			it = at.collapsed
+	if at.HasChildren() {
+		it := at.Next
+		if at.IsCollapsed() {
+			it = at.Collapsed
 		}
 		for it != nil {
-			out.WriteString(strings.Repeat("  ", int(it.depth-at.depth)))
-			if it.key != nil {
-				out.Write(it.key)
+			out.WriteString(strings.Repeat("  ", int(it.Depth-at.Depth)))
+			if it.Key != nil {
+				out.Write(it.Key)
 				out.WriteString(": ")
 			}
-			if it.value != nil {
-				out.Write(it.value)
+			if it.Value != nil {
+				out.Write(it.Value)
 			}
-			if it == at.end {
+			if it == at.End {
 				break
 			}
-			if it.comma {
+			if it.Comma {
 				out.WriteString(",")
 			}
 			out.WriteString("\n")
-			if it.chunkEnd != nil {
-				it = it.chunkEnd.next
-			} else if it.isCollapsed() {
-				it = it.collapsed
+			if it.ChunkEnd != nil {
+				it = it.ChunkEnd.Next
+			} else if it.IsCollapsed() {
+				it = it.Collapsed
 			} else {
-				it = it.next
+				it = it.Next
 			}
 		}
 	}
@@ -1012,16 +1014,16 @@ func (m *model) cursorKey() string {
 	if at == nil {
 		return ""
 	}
-	if at.key != nil {
+	if at.Key != nil {
 		var v string
-		_ = json.Unmarshal(at.key, &v)
+		_ = json.Unmarshal(at.Key, &v)
 		return v
 	}
-	return strconv.Itoa(at.index)
+	return strconv.Itoa(at.Index)
 
 }
 
-func (m *model) selectByPath(path []any) *node {
+func (m *model) selectByPath(path []any) *Node {
 	n := m.currentTopNode()
 	for _, part := range path {
 		if n == nil {
@@ -1029,21 +1031,21 @@ func (m *model) selectByPath(path []any) *node {
 		}
 		switch part := part.(type) {
 		case string:
-			n = n.findChildByKey(part)
+			n = n.FindChildByKey(part)
 		case int:
-			n = n.findChildByIndex(part)
+			n = n.FindChildByIndex(part)
 		}
 	}
 	return n
 }
 
-func (m *model) currentTopNode() *node {
+func (m *model) currentTopNode() *Node {
 	at := m.cursorPointsTo()
 	if at == nil {
 		return nil
 	}
-	for at.parent() != nil {
-		at = at.parent()
+	for at.Parent() != nil {
+		at = at.Parent()
 	}
 	return at
 }
@@ -1069,8 +1071,8 @@ func (m *model) doSearch(s string) {
 	n := m.top
 	searchIndex := 0
 	for n != nil {
-		if n.key != nil {
-			indexes := re.FindAllIndex(n.key, -1)
+		if n.Key != nil {
+			indexes := re.FindAllIndex(n.Key, -1)
 			if len(indexes) > 0 {
 				for i, pair := range indexes {
 					m.search.results = append(m.search.results, n)
@@ -1079,24 +1081,24 @@ func (m *model) doSearch(s string) {
 				searchIndex += len(indexes)
 			}
 		}
-		indexes := re.FindAllIndex(n.value, -1)
+		indexes := re.FindAllIndex(n.Value, -1)
 		if len(indexes) > 0 {
 			for range indexes {
 				m.search.results = append(m.search.results, n)
 			}
-			if n.chunk != nil {
+			if n.Chunk != nil {
 				// String can be split into chunks, so we need to map the indexes to the chunks.
-				chunks := [][]byte{n.chunk}
-				chunkNodes := []*node{n}
+				chunks := [][]byte{n.Chunk}
+				chunkNodes := []*Node{n}
 
-				it := n.next
+				it := n.Next
 				for it != nil {
 					chunkNodes = append(chunkNodes, it)
-					chunks = append(chunks, it.chunk)
-					if it == n.chunkEnd {
+					chunks = append(chunks, it.Chunk)
+					if it == n.ChunkEnd {
 						break
 					}
-					it = it.next
+					it = it.Next
 				}
 
 				chunkMatches := splitIndexesToChunks(chunks, indexes, searchIndex)
@@ -1111,10 +1113,10 @@ func (m *model) doSearch(s string) {
 			searchIndex += len(indexes)
 		}
 
-		if n.isCollapsed() {
-			n = n.collapsed
+		if n.IsCollapsed() {
+			n = n.Collapsed
 		} else {
-			n = n.next
+			n = n.Next
 		}
 	}
 
@@ -1145,7 +1147,7 @@ func (m *model) redoSearch() {
 	}
 }
 
-func (m *model) dig(v string) *node {
+func (m *model) dig(v string) *Node {
 	p, ok := jsonpath.Split(v)
 	if !ok {
 		return nil
@@ -1167,7 +1169,7 @@ func (m *model) dig(v string) *node {
 		return nil
 	}
 
-	keys, nodes := at.children()
+	keys, nodes := at.Children()
 
 	matches := fuzzy.Find(searchTerm, keys)
 	if len(matches) == 0 {

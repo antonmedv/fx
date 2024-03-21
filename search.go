@@ -1,18 +1,22 @@
 package main
 
+import (
+	. "github.com/antonmedv/fx/internal/jsonx"
+)
+
 type search struct {
 	err     error
-	results []*node
+	results []*Node
 	cursor  int
-	values  map[*node][]match
-	keys    map[*node][]match
+	values  map[*Node][]match
+	keys    map[*Node][]match
 }
 
 func newSearch() *search {
 	return &search{
-		results: make([]*node, 0),
-		values:  make(map[*node][]match),
-		keys:    make(map[*node][]match),
+		results: make([]*Node, 0),
+		values:  make(map[*Node][]match),
+		keys:    make(map[*Node][]match),
 	}
 }
 
