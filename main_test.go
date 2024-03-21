@@ -106,8 +106,8 @@ func TestCollapseRecursive(t *testing.T) {
 }
 
 func TestCollapseRecursiveWithSizes(t *testing.T) {
-	theme.showSizes = true
-	defer func() { theme.showSizes = true }()
+	theme.ShowSizes = true
+	defer func() { theme.ShowSizes = true }()
 
 	tm := prepare(t)
 
