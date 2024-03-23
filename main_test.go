@@ -22,7 +22,7 @@ func init() {
 	lipgloss.SetColorProfile(termenv.ANSI)
 }
 
-func prepare(t *testing.T) *teatest.TestModel {
+func prepareFromJSON(t *testing.T) *teatest.TestModel {
 	file, err := os.Open("testdata/example.json")
 	require.NoError(t, err)
 
@@ -30,6 +30,32 @@ func prepare(t *testing.T) *teatest.TestModel {
 	require.NoError(t, err)
 
 	head, err := jsonx.Parse(json)
+	require.NoError(t, err)
+
+	m := &model{
+		top:         head,
+		head:        head,
+		wrap:        true,
+		showCursor:  true,
+		digInput:    textinput.New(),
+		searchInput: textinput.New(),
+		search:      newSearch(),
+	}
+	tm := teatest.NewTestModel(
+		t, m,
+		teatest.WithInitialTermSize(80, 40),
+	)
+	return tm
+}
+
+func prepareFromHTTP(t *testing.T) *teatest.TestModel {
+	file, err := os.Open("testdata/example.curl")
+	require.NoError(t, err)
+
+	data, err := io.ReadAll(file)
+	require.NoError(t, err)
+
+	head, err := formatHttpResponse(data)
 	require.NoError(t, err)
 
 	m := &model{
@@ -63,7 +89,7 @@ func read(t *testing.T, tm *teatest.TestModel) []byte {
 }
 
 func TestOutput(t *testing.T) {
-	tm := prepare(t)
+	tm := prepareFromJSON(t)
 
 	teatest.RequireEqualOutput(t, read(t, tm))
 
@@ -72,7 +98,7 @@ func TestOutput(t *testing.T) {
 }
 
 func TestNavigation(t *testing.T) {
-	tm := prepare(t)
+	tm := prepareFromJSON(t)
 
 	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
 	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
@@ -84,7 +110,7 @@ func TestNavigation(t *testing.T) {
 }
 
 func TestDig(t *testing.T) {
-	tm := prepare(t)
+	tm := prepareFromJSON(t)
 
 	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(".")})
 	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("year")})
@@ -96,7 +122,7 @@ func TestDig(t *testing.T) {
 }
 
 func TestCollapseRecursive(t *testing.T) {
-	tm := prepare(t)
+	tm := prepareFromJSON(t)
 
 	tm.Send(tea.KeyMsg{Type: tea.KeyShiftLeft})
 	teatest.RequireEqualOutput(t, read(t, tm))
@@ -109,9 +135,18 @@ func TestCollapseRecursiveWithSizes(t *testing.T) {
 	theme.ShowSizes = true
 	defer func() { theme.ShowSizes = true }()
 
-	tm := prepare(t)
+	tm := prepareFromJSON(t)
 
 	tm.Send(tea.KeyMsg{Type: tea.KeyShiftLeft})
+	teatest.RequireEqualOutput(t, read(t, tm))
+
+	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
+	tm.WaitFinished(t, teatest.WithFinalTimeout(time.Second))
+}
+
+func TestJSONWithHTTPHeaders(t *testing.T) {
+	tm := prepareFromHTTP(t)
+
 	teatest.RequireEqualOutput(t, read(t, tm))
 
 	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
