@@ -1014,6 +1014,9 @@ func (m *model) cursorKey() string {
 	if at == nil {
 		return ""
 	}
+	if at.IsWrap() {
+		at = at.Parent()
+	}
 	if at.Key != nil {
 		var v string
 		_ = json.Unmarshal(at.Key, &v)

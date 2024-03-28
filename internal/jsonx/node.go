@@ -97,6 +97,10 @@ func (n *Node) Parent() *Node {
 	return parent
 }
 
+func (n *Node) IsWrap() bool {
+	return n.Value == nil && n.Chunk != nil
+}
+
 func (n *Node) IsCollapsed() bool {
 	return n.Collapsed != nil
 }
