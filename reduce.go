@@ -14,8 +14,12 @@ import (
 var src []byte
 
 func reduce(fns []string) {
-	var deno bool
+	if _, ok := os.LookupEnv("FX_JS"); ok {
+		engine.Reduce(fns)
+		return
+	}
 
+	var deno bool
 	bin, err := exec.LookPath("node")
 	if err != nil {
 		bin, err = exec.LookPath("deno")

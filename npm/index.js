@@ -233,6 +233,14 @@ async function run(json, code) {
     if (typeof x === 'object' && x !== null) return Object.values(x)
     throw new Error(`Cannot get values of ${typeof x}`)
   }
+
+  function list(x) {
+    if (Array.isArray(x)) {
+      for (const y of x) console.log(y)
+      return skip
+    }
+    throw new Error(`Cannot list ${typeof x}`)
+  }
 }
 
 async function read(fd = 0) {

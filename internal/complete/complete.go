@@ -53,6 +53,7 @@ var globals = []string{
 	"keys",
 	"values",
 	"skip",
+	"list",
 }
 
 //go:embed prelude.js

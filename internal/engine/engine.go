@@ -91,7 +91,7 @@ func Reduce(args []string) {
 	for _, fn := range fns {
 		code.WriteString(Transform(fn))
 	}
-	code.WriteString("JSON.stringify(json)")
+	code.WriteString(`json === skip ? '__skip__' : JSON.stringify(json)`)
 
 	vm := goja.New()
 	vm.Set("println", func(s string) any {
@@ -108,6 +108,10 @@ func Reduce(args []string) {
 	output, ok := value.Export().(string)
 	if !ok {
 		println("undefined")
+		return
+	}
+
+	if output == "__skip__" {
 		return
 	}
 

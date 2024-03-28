@@ -1,3 +1,5 @@
+const skip = Symbol('skip')
+
 function apply(fn, ...args) {
   if (typeof fn === 'function') return fn(...args)
   return fn
@@ -88,4 +90,12 @@ function keys(x) {
 function values(x) {
   if (typeof x === 'object' && x !== null) return Object.values(x)
   throw new Error(`Cannot get values of ${typeof x}`)
+}
+
+function list(x) {
+  if (Array.isArray(x)) {
+    for (const y of x) console.log(y)
+    return skip
+  }
+  throw new Error(`Cannot list ${typeof x}`)
 }
