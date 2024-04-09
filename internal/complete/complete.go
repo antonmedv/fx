@@ -139,6 +139,8 @@ func doComplete(compLine string, compWord string) {
 			return
 		}
 
+		input = append(input, '\n')
+
 		// If input is bigger than 100MB, skip completion.
 		if len(input) > 100*1024*1024 {
 			return
