@@ -139,10 +139,8 @@ func doComplete(compLine string, compWord string) {
 			return
 		}
 
-		// Append newline if it's missing. (https://github.com/antonmedv/fx/issues/303)
-		if input[len(input)-1] != '\n' {
-			input = append(input, '\n')
-		}
+		// Append newline to make sure that input is valid.
+		input = append(input, '\n')
 
 		// If input is bigger than 100MB, skip completion.
 		if len(input) > 100*1024*1024 {
