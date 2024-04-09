@@ -164,9 +164,6 @@ func main() {
 	searchInput := textinput.New()
 	searchInput.Prompt = "/"
 
-	help := viewport.New(80, 40)
-	help.HighPerformanceRendering = false
-
 	m := &model{
 		head:        head,
 		top:         head,
