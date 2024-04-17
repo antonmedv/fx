@@ -46,11 +46,13 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+		defer f.Close()
 		defer pprof.StopCPUProfile()
 		memProf, err := os.Create("mem.prof")
 		if err != nil {
 			panic(err)
 		}
+		defer memProf.Close()
 		defer pprof.WriteHeapProfile(memProf)
 	}
 
