@@ -10,14 +10,14 @@ async function test(name, fn) {
 
 async function run(json, code = '') {
   const {spawnSync} = await import('node:child_process')
-  return spawnSync(`echo '${typeof json === 'string' ? json : JSON.stringify(json)}' | node index.js ${code}`, {
+  return spawnSync(`printf -- '${typeof json === 'string' ? json : JSON.stringify(json)}' | node index.js ${code}`, {
     stdio: 'pipe',
     encoding: 'utf8',
     shell: true
   })
 }
 
-async function runSimple(code = '') {
+async function runNoPipe(code = '') {
   const {spawnSync} = await import('node:child_process')
   return spawnSync(`node index.js ${code}`, {
     stdio: 'pipe',
@@ -197,6 +197,11 @@ void async function main() {
     t.equal(stdout, 'string\n')
   })
 
+  await test('flags - raw reads entire input', async t => {
+    const {stdout} = await run('foo\bbar', `-r`)
+    t.equal(stdout, 'foo\bbar\n')
+  })
+
   await test('flags - slurp flag', async t => {
     const {stdout} = await run('{"foo": "bar"}\n{"foo": "baz"}', `-s '.[1].foo'`)
     t.equal(stdout, 'baz\n')
@@ -208,12 +213,12 @@ void async function main() {
   })
 
   await test('cli - first arg is file', async t => {
-    const {stdout} = await runSimple(`package.json .name`)
+    const {stdout} = await runNoPipe(`package.json .name`)
     t.equal(stdout, 'fx\n')
   })
 
   await test('cli - last arg is file', async t => {
-    const {stdout} = await runSimple(`.name package.json`)
+    const {stdout} = await runNoPipe(`.name package.json`)
     t.equal(stdout, 'fx\n')
   })
 }()

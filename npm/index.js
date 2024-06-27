@@ -290,6 +290,7 @@ function* readLine(stdin) {
       buffer += ch
     }
   }
+  if (buffer.length > 0) yield buffer
   return buffer
 }
 
