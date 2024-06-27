@@ -272,8 +272,12 @@ async function read(fd = 0) {
 }
 
 function isFile(fs, path) {
-  const stat = fs.statSync(path, {throwIfNoEntry: false})
-  return stat !== undefined && stat.isFile()
+  try {
+    const stat = fs.statSync(path, {throwIfNoEntry: false})
+    return stat !== undefined && stat.isFile()
+  } catch (err) {
+    return false
+  }
 }
 
 function sleepSync(ms) {

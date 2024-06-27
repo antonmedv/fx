@@ -221,4 +221,10 @@ void async function main() {
     const {stdout} = await runNoPipe(`.name package.json`)
     t.equal(stdout, 'fx\n')
   })
+
+  await test('cli - very large arg', async t => {
+    const {status, stderr, stdout} = await run(42, `'x => x /* dsasdfaskjdfhaskldjfhgaslkdjfhasdlkfjhasdlkfjhasdlfkjhasdflkjasdhflkjasdhflacnskdcfhalsdkfjhasldkfjhcasdlckfajhdsflbkasjdhfclnaskdjhfalskdfgjhsdflkfjhasdlfkahjsdflkasjhdflkafdggrhdfggsdfghsdghadfgsdfgsdfglhadshfglaksjdfhalskjdfhasldkfjhaldfkjhasdlfkjhasdflkjhadflkhasdlkfjhdfkhjasdlfkjhasdflkhaflkcansdfhvlkvajhfgvbalergtcqwaleifhavslbkfchasdblkfhldsfhasdfasfasdfdfdddddddadlakfjhas */'`)
+    t.equal(status, 0, stderr)
+    t.equal(stdout, '42\n')
+  })
 }()
