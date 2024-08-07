@@ -101,7 +101,8 @@ func main() {
 		return
 	}
 
-	stdinIsTty := isatty.IsTerminal(os.Stdin.Fd())
+	fd := os.Stdin.Fd()
+	stdinIsTty := isatty.IsTerminal(fd) || isatty.IsCygwinTerminal(fd)
 	var fileName string
 	var src io.Reader
 
