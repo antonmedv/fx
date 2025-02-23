@@ -23,6 +23,7 @@ See full documentation at [fx.wtf](https://fx.wtf).
 
 - [walk](https://github.com/antonmedv/walk) – terminal file manager
 - [howto](https://github.com/antonmedv/howto) – terminal command LLM helper
+- [countdown](https://github.com/antonmedv/countdown) – terminal countdown timer
 
 ## License
 
