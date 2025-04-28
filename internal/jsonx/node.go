@@ -102,6 +102,15 @@ func (n *Node) Parent() *Node {
 	return parent
 }
 
+func (n *Node) Root() *Node {
+	parent := n.Parent()
+	for parent != nil {
+		n = parent
+		parent = n.Parent()
+	}
+	return n
+}
+
 func (n *Node) IsWrap() bool {
 	return n.Value == nil && n.Chunk != nil
 }

@@ -230,6 +230,7 @@ type model struct {
 	cursor                int // cursor position [0, termHeight)
 	showCursor            bool
 	wrap                  bool
+	collapsed             bool
 	margin                int
 	fileName              string
 	digInput              textinput.Model
@@ -291,6 +292,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			msg.node.Index = -1 // To fix the statusbar path (to show .key instead of [0].key).
 			if m.wrap {
 				Wrap(msg.node, m.termWidth)
+			}
+			if m.collapsed {
+				msg.node.CollapseRecursively()
 			}
 			m.bottom.Adjacent(msg.node)
 			m.bottom = msg.node
@@ -615,21 +619,24 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.showCursor = true
 
 	case key.Matches(msg, keyMap.CollapseAll):
-		n := m.top
-		for n != nil {
-			n.CollapseRecursively()
-			if n.End == nil {
-				n = nil
-			} else {
-				n = n.End.Next
+		at := m.cursorPointsTo()
+		if at != nil {
+			m.collapsed = true
+			n := m.top
+			for n != nil {
+				n.CollapseRecursively()
+				if n.End == nil {
+					n = nil
+				} else {
+					n = n.End.Next
+				}
 			}
+			m.selectNode(at.Root())
 		}
-		m.cursor = 0
-		m.head = m.top
-		m.showCursor = true
 
 	case key.Matches(msg, keyMap.ExpandAll):
 		at := m.cursorPointsTo()
+		m.collapsed = false
 		n := m.top
 		for n != nil {
 			n.ExpandRecursively(0, math.MaxInt)
