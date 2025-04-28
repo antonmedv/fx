@@ -19,7 +19,7 @@ func DropWrapAll(n *Node) {
 	}
 }
 
-func WrapAll(n *Node, termWidth int) {
+func Wrap(n *Node, termWidth int) {
 	if termWidth <= 0 {
 		return
 	}

@@ -17,6 +17,7 @@ import (
 
 	"github.com/antonmedv/clipboard"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -168,6 +169,9 @@ func main() {
 	searchInput := textinput.New()
 	searchInput.Prompt = "/"
 
+	spinnerModel := spinner.New()
+	spinnerModel.Spinner = spinner.MiniDot
+
 	m := &model{
 		showCursor:  true,
 		wrap:        true,
@@ -175,6 +179,7 @@ func main() {
 		digInput:    digInput,
 		searchInput: searchInput,
 		search:      newSearch(),
+		spinner:     spinnerModel,
 	}
 
 	lipgloss.SetColorProfile(theme.TermOutput.ColorProfile())
@@ -232,6 +237,7 @@ type model struct {
 	showPreview           bool
 	preview               viewport.Model
 	printOnExit           bool
+	spinner               spinner.Model
 }
 
 type jsonMsg struct {
@@ -239,7 +245,7 @@ type jsonMsg struct {
 }
 
 func (m *model) Init() tea.Cmd {
-	return nil
+	return m.spinner.Tick
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -250,7 +256,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.help.Height = m.termHeight - 1
 		m.preview.Width = m.termWidth
 		m.preview.Height = m.termHeight - 1
-		WrapAll(m.top, m.termWidth)
+		Wrap(m.top, m.termWidth)
 		m.redoSearch()
 	}
 
@@ -265,6 +271,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case jsonMsg:
 		if m.head == nil {
+			if m.wrap {
+				Wrap(msg.node, m.termWidth)
+			}
 			m.head = msg.node
 			m.top = msg.node
 			m.bottom = msg.node
@@ -272,7 +281,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			scrollToBottom := m.cursorPointsTo() == m.bottom.Bottom()
 			msg.node.Index = -1 // To fix the statusbar path (to show .key instead of [0].key).
 			if m.wrap {
-				WrapAll(msg.node, m.termWidth)
+				Wrap(msg.node, m.termWidth)
 			}
 			m.bottom.Adjacent(msg.node)
 			m.bottom = msg.node
@@ -281,6 +290,13 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		return m, nil
+
+	case spinner.TickMsg:
+		if m.head == nil {
+			var cmd tea.Cmd
+			m.spinner, cmd = m.spinner.Update(msg)
+			return m, cmd
+		}
 
 	case tea.MouseMsg:
 		switch msg.Type {
@@ -625,7 +641,7 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		at := m.cursorPointsTo()
 		m.wrap = !m.wrap
 		if m.wrap {
-			WrapAll(m.top, m.termWidth)
+			Wrap(m.top, m.termWidth)
 		} else {
 			DropWrapAll(m.top)
 		}
@@ -747,9 +763,8 @@ func (m *model) View() string {
 	}
 
 	var screen []byte
-	n := m.head
-
 	printedLines := 0
+	n := m.head
 	for lineNumber := 0; lineNumber < m.viewHeight(); lineNumber++ {
 		if n == nil {
 			break
@@ -803,14 +818,22 @@ func (m *model) View() string {
 	}
 
 	for i := printedLines; i < m.viewHeight(); i++ {
-		screen = append(screen, theme.Empty...)
+		if m.head != nil {
+			screen = append(screen, theme.Empty...)
+		}
 		screen = append(screen, '\n')
 	}
 
 	if m.digInput.Focused() {
 		screen = append(screen, m.digInput.View()...)
 	} else {
-		statusBar := flex(m.termWidth, m.cursorPath(), m.fileName)
+		var currentPath string
+		if m.head != nil {
+			currentPath = m.cursorPath()
+		} else {
+			currentPath = fmt.Sprintf(" indexing %s", m.spinner.View())
+		}
+		statusBar := flex(m.termWidth, currentPath, m.fileName)
 		screen = append(screen, theme.CurrentTheme.StatusBar([]byte(statusBar))...)
 	}
 

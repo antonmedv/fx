@@ -96,15 +96,17 @@ func init() {
 }
 
 var (
-	themeNames       []string
-	CurrentTheme     Theme
+	themeNames []string
+
+	CurrentTheme Theme
+	ShowSizes    = false
+
 	defaultCursor    = toColor(lipgloss.NewStyle().Reverse(true).Render)
 	defaultPreview   = toColor(lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render)
 	defaultStatusBar = toColor(lipgloss.NewStyle().Background(lipgloss.Color("7")).Foreground(lipgloss.Color("0")).Render)
 	defaultSearch    = toColor(lipgloss.NewStyle().Background(lipgloss.Color("11")).Foreground(lipgloss.Color("16")).Render)
 	defaultNull      = fg("243")
 	defaultSize      = toColor(lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render)
-	ShowSizes        = false
 )
 
 var (
