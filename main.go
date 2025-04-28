@@ -26,9 +26,10 @@ import (
 	"github.com/sahilm/fuzzy"
 
 	"github.com/antonmedv/fx/internal/complete"
+	"github.com/antonmedv/fx/internal/engine"
+	"github.com/antonmedv/fx/internal/jsonpath"
 	. "github.com/antonmedv/fx/internal/jsonx"
 	"github.com/antonmedv/fx/internal/theme"
-	jsonpath "github.com/antonmedv/fx/path"
 )
 
 var (
@@ -107,9 +108,11 @@ func main() {
 	var src io.Reader
 
 	if stdinIsTty && len(args) == 0 {
+		// $ fx
 		fmt.Println(usage(keyMap))
 		return
 	} else if stdinIsTty && len(args) == 1 {
+		// $ fx file.json
 		filePath := args[0]
 		f, err := os.Open(filePath)
 		if err != nil {
@@ -128,24 +131,27 @@ func main() {
 			flagYaml = true
 		}
 	} else if !stdinIsTty && len(args) == 0 {
+		// cat file.json | fx
 		src = os.Stdin
 	} else {
-		reduce(os.Args[1:])
+		engine.Reduce(os.Args[1:])
 		return
 	}
 
-	data, err := io.ReadAll(src)
-	if err != nil {
-		panic(err)
-	}
-
 	if flagYaml {
-		data, err = yaml.YAMLToJSON(data)
+		b, err := io.ReadAll(src)
+		if err != nil {
+			panic(err)
+		}
+
+		data, err := yaml.YAMLToJSON(b)
 		if err != nil {
 			fmt.Print(err.Error())
 			os.Exit(1)
 			return
 		}
+
+		_ = data // TODO: Parse JSON back to nodes.
 	}
 
 	head, err := Parse(data)
