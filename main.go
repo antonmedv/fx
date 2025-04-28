@@ -816,8 +816,19 @@ func (m *model) View() string {
 				if n.Collapsed.Key != nil {
 					screen = append(screen, theme.CurrentTheme.Preview(n.Collapsed.Key)...)
 					screen = append(screen, theme.ColonPreview...)
+					if len(n.Collapsed.Value) > 0 &&
+						len(n.Collapsed.Value) < 42 &&
+						n.Collapsed.Value[0] != '{' &&
+						n.Collapsed.Value[0] != '[' {
+						screen = append(screen, theme.CurrentTheme.Preview(n.Collapsed.Value)...)
+						if n.Size > 1 {
+							screen = append(screen, theme.CommaPreview...)
+							screen = append(screen, theme.Dot3...)
+						}
+					} else {
+						screen = append(screen, theme.Dot3...)
+					}
 				}
-				screen = append(screen, theme.Dot3...)
 				screen = append(screen, theme.CloseCurlyBracket...)
 			} else if n.Value[0] == '[' {
 				screen = append(screen, theme.Dot3...)

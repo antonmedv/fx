@@ -89,6 +89,7 @@ func init() {
 	Colon = CurrentTheme.Syntax([]byte{':', ' '})
 	ColonPreview = CurrentTheme.Preview([]byte{':'})
 	Comma = CurrentTheme.Syntax([]byte{','})
+	CommaPreview = CurrentTheme.Preview([]byte{','})
 	Empty = CurrentTheme.Preview([]byte{'~'})
 	Dot3 = CurrentTheme.Preview([]byte("…"))
 	CloseCurlyBracket = CurrentTheme.Syntax([]byte{'}'})
@@ -113,6 +114,7 @@ var (
 	Colon              []byte
 	ColonPreview       []byte
 	Comma              []byte
+	CommaPreview       []byte
 	Empty              []byte
 	Dot3               []byte
 	CloseCurlyBracket  []byte
