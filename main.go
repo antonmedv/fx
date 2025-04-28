@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -22,7 +23,6 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/goccy/go-yaml"
 	"github.com/mattn/go-isatty"
 	"github.com/sahilm/fuzzy"
 
@@ -144,15 +144,13 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-
-		data, err := yaml.YAMLToJSON(b)
+		data, err := parseYAML(b)
 		if err != nil {
 			fmt.Print(err.Error())
 			os.Exit(1)
 			return
 		}
-
-		_ = data // TODO: Parse JSON back to nodes.
+		src = bytes.NewReader(data)
 	}
 
 	jsonParser := NewParser(src)

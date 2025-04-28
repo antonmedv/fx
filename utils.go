@@ -1,7 +1,11 @@
 package main
 
 import (
+	"bytes"
+	"io"
 	"strings"
+
+	"github.com/goccy/go-yaml"
 )
 
 func regexCase(code string) (string, bool) {
@@ -36,4 +40,28 @@ func safeSlice(b []byte, start, end int) []byte {
 		start = end
 	}
 	return b[start:end]
+}
+
+func parseYAML(b []byte) ([]byte, error) {
+	var out []byte
+	decoder := yaml.NewDecoder(
+		bytes.NewReader(b),
+		yaml.UseOrderedMap(),
+		yaml.AllowDuplicateMapKey(),
+	)
+	for {
+		var v any
+		if err := decoder.Decode(&v); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, err
+		}
+		j, err := yaml.MarshalWithOptions(v, yaml.JSON())
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, j...)
+	}
+	return out, nil
 }
