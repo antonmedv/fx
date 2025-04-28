@@ -563,6 +563,8 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		var nextSibling *Node
 		if pointsTo.End != nil && pointsTo.End.Next != nil {
 			nextSibling = pointsTo.End.Next
+		} else if pointsTo.ChunkEnd != nil && pointsTo.ChunkEnd.Next != nil {
+			nextSibling = pointsTo.ChunkEnd.Next
 		} else {
 			nextSibling = pointsTo.Next
 		}
@@ -573,12 +575,15 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keyMap.PrevSibling):
 		pointsTo := m.cursorPointsTo()
 		var prevSibling *Node
-		if pointsTo.Parent() != nil && pointsTo.Parent().End == pointsTo {
-			prevSibling = pointsTo.Parent()
+		parent := pointsTo.Parent()
+		if parent != nil && parent.End == pointsTo {
+			prevSibling = parent
 		} else if pointsTo.Prev != nil {
 			prevSibling = pointsTo.Prev
 			parent := prevSibling.Parent()
 			if parent != nil && parent.End == prevSibling {
+				prevSibling = parent
+			} else if prevSibling.Chunk != nil {
 				prevSibling = parent
 			}
 		}
