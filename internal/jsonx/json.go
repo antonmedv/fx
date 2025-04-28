@@ -24,7 +24,12 @@ type JsonParser struct {
 }
 
 func Parse(b []byte) (*Node, error) {
-	return NewParser(bytes.NewReader(b)).Parse()
+	p := NewParser(bytes.NewReader(b))
+	node, err := p.Parse()
+	if err == io.EOF {
+		err = nil
+	}
+	return node, err
 }
 
 func NewParser(in io.Reader) *JsonParser {

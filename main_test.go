@@ -35,6 +35,7 @@ func prepare(t *testing.T) *teatest.TestModel {
 	m := &model{
 		top:         head,
 		head:        head,
+		bottom:      head,
 		wrap:        true,
 		showCursor:  true,
 		digInput:    textinput.New(),
