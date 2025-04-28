@@ -82,6 +82,8 @@ func main() {
 		case "--export-themes":
 			theme.ExportThemes()
 			return
+		case "--yaml":
+			flagYaml = true
 		default:
 			args = append(args, arg)
 		}

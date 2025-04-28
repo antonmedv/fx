@@ -47,7 +47,6 @@ func parseYAML(b []byte) ([]byte, error) {
 	decoder := yaml.NewDecoder(
 		bytes.NewReader(b),
 		yaml.UseOrderedMap(),
-		yaml.AllowDuplicateMapKey(),
 	)
 	for {
 		var v any
