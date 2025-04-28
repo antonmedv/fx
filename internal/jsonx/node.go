@@ -43,6 +43,11 @@ func (n *Node) Adjacent(child *Node) {
 	}
 	end.Next = child
 	child.Prev = end
+	if n.IsCollapsed() {
+		// Also attach to collapsed node.
+		n.Next = child
+		child.Prev = n
+	}
 }
 
 func (n *Node) insertChunk(chunk *Node) {
