@@ -200,19 +200,23 @@ func main() {
 			node, err := jsonParser.Parse()
 			if err != nil {
 				if err == io.EOF {
-					p.Send(jsonMsg{node: node})
 					break
 				}
-				fmt.Println(err)
-				os.Exit(1)
+				p.Send(errMsg{err: err})
+			} else {
+				p.Send(jsonMsg{node: node})
 			}
-			p.Send(jsonMsg{node: node})
 		}
 	}()
 
 	_, err := p.Run()
 	if err != nil {
 		panic(err)
+	}
+
+	if m.err != nil {
+		fmt.Println(m.err.Error())
+		os.Exit(1)
 	}
 
 	if m.printOnExit {
@@ -238,10 +242,15 @@ type model struct {
 	preview               viewport.Model
 	printOnExit           bool
 	spinner               spinner.Model
+	err                   error
 }
 
 type jsonMsg struct {
 	node *Node
+}
+
+type errMsg struct {
+	err error
 }
 
 func (m *model) Init() tea.Cmd {
@@ -290,6 +299,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		return m, nil
+
+	case errMsg:
+		m.err = msg.err
+		return m, tea.Quit
 
 	case spinner.TickMsg:
 		if m.head == nil {

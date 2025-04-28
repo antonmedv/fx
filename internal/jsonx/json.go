@@ -43,13 +43,15 @@ func NewParser(in io.Reader) *JsonParser {
 }
 
 func (p *JsonParser) Parse() (node *Node, err error) {
+	if p.err != nil {
+		return nil, p.err
+	}
 	defer func() {
 		if r := recover(); r != nil {
 			err = p.errorSnippet(fmt.Sprintf("%v", r))
 		}
 	}()
 	node = p.parseValue()
-	err = p.err
 	return
 }
 
