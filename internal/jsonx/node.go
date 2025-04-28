@@ -261,3 +261,15 @@ func (n *Node) Children() ([]string, []*Node) {
 
 	return paths, nodes
 }
+
+func (n *Node) Bottom() *Node {
+	it := n
+	for it.Next != nil {
+		if it.End != nil {
+			it = it.End
+		} else {
+			it = it.Next
+		}
+	}
+	return it
+}

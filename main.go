@@ -269,9 +269,13 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.top = msg.node
 			m.bottom = msg.node
 		} else {
-			msg.node.Index = -1 // To fix json path (to show .key instead of [0].key)
+			scrollToBottom := m.cursorPointsTo() == m.bottom.Bottom()
+			msg.node.Index = -1 // To fix the statusbar path (to show .key instead of [0].key).
 			m.bottom.Adjacent(msg.node)
 			m.bottom = msg.node
+			if scrollToBottom {
+				m.scrollToBottom()
+			}
 		}
 		return m, nil
 
@@ -516,10 +520,7 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.showCursor = true
 
 	case key.Matches(msg, keyMap.GotoBottom):
-		m.head = m.findBottom()
-		m.cursor = 0
-		m.showCursor = true
-		m.scrollIntoView()
+		m.scrollToBottom()
 
 	case key.Matches(msg, keyMap.NextSibling):
 		pointsTo := m.cursorPointsTo()
@@ -694,6 +695,16 @@ func (m *model) down() {
 			m.head = m.head.Next
 		}
 	}
+}
+
+func (m *model) scrollToBottom() {
+	if m.bottom == nil {
+		return
+	}
+	m.head = m.bottom.Bottom()
+	m.cursor = 0
+	m.showCursor = true
+	m.scrollIntoView()
 }
 
 func (m *model) visibleLines() int {
@@ -905,21 +916,6 @@ func (m *model) at(pos int) *Node {
 		head = head.Next
 	}
 	return head
-}
-
-func (m *model) findBottom() *Node {
-	if m.head == nil {
-		return nil
-	}
-	n := m.head
-	for n.Next != nil {
-		if n.End != nil {
-			n = n.End
-		} else {
-			n = n.Next
-		}
-	}
-	return n
 }
 
 func (m *model) nodeInsideView(n *Node) bool {
