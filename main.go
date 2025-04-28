@@ -271,6 +271,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			scrollToBottom := m.cursorPointsTo() == m.bottom.Bottom()
 			msg.node.Index = -1 // To fix the statusbar path (to show .key instead of [0].key).
+			if m.wrap {
+				WrapAll(msg.node, m.termWidth)
+			}
 			m.bottom.Adjacent(msg.node)
 			m.bottom = msg.node
 			if scrollToBottom {
