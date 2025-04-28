@@ -154,12 +154,7 @@ func main() {
 		_ = data // TODO: Parse JSON back to nodes.
 	}
 
-	head, err := Parse(data)
-	if err != nil {
-		fmt.Print(err.Error())
-		os.Exit(1)
-		return
-	}
+	jsonParser := NewParser(src)
 
 	digInput := textinput.New()
 	digInput.Prompt = ""
@@ -174,8 +169,6 @@ func main() {
 	searchInput.Prompt = "/"
 
 	m := &model{
-		head:        head,
-		top:         head,
 		showCursor:  true,
 		wrap:        true,
 		fileName:    fileName,
@@ -196,7 +189,23 @@ func main() {
 		withMouse,
 		tea.WithOutput(os.Stderr),
 	)
-	_, err = p.Run()
+
+	go func() {
+		for {
+			node, err := jsonParser.Parse()
+			if err != nil {
+				if err == io.EOF {
+					p.Send(jsonMsg{node: node})
+					break
+				}
+				fmt.Println(err)
+				os.Exit(1)
+			}
+			p.Send(jsonMsg{node: node})
+		}
+	}()
+
+	_, err := p.Run()
 	if err != nil {
 		panic(err)
 	}
@@ -208,7 +217,7 @@ func main() {
 
 type model struct {
 	termWidth, termHeight int
-	head, top             *Node
+	head, top, bottom     *Node
 	cursor                int // cursor position [0, termHeight)
 	showCursor            bool
 	wrap                  bool
@@ -223,6 +232,10 @@ type model struct {
 	showPreview           bool
 	preview               viewport.Model
 	printOnExit           bool
+}
+
+type jsonMsg struct {
+	node *Node
 }
 
 func (m *model) Init() tea.Cmd {
@@ -250,6 +263,18 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
+	case jsonMsg:
+		if m.head == nil {
+			m.head = msg.node
+			m.top = msg.node
+			m.bottom = msg.node
+		} else {
+			msg.node.Index = -1 // To fix json path (to show .key instead of [0].key)
+			m.bottom.Adjacent(msg.node)
+			m.bottom = msg.node
+		}
+		return m, nil
+
 	case tea.MouseMsg:
 		switch msg.Type {
 		case tea.MouseWheelUp:
@@ -526,6 +551,9 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keyMap.Collapse):
 		n := m.cursorPointsTo()
+		if n == nil {
+			return m, nil
+		}
 		if n.HasChildren() && !n.IsCollapsed() {
 			n.Collapse()
 		} else {
@@ -636,6 +664,9 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m *model) up() {
+	if m.head == nil {
+		return
+	}
 	m.showCursor = true
 	m.cursor--
 	if m.cursor < 0 {
@@ -647,6 +678,9 @@ func (m *model) up() {
 }
 
 func (m *model) down() {
+	if m.head == nil {
+		return
+	}
 	m.showCursor = true
 	m.cursor++
 	n := m.cursorPointsTo()
@@ -673,6 +707,9 @@ func (m *model) visibleLines() int {
 }
 
 func (m *model) scrollIntoView() {
+	if m.head == nil {
+		return
+	}
 	visibleLines := m.visibleLines()
 	if m.cursor >= visibleLines {
 		m.cursor = visibleLines - 1
@@ -871,6 +908,9 @@ func (m *model) at(pos int) *Node {
 }
 
 func (m *model) findBottom() *Node {
+	if m.head == nil {
+		return nil
+	}
 	n := m.head
 	for n.Next != nil {
 		if n.End != nil {

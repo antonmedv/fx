@@ -35,8 +35,8 @@ func (n *Node) append(child *Node) {
 	}
 }
 
-// adjacent adds a node as a sibling to the current node ({}{}{} or [][][]).
-func (n *Node) adjacent(child *Node) {
+// Adjacent adds a node as a sibling to the current node ({}{}{} or [][][]).
+func (n *Node) Adjacent(child *Node) {
 	end := n.End
 	if end == nil {
 		end = n

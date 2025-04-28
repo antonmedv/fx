@@ -1,7 +1,10 @@
 package jsonx
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -9,57 +12,61 @@ import (
 	"github.com/antonmedv/fx/internal/utils"
 )
 
-type jsonParser struct {
-	data           []byte
-	end            int
-	lastChar       byte
-	lineNumber     uint
-	sourceTail     *ring
-	depth          uint8
-	skipFirstIdent bool
+type JsonParser struct {
+	buf        *bufio.Reader
+	data       []byte
+	err        error
+	end        int
+	lastChar   byte
+	lineNumber uint
+	sourceTail *ring
+	depth      uint8
 }
 
-func Parse(data []byte) (head *Node, err error) {
-	p := &jsonParser{
-		data:       data,
+func Parse(b []byte) (*Node, error) {
+	return NewParser(bytes.NewReader(b)).Parse()
+}
+
+func NewParser(in io.Reader) *JsonParser {
+	p := &JsonParser{
+		buf:        bufio.NewReader(in),
 		lineNumber: 1,
 		sourceTail: &ring{},
 	}
+	p.next()
+	return p
+}
+
+func (p *JsonParser) Parse() (node *Node, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = p.errorSnippet(fmt.Sprintf("%v", r))
 		}
 	}()
-	p.next()
-	var next *Node
-	for p.lastChar != 0 {
-		value := p.parseValue()
-		if head == nil {
-			head = value
-			next = head
-		} else {
-			value.Index = -1
-			next.adjacent(value)
-			next = value
-		}
-	}
+	node = p.parseValue()
+	err = p.err
 	return
 }
 
-func (p *jsonParser) next() {
-	if p.end < len(p.data) {
-		p.lastChar = p.data[p.end]
-		p.end++
-	} else {
-		p.lastChar = 0
+func (p *JsonParser) next() {
+	ch, err := p.buf.ReadByte()
+	if err != nil {
+		if err == io.EOF {
+			p.err = err
+		} else {
+			panic(err)
+		}
 	}
+	p.lastChar = ch
+	p.data = append(p.data, ch)
+	p.end++
 	if p.lastChar == '\n' {
 		p.lineNumber++
 	}
 	p.sourceTail.writeByte(p.lastChar)
 }
 
-func (p *jsonParser) parseValue() *Node {
+func (p *JsonParser) parseValue() *Node {
 	p.skipWhitespace()
 
 	var l *Node
@@ -86,7 +93,7 @@ func (p *jsonParser) parseValue() *Node {
 	return l
 }
 
-func (p *jsonParser) parseString() *Node {
+func (p *JsonParser) parseString() *Node {
 	str := &Node{Depth: p.depth}
 	start := p.end - 1
 	p.next()
@@ -129,7 +136,7 @@ func (p *jsonParser) parseString() *Node {
 	return str
 }
 
-func (p *jsonParser) parseNumber() *Node {
+func (p *JsonParser) parseNumber() *Node {
 	num := &Node{Depth: p.depth}
 	start := p.end - 1
 
@@ -179,7 +186,7 @@ func (p *jsonParser) parseNumber() *Node {
 	return num
 }
 
-func (p *jsonParser) parseObject() *Node {
+func (p *JsonParser) parseObject() *Node {
 	object := &Node{Depth: p.depth}
 	object.Value = []byte{'{'}
 
@@ -214,7 +221,6 @@ func (p *jsonParser) parseObject() *Node {
 
 		p.next()
 
-		p.skipFirstIdent = true
 		value := p.parseValue()
 		p.depth--
 
@@ -255,7 +261,7 @@ func (p *jsonParser) parseObject() *Node {
 	}
 }
 
-func (p *jsonParser) parseArray() *Node {
+func (p *JsonParser) parseArray() *Node {
 	arr := &Node{Depth: p.depth}
 	arr.Value = []byte{'['}
 
@@ -304,7 +310,7 @@ func (p *jsonParser) parseArray() *Node {
 	}
 }
 
-func (p *jsonParser) parseKeyword(name string) *Node {
+func (p *JsonParser) parseKeyword(name string) *Node {
 	for i := 1; i < len(name); i++ {
 		p.next()
 		if p.lastChar != name[i] {
@@ -327,7 +333,7 @@ func isWhitespace(ch byte) bool {
 	return ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r'
 }
 
-func (p *jsonParser) skipWhitespace() {
+func (p *JsonParser) skipWhitespace() {
 	for {
 		switch p.lastChar {
 		case ' ', '\t', '\n', '\r':
@@ -340,7 +346,7 @@ func (p *jsonParser) skipWhitespace() {
 	}
 }
 
-func (p *jsonParser) skipComment() {
+func (p *JsonParser) skipComment() {
 	p.next()
 	switch p.lastChar {
 	case '/':
@@ -366,7 +372,7 @@ func (p *jsonParser) skipComment() {
 	}
 }
 
-func (p *jsonParser) errorSnippet(message string) error {
+func (p *JsonParser) errorSnippet(message string) error {
 	lines := strings.Split(p.sourceTail.string(), "\n")
 	lastLineLen := utf8.RuneCountInString(lines[len(lines)-1])
 	pointer := strings.Repeat(".", lastLineLen-1) + "^"
