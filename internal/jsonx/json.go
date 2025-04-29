@@ -55,6 +55,27 @@ func (p *JsonParser) Parse() (node *Node, err error) {
 	return
 }
 
+func (p *JsonParser) Recover() *Node {
+	p.err = nil
+	p.depth = 0
+
+	start := p.end - 1
+	for {
+		p.next()
+		if p.lastChar == '{' || p.lastChar == '[' {
+			break
+		}
+	}
+	nonJson := p.data[start : p.end-1]
+	lines := strings.Split(string(nonJson), "\n")
+
+	textNode := &Node{Err: []byte(lines[0])}
+	for i := 1; i < len(lines); i++ {
+		textNode.Append(&Node{Err: []byte(lines[i])})
+	}
+	return textNode
+}
+
 func (p *JsonParser) next() {
 	ch, err := p.buf.ReadByte()
 	if err != nil {
@@ -239,7 +260,7 @@ func (p *JsonParser) parseObject() *Node {
 		}
 		key.End = value.End
 		value.indirectParent = key
-		object.append(key)
+		object.Append(key)
 
 		p.skipWhitespace()
 
@@ -259,7 +280,7 @@ func (p *JsonParser) parseObject() *Node {
 			closeBracket.Value = []byte{'}'}
 			closeBracket.directParent = object
 			closeBracket.Index = -1
-			object.append(closeBracket)
+			object.Append(closeBracket)
 			p.next()
 			return object
 		}
@@ -289,7 +310,7 @@ func (p *JsonParser) parseArray() *Node {
 		value.Index = i
 		p.depth--
 
-		arr.append(value)
+		arr.Append(value)
 		p.skipWhitespace()
 
 		if p.lastChar == ',' {
@@ -308,7 +329,7 @@ func (p *JsonParser) parseArray() *Node {
 			closeBracket.Value = []byte{']'}
 			closeBracket.directParent = arr
 			closeBracket.Index = -1
-			arr.append(closeBracket)
+			arr.Append(closeBracket)
 			p.next()
 			return arr
 		}

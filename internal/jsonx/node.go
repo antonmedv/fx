@@ -19,10 +19,11 @@ type Node struct {
 	ChunkEnd        *Node
 	Comma           bool
 	Index           int
+	Err             []byte
 }
 
-// append ands a node as a child to the current node (body of {...} or [...]).
-func (n *Node) append(child *Node) {
+// Append ands a node as a child to the current node (body of {...} or [...]).
+func (n *Node) Append(child *Node) {
 	if n.End == nil {
 		n.End = n
 	}

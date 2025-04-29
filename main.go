@@ -208,9 +208,10 @@ func main() {
 				if err == io.EOF {
 					break
 				}
-				p.Send(errMsg{err: err})
+				textNode := jsonParser.Recover()
+				p.Send(nodeMsg{node: textNode})
 			} else {
-				p.Send(jsonMsg{node: node})
+				p.Send(nodeMsg{node: node})
 			}
 		}
 	}()
@@ -218,11 +219,6 @@ func main() {
 	_, err := p.Run()
 	if err != nil {
 		panic(err)
-	}
-
-	if m.err != nil {
-		fmt.Println(m.err.Error())
-		os.Exit(1)
 	}
 
 	if m.printOnExit {
@@ -249,15 +245,10 @@ type model struct {
 	preview               viewport.Model
 	printOnExit           bool
 	spinner               spinner.Model
-	err                   error
 }
 
-type jsonMsg struct {
+type nodeMsg struct {
 	node *Node
-}
-
-type errMsg struct {
-	err error
 }
 
 func (m *model) Init() tea.Cmd {
@@ -285,7 +276,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
-	case jsonMsg:
+	case nodeMsg:
 		if m.wrap {
 			Wrap(msg.node, m.termWidth)
 		}
@@ -307,10 +298,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		return m, nil
-
-	case errMsg:
-		m.err = msg.err
-		return m, tea.Quit
 
 	case spinner.TickMsg:
 		if m.head == nil {
@@ -798,6 +785,15 @@ func (m *model) View() string {
 		if n == nil {
 			break
 		}
+
+		if n.Err != nil {
+			screen = append(screen, n.Err...)
+			screen = append(screen, '\n')
+			printedLines++
+			n = n.Next
+			continue
+		}
+
 		for ident := 0; ident < int(n.Depth); ident++ {
 			screen = append(screen, ' ', ' ')
 		}
