@@ -6,12 +6,25 @@ import (
 	"github.com/antonmedv/fx/internal/jsonpath"
 )
 
+type Kind byte
+
+const (
+	Err Kind = iota
+	Null
+	Bool
+	Number
+	String
+	Object
+	Array
+)
+
 type Node struct {
 	Prev, Next, End *Node
 	directParent    *Node
 	indirectParent  *Node
 	Collapsed       *Node
 	Depth           uint8
+	Kind            Kind
 	Key             []byte
 	Value           []byte
 	Size            int

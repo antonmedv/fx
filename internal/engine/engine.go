@@ -12,6 +12,7 @@ import (
 	"github.com/goccy/go-yaml"
 
 	"github.com/antonmedv/fx/internal/jsonx"
+	"github.com/antonmedv/fx/internal/theme"
 )
 
 //go:embed stdlib.js
@@ -126,5 +127,5 @@ func Reduce(args []string) {
 		fmt.Println(s)
 		return
 	}
-	fmt.Print(node.PrettyPrint())
+	fmt.Print(theme.PrettyPrint(node))
 }

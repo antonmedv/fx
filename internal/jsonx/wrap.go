@@ -8,7 +8,7 @@ import (
 
 func DropWrapAll(n *Node) {
 	for n != nil {
-		if len(n.Value) > 0 && n.Value[0] == '"' {
+		if n.Kind == String || n.Kind == Err {
 			n.dropChunks()
 		}
 		if n.IsCollapsed() {
@@ -24,13 +24,14 @@ func Wrap(n *Node, termWidth int) {
 		return
 	}
 	for n != nil {
-		if len(n.Value) > 0 && n.Value[0] == '"' {
+		if n.Kind == String || n.Kind == Err {
 			n.dropChunks()
 			lines, count := doWrap(n, termWidth)
 			if count > 1 {
 				n.Chunk = lines[0]
 				for i := 1; i < count; i++ {
 					child := &Node{
+						Kind:         n.Kind,
 						directParent: n,
 						Depth:        n.Depth,
 						Chunk:        lines[i],

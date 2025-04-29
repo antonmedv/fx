@@ -804,14 +804,14 @@ func (m *model) View() string {
 		screen = append(screen, m.prettyPrint(n, isSelected)...)
 
 		if n.IsCollapsed() {
-			if n.Value[0] == '{' {
+			if n.Kind == Object {
 				if n.Collapsed.Key != nil {
 					screen = append(screen, theme.CurrentTheme.Preview(n.Collapsed.Key)...)
 					screen = append(screen, theme.ColonPreview...)
 					if len(n.Collapsed.Value) > 0 &&
 						len(n.Collapsed.Value) < 42 &&
-						n.Collapsed.Value[0] != '{' &&
-						n.Collapsed.Value[0] != '[' {
+						n.Collapsed.Kind != Object &&
+						n.Collapsed.Kind != Array {
 						screen = append(screen, theme.CurrentTheme.Preview(n.Collapsed.Value)...)
 						if n.Size > 1 {
 							screen = append(screen, theme.CommaPreview...)
@@ -822,7 +822,7 @@ func (m *model) View() string {
 					}
 				}
 				screen = append(screen, theme.CloseCurlyBracket...)
-			} else if n.Value[0] == '[' {
+			} else if n.Kind == Array {
 				screen = append(screen, theme.Dot3...)
 				screen = append(screen, theme.CloseSquareBracket...)
 			}
@@ -834,7 +834,7 @@ func (m *model) View() string {
 			screen = append(screen, theme.Comma...)
 		}
 
-		if theme.ShowSizes && len(n.Value) > 0 && (n.Value[0] == '{' || n.Value[0] == '[') {
+		if theme.ShowSizes && (n.Kind == Array || n.Kind == Object) {
 			if n.IsCollapsed() || n.Size > 1 {
 				screen = append(screen, theme.CurrentTheme.Size([]byte(fmt.Sprintf(" // %d", n.Size)))...)
 			}
@@ -925,10 +925,14 @@ func (m *model) prettyPrint(node *Node, selected bool) []byte {
 	}
 
 	if len(b) == 0 {
-		return b
+		if selected {
+			return theme.CurrentTheme.Cursor([]byte{' '})
+		} else {
+			return b
+		}
 	}
 
-	style := theme.Value(b, selected, node.Chunk != nil)
+	style := theme.Value(node.Kind, selected)
 
 	if indexes, ok := m.search.values[node]; ok {
 		var out []byte
@@ -1056,12 +1060,12 @@ func (m *model) cursorValue() string {
 		if at.Chunk != nil && at.Value == nil {
 			at = parent
 		}
-		if len(at.Value) == 1 && at.Value[0] == '}' || at.Value[0] == ']' {
+		if at.Kind == Object || at.Kind == Array {
 			at = parent
 		}
 	}
 
-	if len(at.Value) > 0 && at.Value[0] == '"' {
+	if at.Kind == String {
 		str, err := strconv.Unquote(string(at.Value))
 		if err == nil {
 			return str

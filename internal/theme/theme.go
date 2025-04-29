@@ -11,7 +11,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/termenv"
 
-	"github.com/antonmedv/fx/internal/utils"
+	"github.com/antonmedv/fx/internal/jsonx"
 )
 
 type Theme struct {
@@ -30,25 +30,22 @@ type Theme struct {
 
 type Color func(s []byte) []byte
 
-func Value(b []byte, selected, chunk bool) Color {
+func Value(kind jsonx.Kind, selected bool) Color {
 	if selected {
 		return CurrentTheme.Cursor
-	} else if chunk {
-		return CurrentTheme.String
 	} else {
-		switch b[0] {
-		case '"':
+		switch kind {
+		case jsonx.String:
 			return CurrentTheme.String
-		case 't', 'f':
+		case jsonx.Bool:
 			return CurrentTheme.Boolean
-		case 'n':
+		case jsonx.Null:
 			return CurrentTheme.Null
-		case '{', '[', '}', ']':
+		case jsonx.Object, jsonx.Array:
 			return CurrentTheme.Syntax
+		case jsonx.Number:
+			return CurrentTheme.Number
 		default:
-			if utils.IsDigit(b[0]) || b[0] == '-' {
-				return CurrentTheme.Number
-			}
 			return noColor
 		}
 	}
