@@ -9,7 +9,7 @@
   "tags": […], // 3[K
   "year": 3000,[K
   "funny": true,[K
-  "author": {"name":…} // 2[K
+  "author": {"name":"John Doe",…} // 2[K
 }[K
 ~[K
 ~[K
