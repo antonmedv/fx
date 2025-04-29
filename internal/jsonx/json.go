@@ -66,12 +66,27 @@ func (p *JsonParser) Recover() *Node {
 			break
 		}
 	}
-	nonJson := p.data[start : p.end-1]
-	lines := strings.Split(string(nonJson), "\n")
 
-	textNode := &Node{Err: []byte(lines[0])}
+	end := p.end - 1
+	if p.data[end-1] == '\n' {
+		end-- // Trim trailing newline.
+	}
+
+	text := string(p.data[start:end])
+	text = strings.ReplaceAll(text, "\t", "    ")
+	text = strings.ReplaceAll(text, "\r", "")
+	lines := strings.Split(text, "\n")
+
+	textNode := &Node{
+		Value: []byte(lines[0]),
+		Index: -1,
+	}
 	for i := 1; i < len(lines); i++ {
-		textNode.Append(&Node{Err: []byte(lines[i])})
+		textNode.Append(&Node{
+			Value:        []byte(lines[i]),
+			Index:        -1,
+			directParent: textNode,
+		})
 	}
 	return textNode
 }

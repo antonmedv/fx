@@ -786,14 +786,6 @@ func (m *model) View() string {
 			break
 		}
 
-		if n.Err != nil {
-			screen = append(screen, n.Err...)
-			screen = append(screen, '\n')
-			printedLines++
-			n = n.Next
-			continue
-		}
-
 		for ident := 0; ident < int(n.Depth); ident++ {
 			screen = append(screen, ' ', ' ')
 		}
