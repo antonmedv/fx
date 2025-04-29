@@ -172,9 +172,15 @@ func main() {
 	spinnerModel := spinner.New()
 	spinnerModel.Spinner = spinner.MiniDot
 
+	collapsed := false
+	if _, ok := os.LookupEnv("FX_COLLAPSED"); ok {
+		collapsed = true
+	}
+
 	m := &model{
 		showCursor:  true,
 		wrap:        true,
+		collapsed:   collapsed,
 		fileName:    fileName,
 		digInput:    digInput,
 		searchInput: searchInput,
@@ -280,22 +286,20 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case jsonMsg:
+		if m.wrap {
+			Wrap(msg.node, m.termWidth)
+		}
+		if m.collapsed {
+			msg.node.CollapseRecursively()
+		}
+
 		if m.head == nil {
-			if m.wrap {
-				Wrap(msg.node, m.termWidth)
-			}
 			m.head = msg.node
 			m.top = msg.node
 			m.bottom = msg.node
 		} else {
 			scrollToBottom := m.cursorPointsTo() == m.bottom.Bottom()
 			msg.node.Index = -1 // To fix the statusbar path (to show .key instead of [0].key).
-			if m.wrap {
-				Wrap(msg.node, m.termWidth)
-			}
-			if m.collapsed {
-				msg.node.CollapseRecursively()
-			}
 			m.bottom.Adjacent(msg.node)
 			m.bottom = msg.node
 			if scrollToBottom {
