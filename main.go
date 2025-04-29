@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -17,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/antonmedv/clipboard"
+	"github.com/antonmedv/fx/internal/utils"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -672,7 +674,17 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keyMap.Preview):
 		m.showPreview = true
-		content := lipgloss.NewStyle().Width(m.termWidth).Render(m.cursorValue())
+		content := ""
+		value := m.cursorValue()
+		if decodedValue, err := base64.StdEncoding.DecodeString(value); err == nil {
+			img, err := utils.DrawImage(bytes.NewReader(decodedValue), m.termWidth, m.termHeight)
+			if err == nil {
+				content = img
+			}
+		}
+		if content == "" {
+			content = lipgloss.NewStyle().Width(m.termWidth).Render(m.cursorValue())
+		}
 		m.preview.SetContent(content)
 		m.preview.GotoTop()
 

@@ -15,6 +15,7 @@ require (
 	github.com/mattn/go-isatty v0.0.20
 	github.com/mattn/go-runewidth v0.0.16
 	github.com/muesli/termenv v0.16.0
+	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 	github.com/sahilm/fuzzy v0.1.1
 	github.com/stretchr/testify v1.8.4
 )

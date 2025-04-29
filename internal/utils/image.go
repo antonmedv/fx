@@ -19,7 +19,14 @@ func DrawImage(r io.Reader, width, height int) (string, error) {
 		return "", err
 	}
 
-	img = resize.Resize(uint(width), uint(height)*2, img, resize.Lanczos3)
+	// width = number of horizontal "blocks"
+	// height = number of vertical "blocks"
+	// each block is two pixels tall, so max pixel dims are:
+	maxW := uint(width)
+	maxH := uint(height * 2)
+
+	// Use Thumbnail to resize into the bounding box [maxW × maxH], preserving aspect ratio
+	img = resize.Thumbnail(maxW, maxH, img, resize.Lanczos3)
 	bounds := img.Bounds()
 
 	var buffer bytes.Buffer
@@ -30,7 +37,7 @@ func DrawImage(r io.Reader, width, height int) (string, error) {
 
 			// If both pixels are transparent, print a space.
 			if a1 < 6553 && a2 < 6553 {
-				buffer.WriteString(" ")
+				buffer.WriteByte(' ')
 				continue
 			}
 
@@ -44,7 +51,7 @@ func DrawImage(r io.Reader, width, height int) (string, error) {
 
 			buffer.WriteString(block)
 		}
-		buffer.WriteString("\n")
+		buffer.WriteByte('\n')
 	}
 	return buffer.String(), nil
 }
