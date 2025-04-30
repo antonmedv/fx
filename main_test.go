@@ -15,14 +15,17 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/antonmedv/fx/internal/jsonx"
-	"github.com/antonmedv/fx/internal/theme"
 )
 
 func init() {
 	lipgloss.SetColorProfile(termenv.ANSI)
 }
 
-func prepare(t *testing.T) *teatest.TestModel {
+type options struct {
+	showSizes bool
+}
+
+func prepare(t *testing.T, opts ...options) *teatest.TestModel {
 	file, err := os.Open("testdata/example.json")
 	require.NoError(t, err)
 
@@ -42,6 +45,11 @@ func prepare(t *testing.T) *teatest.TestModel {
 		searchInput: textinput.New(),
 		search:      newSearch(),
 	}
+
+	if len(opts) > 0 {
+		m.showSizes = opts[0].showSizes
+	}
+
 	tm := teatest.NewTestModel(
 		t, m,
 		teatest.WithInitialTermSize(80, 40),
@@ -107,10 +115,7 @@ func TestCollapseRecursive(t *testing.T) {
 }
 
 func TestCollapseRecursiveWithSizes(t *testing.T) {
-	theme.ShowSizes = true
-	defer func() { theme.ShowSizes = true }()
-
-	tm := prepare(t)
+	tm := prepare(t, options{showSizes: true})
 
 	tm.Send(tea.KeyMsg{Type: tea.KeyShiftLeft})
 	teatest.RequireEqualOutput(t, read(t, tm))
