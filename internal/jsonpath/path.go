@@ -178,7 +178,7 @@ func isProp(ch rune) bool {
 	return unicode.IsLetter(ch) || unicode.IsDigit(ch) || ch == '_' || ch == '$'
 }
 
-var Identifier = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
+var Identifier = regexp.MustCompile(`^[$a-zA-Z_][$a-zA-Z0-9_]*$`)
 
 func Join(path []any) string {
 	s := ""
