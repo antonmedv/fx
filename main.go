@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -732,12 +733,12 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.showPreview = true
 		content := ""
 		value := m.cursorValue()
-		//if decodedValue, err := base64.StdEncoding.DecodeString(value); err == nil {
-		//	img, err := utils.DrawImage(bytes.NewReader(decodedValue), m.termWidth, m.termHeight)
-		//	if err == nil {
-		//		content = img
-		//	}
-		//}
+		if decodedValue, err := base64.StdEncoding.DecodeString(value); err == nil {
+			img, err := utils.DrawImage(bytes.NewReader(decodedValue), m.termWidth, m.termHeight)
+			if err == nil {
+				content = img
+			}
+		}
 		if content == "" {
 			content = lipgloss.NewStyle().Width(m.termWidth).Render(value)
 		}
