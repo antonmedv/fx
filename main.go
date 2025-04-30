@@ -751,7 +751,7 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if decodedValue, err := base64.StdEncoding.DecodeString(value); err == nil {
 			img, err := utils.DrawImage(bytes.NewReader(decodedValue), m.termWidth, m.termHeight)
 			if err == nil {
-				content = img
+				content = strings.TrimRight(img, "\n")
 			}
 		}
 		if content == "" {
