@@ -775,6 +775,14 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.gotoSymbolInput.Focus()
 		m.createKeysIndex()
 
+	case key.Matches(msg, keyMap.GotoRef):
+		ref := m.cursorValue()
+		refPath, ok := jsonpath.ParseSchemaRef(string(ref))
+		if ok {
+			m.selectNode(m.selectByPath(refPath))
+			m.recordHistory()
+		}
+
 	case key.Matches(msg, keyMap.Search):
 		m.searchInput.CursorEnd()
 		m.searchInput.Width = m.termWidth - 2 // -1 for the prompt, -1 for the cursor
@@ -927,9 +935,20 @@ func (m *model) View() string {
 			isSelected = false // don't highlight the cursor while iterating search results
 		}
 
+		isRef := false
+
 		if n.Key != nil {
 			screen = append(screen, m.prettyKey(n, isSelected)...)
 			screen = append(screen, theme.Colon...)
+
+			if isSelected && n.Kind == String && len(n.Key) == 6 && string(n.Key) == `"$ref"` {
+				value, err := strconv.Unquote(string(n.Value))
+				if err == nil {
+					_, ok := jsonpath.ParseSchemaRef(value)
+					isRef = ok
+				}
+			}
+
 			isSelected = false // don't highlight the key's value
 		}
 
@@ -970,6 +989,10 @@ func (m *model) View() string {
 			if n.IsCollapsed() || n.Size > 1 {
 				screen = append(screen, theme.CurrentTheme.Size([]byte(fmt.Sprintf(" |%d|", n.Size)))...)
 			}
+		}
+
+		if isRef {
+			screen = append(screen, theme.CurrentTheme.Preview([]byte("  ctrl+g goto"))...)
 		}
 
 		screen = append(screen, '\n')

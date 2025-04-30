@@ -11,6 +11,7 @@ type KeyMap struct {
 	GotoTop             key.Binding
 	GotoBottom          key.Binding
 	GotoSymbol          key.Binding
+	GotoRef             key.Binding
 	Down                key.Binding
 	Up                  key.Binding
 	Help                key.Binding
@@ -71,6 +72,10 @@ func init() {
 		GotoSymbol: key.NewBinding(
 			key.WithKeys("@"),
 			key.WithHelp("", "goto symbol"),
+		),
+		GotoRef: key.NewBinding(
+			key.WithKeys("ctrl+g"),
+			key.WithHelp("", "goto ref"),
 		),
 		Down: key.NewBinding(
 			key.WithKeys("down", "j"),
