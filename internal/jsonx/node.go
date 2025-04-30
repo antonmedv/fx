@@ -224,35 +224,6 @@ func (n *Node) FindChildByIndex(index int) *Node {
 	return nil
 }
 
-func (n *Node) paths(prefix string, paths *[]string, nodes *[]*Node) {
-	it := n.Next
-	for it != nil && it != n.End {
-		var path string
-
-		if it.Key != nil {
-			quoted := string(it.Key)
-			unquoted, err := strconv.Unquote(quoted)
-			if err == nil && jsonpath.Identifier.MatchString(unquoted) {
-				path = prefix + "." + unquoted
-			} else {
-				path = prefix + "[" + quoted + "]"
-			}
-		} else if it.Index >= 0 {
-			path = prefix + "[" + strconv.Itoa(it.Index) + "]"
-		}
-
-		*paths = append(*paths, path)
-		*nodes = append(*nodes, it)
-
-		if it.HasChildren() {
-			it.paths(path, paths, nodes)
-			it = it.End.Next
-		} else {
-			it = it.Next
-		}
-	}
-}
-
 func (n *Node) Children() ([]string, []*Node) {
 	if !n.HasChildren() {
 		return nil, nil
@@ -301,7 +272,7 @@ func (n *Node) Bottom() *Node {
 	return it
 }
 
-func (n *Node) Symbols(prefix string, paths *[]string, nodes *[]*Node) {
+func (n *Node) Paths(prefix string, paths *[]string, nodes *[]*Node) {
 	it := n.Next
 	for it != nil && it != n.End {
 		var path string
@@ -309,13 +280,13 @@ func (n *Node) Symbols(prefix string, paths *[]string, nodes *[]*Node) {
 		if it.Key != nil {
 			quoted := string(it.Key)
 			unquoted, err := strconv.Unquote(quoted)
-			if err == nil {
+			if err == nil && jsonpath.Identifier.MatchString(unquoted) {
 				path = prefix + "." + unquoted
 			} else {
-				path = prefix + "." + quoted
+				path = prefix + "[" + quoted + "]"
 			}
 		} else if it.Index >= 0 {
-			path = prefix + "." + strconv.Itoa(it.Index)
+			path = prefix + "[" + strconv.Itoa(it.Index) + "]"
 		}
 
 		if len(*paths) == cap(*paths) {
@@ -325,7 +296,7 @@ func (n *Node) Symbols(prefix string, paths *[]string, nodes *[]*Node) {
 		*nodes = append(*nodes, it)
 
 		if it.HasChildren() {
-			it.Symbols(path, paths, nodes)
+			it.Paths(path, paths, nodes)
 			it = it.End.Next
 		} else {
 			it = it.Next
