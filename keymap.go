@@ -10,6 +10,7 @@ type KeyMap struct {
 	HalfPageDown        key.Binding
 	GotoTop             key.Binding
 	GotoBottom          key.Binding
+	GotoSymbol          key.Binding
 	Down                key.Binding
 	Up                  key.Binding
 	Help                key.Binding
@@ -65,6 +66,10 @@ func init() {
 		GotoBottom: key.NewBinding(
 			key.WithKeys("G", "end"),
 			key.WithHelp("", "goto bottom"),
+		),
+		GotoSymbol: key.NewBinding(
+			key.WithKeys("@"),
+			key.WithHelp("", "goto symbol"),
 		),
 		Down: key.NewBinding(
 			key.WithKeys("down", "j"),

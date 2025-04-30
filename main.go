@@ -31,6 +31,7 @@ import (
 	"github.com/antonmedv/fx/internal/jsonpath"
 	. "github.com/antonmedv/fx/internal/jsonx"
 	"github.com/antonmedv/fx/internal/theme"
+	"github.com/antonmedv/fx/internal/utils"
 )
 
 var (
@@ -169,6 +170,9 @@ func main() {
 	searchInput := textinput.New()
 	searchInput.Prompt = "/"
 
+	gotoSymbolInput := textinput.New()
+	gotoSymbolInput.Prompt = "@"
+
 	spinnerModel := spinner.New()
 	spinnerModel.Spinner = spinner.MiniDot
 
@@ -178,14 +182,15 @@ func main() {
 	}
 
 	m := &model{
-		showCursor:  true,
-		wrap:        true,
-		collapsed:   collapsed,
-		fileName:    fileName,
-		digInput:    digInput,
-		searchInput: searchInput,
-		search:      newSearch(),
-		spinner:     spinnerModel,
+		showCursor:      true,
+		wrap:            true,
+		collapsed:       collapsed,
+		fileName:        fileName,
+		digInput:        digInput,
+		gotoSymbolInput: gotoSymbolInput,
+		searchInput:     searchInput,
+		search:          newSearch(),
+		spinner:         spinnerModel,
 	}
 
 	lipgloss.SetColorProfile(theme.TermOutput.ColorProfile())
@@ -236,6 +241,7 @@ type model struct {
 	margin                int
 	fileName              string
 	digInput              textinput.Model
+	gotoSymbolInput       textinput.Model
 	searchInput           textinput.Model
 	search                *search
 	yank                  bool
@@ -247,6 +253,9 @@ type model struct {
 	spinner               spinner.Model
 	locationHistory       []location
 	locationIndex         int // position in locationHistory
+	keysIndex             []string
+	keysIndexNodes        []*Node
+	fuzzyMatch            *fuzzy.Match
 }
 
 type location struct {
@@ -352,6 +361,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.searchInput.Focused() {
 			return m.handleSearchKey(msg)
+		}
+		if m.gotoSymbolInput.Focused() {
+			return m.handleGotoSymbolKey(msg)
 		}
 		if m.yank {
 			return m.handleYankKey(msg)
@@ -492,6 +504,33 @@ func (m *model) handleSearchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	default:
 		m.searchInput, cmd = m.searchInput.Update(msg)
 	}
+	return m, cmd
+}
+
+func (m *model) handleGotoSymbolKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	switch {
+	case msg.Type == tea.KeyEscape:
+		m.gotoSymbolInput.Blur()
+		m.gotoSymbolInput.SetValue("")
+		m.recordHistory()
+
+	case msg.Type == tea.KeyEnter:
+		m.gotoSymbolInput.Blur()
+		m.gotoSymbolInput.SetValue("")
+		m.recordHistory()
+
+	default:
+		m.gotoSymbolInput, cmd = m.gotoSymbolInput.Update(msg)
+		matches := fuzzy.Find(m.gotoSymbolInput.Value(), m.keysIndex)
+		if len(matches) > 0 {
+			x := matches[0]
+			node := m.keysIndexNodes[x.Index]
+			m.fuzzyMatch = &x
+			m.selectNode(node)
+		}
+	}
+
 	return m, cmd
 }
 
@@ -714,6 +753,12 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.digInput.Width = m.termWidth - 1
 		m.digInput.Focus()
 
+	case key.Matches(msg, keyMap.GotoSymbol):
+		m.gotoSymbolInput.CursorEnd()
+		m.gotoSymbolInput.Width = m.termWidth - 2 // -1 for the prompt, -1 for the cursor
+		m.gotoSymbolInput.Focus()
+		m.createKeysIndex()
+
 	case key.Matches(msg, keyMap.Search):
 		m.searchInput.CursorEnd()
 		m.searchInput.Width = m.termWidth - 2 // -1 for the prompt, -1 for the cursor
@@ -923,7 +968,22 @@ func (m *model) View() string {
 		screen = append(screen, '\n')
 	}
 
-	if m.digInput.Focused() {
+	if m.gotoSymbolInput.Focused() && m.fuzzyMatch != nil {
+		var matchedStr []byte
+		str := m.fuzzyMatch.Str
+		for i := 0; i < len(str); i++ {
+			if utils.Contains(i, m.fuzzyMatch.MatchedIndexes) {
+				matchedStr = append(matchedStr, theme.CurrentTheme.Search([]byte{str[i]})...)
+			} else {
+				matchedStr = append(matchedStr, theme.CurrentTheme.StatusBar([]byte{str[i]})...)
+			}
+		}
+		repeatCount := m.termWidth - len(str)
+		if repeatCount > 0 {
+			matchedStr = append(matchedStr, theme.CurrentTheme.StatusBar([]byte(strings.Repeat(" ", repeatCount)))...)
+		}
+		screen = append(screen, matchedStr...)
+	} else if m.digInput.Focused() {
 		screen = append(screen, m.digInput.View()...)
 	} else {
 		var currentPath string
@@ -939,6 +999,9 @@ func (m *model) View() string {
 	if m.yank {
 		screen = append(screen, '\n')
 		screen = append(screen, []byte("(y)value  (p)path  (k)key")...)
+	} else if m.gotoSymbolInput.Focused() {
+		screen = append(screen, '\n')
+		screen = append(screen, m.gotoSymbolInput.View()...)
 	} else if m.searchInput.Focused() {
 		screen = append(screen, '\n')
 		screen = append(screen, m.searchInput.View()...)
@@ -1023,6 +1086,9 @@ func (m *model) prettyPrint(node *Node, selected bool) []byte {
 }
 
 func (m *model) viewHeight() int {
+	if m.gotoSymbolInput.Focused() {
+		return m.termHeight - 2
+	}
 	if m.searchInput.Focused() || m.searchInput.Value() != "" {
 		return m.termHeight - 2
 	}
@@ -1319,6 +1385,25 @@ func (m *model) redoSearch() {
 		m.doSearch(m.searchInput.Value())
 		m.selectSearchResult(cursor)
 	}
+}
+
+func (m *model) createKeysIndex() {
+	at := m.cursorPointsTo()
+	if at == nil {
+		return
+	}
+	root := at.Root()
+	if root == nil {
+		return
+	}
+	paths := make([]string, 0, 10_000)
+	nodes := make([]*Node, 0, 10_000)
+
+	root.Symbols("", &paths, &nodes)
+
+	m.keysIndex = paths
+	m.keysIndexNodes = nodes
+	m.fuzzyMatch = nil
 }
 
 func (m *model) dig(v string) *Node {

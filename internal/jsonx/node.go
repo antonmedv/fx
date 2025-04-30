@@ -300,3 +300,35 @@ func (n *Node) Bottom() *Node {
 	}
 	return it
 }
+
+func (n *Node) Symbols(prefix string, paths *[]string, nodes *[]*Node) {
+	it := n.Next
+	for it != nil && it != n.End {
+		var path string
+
+		if it.Key != nil {
+			quoted := string(it.Key)
+			unquoted, err := strconv.Unquote(quoted)
+			if err == nil {
+				path = prefix + "." + unquoted
+			} else {
+				path = prefix + "." + quoted
+			}
+		} else if it.Index >= 0 {
+			path = prefix + "." + strconv.Itoa(it.Index)
+		}
+
+		if len(*paths) == cap(*paths) {
+			return
+		}
+		*paths = append(*paths, path)
+		*nodes = append(*nodes, it)
+
+		if it.HasChildren() {
+			it.Symbols(path, paths, nodes)
+			it = it.End.Next
+		} else {
+			it = it.Next
+		}
+	}
+}

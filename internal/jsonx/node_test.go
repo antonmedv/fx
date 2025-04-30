@@ -33,3 +33,13 @@ func TestNode_expandRecursively(t *testing.T) {
 	n.ExpandRecursively(0, 3)
 	assert.Equal(t, `"c"`, string(n.Next.Next.Next.Key))
 }
+
+func TestNode_Symbols(t *testing.T) {
+	n, err := Parse([]byte(`{"a": 1, "b": {"f": 2}, "c": [3, {"d": 4}]}`))
+	require.NoError(t, err)
+
+	paths := make([]string, 0, 10)
+	nodes := make([]*Node, 0, 10)
+	n.Symbols("", &paths, &nodes)
+	assert.Equal(t, []string{".a", ".b", ".b.f", ".c", ".c.0", ".c.1", ".c.1.d"}, paths)
+}
