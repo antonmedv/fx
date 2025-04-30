@@ -6,7 +6,6 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/termenv"
@@ -67,12 +66,6 @@ func init() {
 		themeId = "1"
 	}
 
-	showSizesValue, ok := os.LookupEnv("FX_SHOW_SIZE")
-	if ok {
-		showSizesValue := strings.ToLower(showSizesValue)
-		ShowSizes = showSizesValue == "true" || showSizesValue == "yes" || showSizesValue == "on" || showSizesValue == "1"
-	}
-
 	CurrentTheme, ok = themes[themeId]
 	if !ok {
 		_, _ = fmt.Fprintf(os.Stderr, "fx: unknown theme %q, available themes: %v\n", themeId, themeNames)
@@ -97,7 +90,6 @@ var (
 	themeNames []string
 
 	CurrentTheme Theme
-	ShowSizes    = false
 
 	defaultCursor    = toColor(lipgloss.NewStyle().Reverse(true).Render)
 	defaultPreview   = toColor(lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render)

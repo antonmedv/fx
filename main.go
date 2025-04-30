@@ -182,10 +182,18 @@ func main() {
 		collapsed = true
 	}
 
+	showSizes := false
+	showSizesValue, ok := os.LookupEnv("FX_SHOW_SIZE")
+	if ok {
+		showSizesValue := strings.ToLower(showSizesValue)
+		showSizes = showSizesValue == "true" || showSizesValue == "yes" || showSizesValue == "on" || showSizesValue == "1"
+	}
+
 	m := &model{
 		showCursor:      true,
 		wrap:            true,
 		collapsed:       collapsed,
+		showSizes:       showSizes,
 		fileName:        fileName,
 		digInput:        digInput,
 		gotoSymbolInput: gotoSymbolInput,
@@ -239,6 +247,7 @@ type model struct {
 	showCursor            bool
 	wrap                  bool
 	collapsed             bool
+	showSizes             bool
 	margin                int
 	fileName              string
 	digInput              textinput.Model
@@ -726,6 +735,9 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.redoSearch()
 		m.selectNode(at)
 
+	case key.Matches(msg, keyMap.ShowSizes):
+		m.showSizes = !m.showSizes
+
 	case key.Matches(msg, keyMap.Yank):
 		m.yank = true
 
@@ -951,9 +963,9 @@ func (m *model) View() string {
 			screen = append(screen, theme.Comma...)
 		}
 
-		if theme.ShowSizes && (n.Kind == Array || n.Kind == Object) {
+		if m.showSizes && (n.Kind == Array || n.Kind == Object) {
 			if n.IsCollapsed() || n.Size > 1 {
-				screen = append(screen, theme.CurrentTheme.Size([]byte(fmt.Sprintf(" // %d", n.Size)))...)
+				screen = append(screen, theme.CurrentTheme.Size([]byte(fmt.Sprintf(" |%d|", n.Size)))...)
 			}
 		}
 

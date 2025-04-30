@@ -24,6 +24,7 @@ type KeyMap struct {
 	NextSibling         key.Binding
 	PrevSibling         key.Binding
 	ToggleWrap          key.Binding
+	ShowSizes           key.Binding
 	Yank                key.Binding
 	Search              key.Binding
 	SearchNext          key.Binding
@@ -122,6 +123,10 @@ func init() {
 		ToggleWrap: key.NewBinding(
 			key.WithKeys("z"),
 			key.WithHelp("", "toggle strings wrap"),
+		),
+		ShowSizes: key.NewBinding(
+			key.WithKeys("s"),
+			key.WithHelp("", "show array/object sizes"),
 		),
 		Yank: key.NewBinding(
 			key.WithKeys("y"),
