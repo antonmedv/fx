@@ -273,7 +273,12 @@ func (n *Node) Bottom() *Node {
 }
 
 func (n *Node) Paths(prefix string, paths *[]string, nodes *[]*Node) {
-	it := n.Next
+	var it *Node
+	if n.IsCollapsed() {
+		it = n.Collapsed
+	} else {
+		it = n.Next
+	}
 	for it != nil && it != n.End {
 		var path string
 
@@ -289,11 +294,13 @@ func (n *Node) Paths(prefix string, paths *[]string, nodes *[]*Node) {
 			path = prefix + "[" + strconv.Itoa(it.Index) + "]"
 		}
 
-		if len(*paths) == cap(*paths) {
-			return
+		if path != "" {
+			if len(*paths) == cap(*paths) {
+				return
+			}
+			*paths = append(*paths, path)
+			*nodes = append(*nodes, it)
 		}
-		*paths = append(*paths, path)
-		*nodes = append(*nodes, it)
 
 		if it.HasChildren() {
 			it.Paths(path, paths, nodes)

@@ -33,3 +33,14 @@ func TestNode_Paths(t *testing.T) {
 	n.Paths("", &paths, &nodes)
 	assert.Equal(t, []string{".a", ".b", ".b.f", ".c", ".c[0]", ".c[1]", ".c[1].d"}, paths)
 }
+
+func TestNode_Paths_Collapsed(t *testing.T) {
+	n, err := Parse([]byte(`{"a": 1, "b": {"f": 2}, "c": [3, {"d": 4}]}`))
+	require.NoError(t, err)
+	n.CollapseRecursively()
+
+	paths := make([]string, 0, 10)
+	nodes := make([]*Node, 0, 10)
+	n.Paths("", &paths, &nodes)
+	assert.Equal(t, []string{".a", ".b", ".b.f", ".c", ".c[0]", ".c[1]", ".c[1].d"}, paths)
+}
