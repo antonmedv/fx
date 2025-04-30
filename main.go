@@ -519,13 +519,8 @@ func (m *model) handleSearchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m *model) handleGotoSymbolKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
-	switch {
-	case msg.Type == tea.KeyEscape:
-		m.gotoSymbolInput.Blur()
-		m.gotoSymbolInput.SetValue("")
-		m.recordHistory()
-
-	case msg.Type == tea.KeyEnter:
+	switch msg.Type {
+	case tea.KeyEscape, tea.KeyEnter, tea.KeyUp, tea.KeyDown:
 		m.gotoSymbolInput.Blur()
 		m.gotoSymbolInput.SetValue("")
 		m.recordHistory()
@@ -539,6 +534,14 @@ func (m *model) handleGotoSymbolKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.fuzzyMatch = &x
 			m.selectNode(node)
 		}
+	}
+
+	switch msg.Type {
+	case tea.KeyUp:
+		m.up()
+
+	case tea.KeyDown:
+		m.down()
 	}
 
 	return m, cmd
