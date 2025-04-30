@@ -245,6 +245,12 @@ type model struct {
 	preview               viewport.Model
 	printOnExit           bool
 	spinner               spinner.Model
+	locationHistory       []location
+	locationIndex         int // position in locationHistory
+}
+
+type location struct {
+	node *Node
 }
 
 type nodeMsg struct {
@@ -336,6 +342,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						}
 					}
 				}
+				m.recordHistory()
 			}
 		}
 
@@ -480,6 +487,7 @@ func (m *model) handleSearchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case msg.Type == tea.KeyEnter:
 		m.searchInput.Blur()
 		m.doSearch(m.searchInput.Value())
+		m.recordHistory()
 
 	default:
 		m.searchInput, cmd = m.searchInput.Update(msg)
@@ -520,6 +528,7 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		for i := 0; i < m.viewHeight(); i++ {
 			m.up()
 		}
+		m.recordHistory()
 
 	case key.Matches(msg, keyMap.PageDown):
 		m.cursor = m.viewHeight() - 1
@@ -527,12 +536,14 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.down()
 		}
 		m.scrollIntoView()
+		m.recordHistory()
 
 	case key.Matches(msg, keyMap.HalfPageUp):
 		m.cursor = 0
 		for i := 0; i < m.viewHeight()/2; i++ {
 			m.up()
 		}
+		m.recordHistory()
 
 	case key.Matches(msg, keyMap.HalfPageDown):
 		m.cursor = m.viewHeight() - 1
@@ -540,14 +551,17 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.down()
 		}
 		m.scrollIntoView()
+		m.recordHistory()
 
 	case key.Matches(msg, keyMap.GotoTop):
 		m.head = m.top
 		m.cursor = 0
 		m.showCursor = true
+		m.recordHistory()
 
 	case key.Matches(msg, keyMap.GotoBottom):
 		m.scrollToBottom()
+		m.recordHistory()
 
 	case key.Matches(msg, keyMap.NextSibling):
 		pointsTo := m.cursorPointsTo()
@@ -562,6 +576,7 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if nextSibling != nil {
 			m.selectNode(nextSibling)
 		}
+		m.recordHistory()
 
 	case key.Matches(msg, keyMap.PrevSibling):
 		pointsTo := m.cursorPointsTo()
@@ -581,6 +596,7 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if prevSibling != nil {
 			m.selectNode(prevSibling)
 		}
+		m.recordHistory()
 
 	case key.Matches(msg, keyMap.Collapse):
 		n := m.cursorPointsTo()
@@ -595,6 +611,7 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 		m.selectNode(n)
+		m.recordHistory()
 
 	case key.Matches(msg, keyMap.Expand):
 		m.cursorPointsTo().Expand()
@@ -628,6 +645,7 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				}
 			}
 			m.selectNode(at.Root())
+			m.recordHistory()
 		}
 
 	case key.Matches(msg, keyMap.ExpandAll):
@@ -643,6 +661,7 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 		m.selectNode(at)
+		m.recordHistory()
 
 	case key.Matches(msg, keyMap.CollapseLevel):
 		at := m.cursorPointsTo()
@@ -702,9 +721,32 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keyMap.SearchNext):
 		m.selectSearchResult(m.search.cursor + 1)
+		m.recordHistory()
 
 	case key.Matches(msg, keyMap.SearchPrev):
 		m.selectSearchResult(m.search.cursor - 1)
+		m.recordHistory()
+
+	case key.Matches(msg, keyMap.GoBack):
+		if m.locationIndex > 0 {
+			at := m.cursorPointsTo()
+			m.locationIndex--
+
+			gotoNode := m.locationHistory[m.locationIndex].node
+			for gotoNode == at && m.locationIndex > 0 {
+				m.locationIndex--
+				gotoNode = m.locationHistory[m.locationIndex].node
+			}
+			m.selectNode(gotoNode)
+		}
+
+	case key.Matches(msg, keyMap.GoForward):
+		if m.locationIndex < len(m.locationHistory)-1 {
+			m.locationIndex++
+			gotoNode := m.locationHistory[m.locationIndex].node
+			m.selectNode(gotoNode)
+		}
+
 	}
 	return m, nil
 }
@@ -740,6 +782,25 @@ func (m *model) down() {
 			m.head = m.head.Next
 		}
 	}
+}
+
+func (m *model) recordHistory() {
+	at := m.cursorPointsTo()
+	if at == nil {
+		return
+	}
+	if at.Chunk != nil && at.Value == nil {
+		// We at the wrapped string, save the location of the original string node.
+		at = at.Parent()
+	}
+	if len(m.locationHistory) > 0 && m.locationHistory[len(m.locationHistory)-1].node == at {
+		return
+	}
+	if m.locationIndex < len(m.locationHistory) {
+		m.locationHistory = m.locationHistory[:m.locationIndex+1]
+	}
+	m.locationHistory = append(m.locationHistory, location{node: at})
+	m.locationIndex = len(m.locationHistory)
 }
 
 func (m *model) scrollToBottom() {

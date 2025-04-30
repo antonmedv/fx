@@ -29,6 +29,8 @@ type KeyMap struct {
 	SearchPrev          key.Binding
 	Preview             key.Binding
 	Print               key.Binding
+	GoBack              key.Binding
+	GoForward           key.Binding
 	Dig                 key.Binding
 }
 
@@ -139,6 +141,14 @@ func init() {
 		Print: key.NewBinding(
 			key.WithKeys("P"),
 			key.WithHelp("", "print"),
+		),
+		GoBack: key.NewBinding(
+			key.WithKeys("["),
+			key.WithHelp("", "go back"),
+		),
+		GoForward: key.NewBinding(
+			key.WithKeys("]"),
+			key.WithHelp("", "go forward"),
 		),
 		Dig: key.NewBinding(
 			key.WithKeys("."),
