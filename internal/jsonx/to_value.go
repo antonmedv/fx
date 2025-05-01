@@ -2,6 +2,7 @@ package jsonx
 
 import (
 	"fmt"
+	"math/big"
 	"strconv"
 
 	"github.com/dop251/goja"
@@ -20,8 +21,8 @@ func (n *Node) ToValue(vm *goja.Runtime) goja.Value {
 		}
 
 	case Number:
-		i, err := strconv.Atoi(string(n.Value))
-		if err == nil {
+		i, ok := ParseNumber(string(n.Value))
+		if ok {
 			return vm.ToValue(i)
 		}
 		f, err := strconv.ParseFloat(string(n.Value), 64)
@@ -94,4 +95,30 @@ func (n *Node) ToValue(vm *goja.Runtime) goja.Value {
 		return vm.NewArray(arr...)
 	}
 	panic(fmt.Sprintf("unsupported node kind %d", n.Kind))
+}
+
+// maxSafeInt is 2^53 - 1, the largest integer JS can represent exactly.
+const maxSafeInt = 1<<53 - 1
+
+// minSafeInt is -(2^53 - 1).
+const minSafeInt = -maxSafeInt
+
+// ParseNumber parses a number from a string as int64 or *big.Int.
+func ParseNumber(s string) (interface{}, bool) {
+	bi := new(big.Int)
+	if _, ok := bi.SetString(s, 10); !ok {
+		return nil, false
+	}
+
+	// Quickly reject values whose bit-length exceeds 54 (i.e. >= 2^53).
+	// big.Int.BitLen returns the length of the absolute value in bits.
+	if bi.BitLen() <= 53 {
+		// Safe to convert to int64 and check full range.
+		v := bi.Int64()
+		if v >= minSafeInt && v <= maxSafeInt {
+			return int(v), true
+		}
+	}
+
+	return bi, true
 }

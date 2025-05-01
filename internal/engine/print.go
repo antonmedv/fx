@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"math/big"
 	"reflect"
 	"strconv"
 	"strings"
@@ -13,6 +14,10 @@ func Print(value goja.Value, vm *goja.Runtime, depth int) string {
 	rtype := value.ExportType()
 	if rtype == nil {
 		return CurrentTheme.Null("null")
+	}
+	if isBigIntPtr(rtype) {
+		bi := value.Export().(*big.Int)
+		return CurrentTheme.Number(bi.String())
 	}
 	switch rtype.Kind() {
 	case reflect.Bool:
@@ -87,4 +92,10 @@ func Print(value goja.Value, vm *goja.Runtime, depth int) string {
 		return out.String()
 	}
 	return value.String()
+}
+
+var bigIntPtrType = reflect.TypeOf((*big.Int)(nil))
+
+func isBigIntPtr(t reflect.Type) bool {
+	return t == bigIntPtrType
 }
