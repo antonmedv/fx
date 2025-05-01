@@ -1318,18 +1318,7 @@ func (m *model) cursorKey() string {
 
 func (m *model) findByPath(path []any) *Node {
 	n := m.currentTopNode()
-	for _, part := range path {
-		if n == nil {
-			return nil
-		}
-		switch part := part.(type) {
-		case string:
-			n = n.FindChildByKey(part)
-		case int:
-			n = n.FindChildByIndex(part)
-		}
-	}
-	return n
+	return n.FindByPath(path)
 }
 
 func (m *model) currentTopNode() *Node {

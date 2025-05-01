@@ -189,6 +189,22 @@ func (n *Node) ExpandRecursively(level, maxLevel int) {
 	}
 }
 
+func (n *Node) FindByPath(path []any) *Node {
+	it := n
+	for _, part := range path {
+		if it == nil {
+			return nil
+		}
+		switch part := part.(type) {
+		case string:
+			it = it.FindChildByKey(part)
+		case int:
+			it = it.FindChildByIndex(part)
+		}
+	}
+	return it
+}
+
 func (n *Node) FindChildByKey(key string) *Node {
 	it := n.Next
 	for it != nil && it != n.End {
@@ -415,7 +431,7 @@ func (n *Node) ToValue(vm *goja.Runtime) goja.Value {
 			}
 		}
 
-		return vm.NewArray(arr)
+		return vm.NewArray(arr...)
 	}
 	panic(fmt.Sprintf("unsupported node kind %d", n.Kind))
 }

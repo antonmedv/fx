@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/antonmedv/fx/internal/jsonx"
+	"github.com/antonmedv/fx/internal/theme"
 	"github.com/dop251/goja"
 )
 
@@ -16,6 +17,22 @@ import (
 var Stdlib string
 
 func Reduce(parser *jsonx.JsonParser, fns []string) {
+	if len(fns) == 1 && (fns[0] == "." || fns[0] == "this" || fns[0] == "x") {
+		// Fast path.
+		for {
+			node, err := parser.Parse()
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				println(err.Error())
+				os.Exit(1)
+			}
+
+			fmt.Print(theme.PrettyPrint(node))
+		}
+	}
+
 	var code strings.Builder
 	code.WriteString(Stdlib)
 	code.WriteString("\nfunction __transform__(json) {\n")
@@ -23,7 +40,6 @@ func Reduce(parser *jsonx.JsonParser, fns []string) {
 		code.WriteString(Transform(fn))
 	}
 	code.WriteString("  return json\n}\n")
-	code.WriteString("const __undefined__ = undefined\n")
 
 	vm := goja.New()
 	if err := vm.Set("println", func(s string) any {
@@ -37,11 +53,13 @@ func Reduce(parser *jsonx.JsonParser, fns []string) {
 		println(err.Error())
 		os.Exit(1)
 	}
+
+	skip := vm.Get("skip")
+	undefined := vm.Get("undefined")
 	transform, ok := goja.AssertFunction(vm.Get("__transform__"))
 	if !ok {
 		panic("__transform__ function not found")
 	}
-	undefined := vm.Get("__undefined__")
 
 	for {
 		node, err := parser.Parse()
@@ -61,12 +79,14 @@ func Reduce(parser *jsonx.JsonParser, fns []string) {
 		}
 
 		rtype := output.ExportType()
-		if output.StrictEquals(undefined) {
-			fmt.Fprintln(os.Stderr, "undefined")
+		if output.StrictEquals(skip) {
+			continue
+		} else if output.StrictEquals(undefined) {
+			_, _ = fmt.Fprintln(os.Stderr, "undefined")
 		} else if rtype != nil && rtype.Kind() == reflect.String {
 			fmt.Println(output.ToString())
 		} else {
-			fmt.Println(PrettyPrint(output, vm, 0))
+			fmt.Println(Print(output, vm, 0))
 		}
 	}
 }
