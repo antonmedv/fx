@@ -357,7 +357,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						if isRef {
 							refPath, ok := jsonpath.ParseSchemaRef(value)
 							if ok {
-								m.selectNode(m.selectByPath(refPath))
+								m.selectNode(m.findByPath(refPath))
 								m.recordHistory()
 							}
 						}
@@ -417,7 +417,7 @@ func (m *model) handleDigKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.digInput.Blur()
 		digPath, ok := jsonpath.Split(m.digInput.Value())
 		if ok {
-			n := m.selectByPath(digPath)
+			n := m.findByPath(digPath)
 			if n != nil {
 				m.selectNode(n)
 			}
@@ -429,7 +429,7 @@ func (m *model) handleDigKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if len(digPath) > 0 {
 				digPath = digPath[:len(digPath)-1]
 			}
-			n := m.selectByPath(digPath)
+			n := m.findByPath(digPath)
 			if n != nil {
 				m.selectNode(n)
 				m.digInput.SetValue(m.cursorPath())
@@ -723,7 +723,6 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 		m.selectNode(at)
-		m.recordHistory()
 
 	case key.Matches(msg, keyMap.CollapseLevel):
 		at := m.cursorPointsTo()
@@ -791,7 +790,7 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if isRef {
 			refPath, ok := jsonpath.ParseSchemaRef(value)
 			if ok {
-				m.selectNode(m.selectByPath(refPath))
+				m.selectNode(m.findByPath(refPath))
 				m.recordHistory()
 			}
 		}
@@ -1322,7 +1321,7 @@ func (m *model) cursorKey() string {
 
 }
 
-func (m *model) selectByPath(path []any) *Node {
+func (m *model) findByPath(path []any) *Node {
 	n := m.currentTopNode()
 	for _, part := range path {
 		if n == nil {
@@ -1470,7 +1469,7 @@ func (m *model) dig(v string) *Node {
 	if !ok {
 		return nil
 	}
-	at := m.selectByPath(p)
+	at := m.findByPath(p)
 	if at != nil {
 		return at
 	}
@@ -1482,7 +1481,7 @@ func (m *model) dig(v string) *Node {
 	}
 	p = p[:len(p)-1]
 
-	at = m.selectByPath(p)
+	at = m.findByPath(p)
 	if at == nil {
 		return nil
 	}
