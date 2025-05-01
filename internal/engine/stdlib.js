@@ -1,3 +1,5 @@
+'use strict'
+
 const console = {
   log: function (...args) {
     const parts = []
