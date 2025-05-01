@@ -9,6 +9,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"path"
 	"regexp"
 	"runtime/pprof"
 	"strconv"
@@ -126,6 +127,7 @@ func main() {
 		} else {
 			// $ fx file.json arg*
 			src = open(args[0], &flagYaml)
+			fileName = path.Base(args[0])
 			args = args[1:]
 		}
 	} else {
@@ -1039,14 +1041,15 @@ func (m *model) View() string {
 	} else if m.digInput.Focused() {
 		screen = append(screen, m.digInput.View()...)
 	} else {
-		var currentPath string
 		if m.head != nil {
-			currentPath = m.cursorPath()
+			currentPath := m.cursorPath()
+			statusBar := flex(m.termWidth, currentPath, m.fileName)
+			screen = append(screen, theme.CurrentTheme.StatusBar(statusBar)...)
 		} else {
-			currentPath = fmt.Sprintf(" indexing %s", m.spinner.View())
+			indicator := fmt.Sprintf(" indexing %s ", m.spinner.View())
+			statusBar := flex(m.termWidth+2, indicator, m.fileName)
+			screen = append(screen, theme.CurrentTheme.StatusBar(statusBar)...)
 		}
-		statusBar := flex(m.termWidth, currentPath, m.fileName)
-		screen = append(screen, theme.CurrentTheme.StatusBar(statusBar)...)
 	}
 
 	if m.yank {
