@@ -29,7 +29,7 @@ func Reduce(parser *jsonx.JsonParser, fns []string) {
 				os.Exit(1)
 			}
 
-			fmt.Print(theme.PrettyPrint(node))
+			fmt.Print(theme.PrintFullJson(node))
 		}
 	}
 

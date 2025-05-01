@@ -6,7 +6,7 @@ import (
 	"github.com/antonmedv/fx/internal/jsonx"
 )
 
-func PrettyPrint(n *jsonx.Node) string {
+func PrintFullJson(n *jsonx.Node) string {
 	var out strings.Builder
 
 	it := n

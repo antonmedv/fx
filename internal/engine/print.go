@@ -30,6 +30,11 @@ func Print(value goja.Value, vm *goja.Runtime, depth int) string {
 
 	case reflect.Map:
 		obj := value.ToObject(vm)
+		keys := obj.Keys()
+
+		if len(keys) == 0 {
+			return CurrentTheme.Syntax("{}")
+		}
 
 		var out strings.Builder
 		out.WriteString(CurrentTheme.Syntax("{"))
@@ -38,7 +43,6 @@ func Print(value goja.Value, vm *goja.Runtime, depth int) string {
 		ident := strings.Repeat("  ", depth)
 		identKey := strings.Repeat("  ", depth+1)
 
-		keys := obj.Keys()
 		for i, key := range keys {
 			out.WriteString(identKey)
 			out.WriteString(CurrentTheme.Key(strconv.Quote(key)))
@@ -58,12 +62,16 @@ func Print(value goja.Value, vm *goja.Runtime, depth int) string {
 
 	case reflect.Slice:
 		arr := value.ToObject(vm)
+		keys := arr.Keys()
+
+		if len(keys) == 0 {
+			return CurrentTheme.Syntax("[]")
+		}
 
 		var out strings.Builder
 		out.WriteString(CurrentTheme.Syntax("["))
 		out.WriteString("\n")
 
-		keys := arr.Keys()
 		for i, key := range keys {
 			item := arr.Get(key)
 			out.WriteString(strings.Repeat("  ", depth+1))
