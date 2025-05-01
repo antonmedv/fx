@@ -1,9 +1,11 @@
 package jsonx
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/antonmedv/fx/internal/jsonpath"
+	"github.com/dop251/goja"
 )
 
 type Kind byte
@@ -273,6 +275,22 @@ func (n *Node) Bottom() *Node {
 }
 
 func (n *Node) Paths(paths *[]string, nodes *[]*Node) {
+	joinPath := func(prefix string, n *Node) string {
+		var path string
+		if n.Key != nil {
+			quoted := string(n.Key)
+			unquoted, err := strconv.Unquote(quoted)
+			if err == nil && jsonpath.Identifier.MatchString(unquoted) {
+				path = prefix + "." + unquoted
+			} else {
+				path = prefix + "[" + quoted + "]"
+			}
+		} else if n.Index >= 0 {
+			path = prefix + "[" + strconv.Itoa(n.Index) + "]"
+		}
+		return path
+	}
+
 	type item struct {
 		node *Node
 		path string
@@ -313,18 +331,87 @@ func (n *Node) Paths(paths *[]string, nodes *[]*Node) {
 	}
 }
 
-func joinPath(prefix string, n *Node) string {
-	var path string
-	if n.Key != nil {
-		quoted := string(n.Key)
-		unquoted, err := strconv.Unquote(quoted)
-		if err == nil && jsonpath.Identifier.MatchString(unquoted) {
-			path = prefix + "." + unquoted
+func (n *Node) ToValue(vm *goja.Runtime) goja.Value {
+	switch n.Kind {
+	case Null:
+		return goja.Null()
+
+	case Bool:
+		if string(n.Value) == "true" {
+			return vm.ToValue(true)
 		} else {
-			path = prefix + "[" + quoted + "]"
+			return vm.ToValue(false)
 		}
-	} else if n.Index >= 0 {
-		path = prefix + "[" + strconv.Itoa(n.Index) + "]"
+
+	case Number:
+		i, err := strconv.Atoi(string(n.Value))
+		if err == nil {
+			return vm.ToValue(i)
+		}
+		f, err := strconv.ParseFloat(string(n.Value), 64)
+		if err == nil {
+			return vm.ToValue(f)
+		}
+		panic(err)
+
+	case String:
+		unquoted, err := strconv.Unquote(string(n.Value))
+		if err != nil {
+			panic(err)
+		}
+		return vm.ToValue(unquoted)
+
+	case Object:
+		obj := vm.NewObject()
+
+		it := n
+		if it.IsCollapsed() {
+			it = it.Collapsed
+		} else {
+			it = it.Next
+		}
+
+		for it != nil && it != n.End {
+			unquotedKey, err := strconv.Unquote(string(it.Key))
+			if err != nil {
+				panic(err)
+			}
+
+			err = obj.Set(unquotedKey, it.ToValue(vm))
+			if err != nil {
+				panic(err)
+			}
+
+			if it.HasChildren() {
+				it = it.End.Next
+			} else {
+				it = it.Next
+			}
+		}
+
+		return obj
+
+	case Array:
+		var arr []any
+
+		it := n
+		if it.IsCollapsed() {
+			it = it.Collapsed
+		} else {
+			it = it.Next
+		}
+
+		for it != nil && it != n.End {
+			arr = append(arr, it.ToValue(vm))
+
+			if it.HasChildren() {
+				it = it.End.Next
+			} else {
+				it = it.Next
+			}
+		}
+
+		return vm.NewArray(arr)
 	}
-	return path
+	panic(fmt.Sprintf("unsupported node kind %d", n.Kind))
 }

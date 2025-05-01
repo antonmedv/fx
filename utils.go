@@ -2,7 +2,12 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"io"
+	"io/fs"
+	"os"
+	"path"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -10,6 +15,25 @@ import (
 	"github.com/antonmedv/fx/internal/jsonx"
 	"github.com/goccy/go-yaml"
 )
+
+func open(filePath string, flagYaml *bool) *os.File {
+	f, err := os.Open(filePath)
+	if err != nil {
+		var pathError *fs.PathError
+		if errors.As(err, &pathError) {
+			println(err.Error())
+			os.Exit(1)
+		} else {
+			panic(err)
+		}
+	}
+	fileName := path.Base(filePath)
+	hasYamlExt, _ := regexp.MatchString(`(?i)\.ya?ml$`, fileName)
+	if !*flagYaml && hasYamlExt {
+		*flagYaml = true
+	}
+	return f
+}
 
 func regexCase(code string) (string, bool) {
 	if strings.HasSuffix(code, "/i") {

@@ -7,7 +7,7 @@ import (
 )
 
 func Transform(code string) string {
-	return fmt.Sprintf(`json = apply((function () {
+	return fmt.Sprintf(`  json = apply((function () {
     const x = this
     return %s
   }).call(json), json)

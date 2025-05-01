@@ -4,20 +4,18 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
-	"io/fs"
 	"math"
 	"os"
-	"path"
 	"regexp"
 	"runtime/pprof"
 	"strconv"
 	"strings"
 
 	"github.com/antonmedv/clipboard"
+	"github.com/antonmedv/fx/internal/engine"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -28,7 +26,6 @@ import (
 	"github.com/sahilm/fuzzy"
 
 	"github.com/antonmedv/fx/internal/complete"
-	"github.com/antonmedv/fx/internal/engine"
 	"github.com/antonmedv/fx/internal/jsonpath"
 	. "github.com/antonmedv/fx/internal/jsonx"
 	"github.com/antonmedv/fx/internal/theme"
@@ -36,8 +33,10 @@ import (
 )
 
 var (
-	flagYaml bool
-	flagComp bool
+	flagYaml  bool
+	flagRaw   bool
+	flagSlurp bool
+	flagComp  bool // Echo autocomplete integration code.
 )
 
 func main() {
@@ -86,6 +85,13 @@ func main() {
 			return
 		case "--yaml":
 			flagYaml = true
+		case "--raw", "-r":
+			flagRaw = true
+		case "--slurp", "-s":
+			flagSlurp = true
+		case "-rs", "-sr":
+			flagRaw = true
+			flagSlurp = true
 		default:
 			args = append(args, arg)
 		}
@@ -112,35 +118,19 @@ func main() {
 	var fileName string
 	var src io.Reader
 
-	if stdinIsTty && len(args) == 0 {
-		// $ fx
-		fmt.Println(usage(keyMap))
-		return
-	} else if stdinIsTty && len(args) == 1 {
-		// $ fx file.json
-		filePath := args[0]
-		f, err := os.Open(filePath)
-		if err != nil {
-			var pathError *fs.PathError
-			if errors.As(err, &pathError) {
-				fmt.Println(err)
-				os.Exit(1)
-			} else {
-				panic(err)
-			}
+	if stdinIsTty {
+		if len(args) == 0 {
+			// $ fx
+			fmt.Println(usage(keyMap))
+			return
+		} else {
+			// $ fx file.json arg*
+			src = open(args[0], &flagYaml)
+			args = args[1:]
 		}
-		fileName = path.Base(filePath)
-		src = f
-		hasYamlExt, _ := regexp.MatchString(`(?i)\.ya?ml$`, fileName)
-		if !flagYaml && hasYamlExt {
-			flagYaml = true
-		}
-	} else if !stdinIsTty && len(args) == 0 {
-		// cat file.json | fx
-		src = os.Stdin
 	} else {
-		engine.Reduce(os.Args[1:])
-		return
+		// cat file.json | fx arg*
+		src = os.Stdin
 	}
 
 	if flagYaml {
@@ -158,6 +148,11 @@ func main() {
 	}
 
 	jsonParser := NewParser(src)
+
+	if len(args) > 0 {
+		engine.Reduce(jsonParser, args)
+		return
+	}
 
 	digInput := textinput.New()
 	digInput.Prompt = ""
