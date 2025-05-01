@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"reflect"
 	"strings"
 
 	"github.com/antonmedv/fx/internal/jsonx"
@@ -21,7 +22,8 @@ func Reduce(parser *jsonx.JsonParser, fns []string) {
 	for _, fn := range fns {
 		code.WriteString(Transform(fn))
 	}
-	code.WriteString("\n  return json\n}\n")
+	code.WriteString("  return json\n}\n")
+	code.WriteString("const __undefined__ = undefined\n")
 
 	vm := goja.New()
 	if err := vm.Set("println", func(s string) any {
@@ -31,9 +33,7 @@ func Reduce(parser *jsonx.JsonParser, fns []string) {
 		panic(err)
 	}
 
-	codeStr := code.String()
-	println(codeStr)
-	if _, err := vm.RunString(codeStr); err != nil {
+	if _, err := vm.RunString(code.String()); err != nil {
 		println(err.Error())
 		os.Exit(1)
 	}
@@ -41,6 +41,7 @@ func Reduce(parser *jsonx.JsonParser, fns []string) {
 	if !ok {
 		panic("__transform__ function not found")
 	}
+	undefined := vm.Get("__undefined__")
 
 	for {
 		node, err := parser.Parse()
@@ -59,6 +60,13 @@ func Reduce(parser *jsonx.JsonParser, fns []string) {
 			os.Exit(1)
 		}
 
-		println(output.String())
+		rtype := output.ExportType()
+		if output.StrictEquals(undefined) {
+			fmt.Fprintln(os.Stderr, "undefined")
+		} else if rtype != nil && rtype.Kind() == reflect.String {
+			fmt.Println(output.ToString())
+		} else {
+			fmt.Println(PrettyPrint(output, vm, 0))
+		}
 	}
 }

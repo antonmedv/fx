@@ -28,7 +28,7 @@ type Theme struct {
 	Ref       Color
 }
 
-type Color func(s []byte) []byte
+type Color func(s string) string
 
 func Value(kind jsonx.Kind, selected bool) Color {
 	if selected {
@@ -77,14 +77,14 @@ func init() {
 		CurrentTheme = themes["0"]
 	}
 
-	Colon = CurrentTheme.Syntax([]byte{':', ' '})
-	ColonPreview = CurrentTheme.Preview([]byte{':'})
-	Comma = CurrentTheme.Syntax([]byte{','})
-	CommaPreview = CurrentTheme.Preview([]byte{','})
-	Empty = CurrentTheme.Preview([]byte{'~'})
-	Dot3 = CurrentTheme.Preview([]byte("…"))
-	CloseCurlyBracket = CurrentTheme.Syntax([]byte{'}'})
-	CloseSquareBracket = CurrentTheme.Syntax([]byte{']'})
+	Colon = CurrentTheme.Syntax(": ")
+	ColonPreview = CurrentTheme.Preview(":")
+	Comma = CurrentTheme.Syntax(",")
+	CommaPreview = CurrentTheme.Preview(",")
+	Empty = CurrentTheme.Preview("~")
+	Dot3 = CurrentTheme.Preview("…")
+	CloseCurlyBracket = CurrentTheme.Syntax("}")
+	CloseSquareBracket = CurrentTheme.Syntax("]")
 }
 
 var (
@@ -102,14 +102,14 @@ var (
 )
 
 var (
-	Colon              []byte
-	ColonPreview       []byte
-	Comma              []byte
-	CommaPreview       []byte
-	Empty              []byte
-	Dot3               []byte
-	CloseCurlyBracket  []byte
-	CloseSquareBracket []byte
+	Colon              string
+	ColonPreview       string
+	Comma              string
+	CommaPreview       string
+	Empty              string
+	Dot3               string
+	CloseCurlyBracket  string
+	CloseSquareBracket string
 )
 
 var themes = map[string]Theme{
@@ -272,13 +272,13 @@ var themes = map[string]Theme{
 	},
 }
 
-func noColor(s []byte) []byte {
+func noColor(s string) string {
 	return s
 }
 
 func toColor(f func(s ...string) string) Color {
-	return func(s []byte) []byte {
-		return []byte(f(string(s)))
+	return func(s string) string {
+		return f(s)
 	}
 }
 
@@ -298,46 +298,46 @@ func ThemeTester() {
 	title := lipgloss.NewStyle().Bold(true)
 	for _, name := range themeNames {
 		t := themes[name]
-		comma := string(t.Syntax([]byte{','}))
-		colon := string(t.Syntax([]byte{':'}))
+		comma := t.Syntax(",")
+		colon := t.Syntax(":")
 
 		fmt.Println(title.Render(fmt.Sprintf("Theme %q", name)))
-		fmt.Println(string(t.Syntax([]byte("{"))))
+		fmt.Println(t.Syntax("{"))
 
 		fmt.Printf("  %v%v %v%v\n",
-			string(t.Key([]byte("\"string\""))),
+			t.Key("\"string\""),
 			colon,
-			string(t.String([]byte("\"Fox jumps over the lazy dog\""))),
-			comma)
-
-		fmt.Printf("  %v%v %v%v\n",
-			string(t.Key([]byte("\"number\""))),
-			colon,
-			string(t.Number([]byte("1234567890"))),
+			t.String("\"Fox jumps over the lazy dog\""),
 			comma)
 
 		fmt.Printf("  %v%v %v%v\n",
-			string(t.Key([]byte("\"boolean\""))),
+			t.Key("\"number\""),
 			colon,
-			string(t.Boolean([]byte("true"))),
+			t.Number("1234567890"),
+			comma)
+
+		fmt.Printf("  %v%v %v%v\n",
+			t.Key("\"boolean\""),
+			colon,
+			t.Boolean("true"),
 			comma)
 		fmt.Printf("  %v%v %v%v\n",
-			string(t.Key([]byte("\"null\""))),
+			t.Key("\"null\""),
 			colon,
-			string(t.Null([]byte("null"))),
+			t.Null("null"),
 			comma)
-		fmt.Println(string(t.Syntax([]byte("}"))))
+		fmt.Println(t.Syntax("}"))
 		println()
 	}
 }
 
 func ExportThemes() {
 	lipgloss.SetColorProfile(termenv.ANSI256) // Export in Terminal.app compatible colors
-	placeholder := []byte{'_'}
-	extract := func(b []byte) string {
+	placeholder := "_"
+	extract := func(b string) string {
 		matches := regexp.
 			MustCompile(`^\x1b\[(.+)m_`).
-			FindStringSubmatch(string(b))
+			FindStringSubmatch(b)
 		if len(matches) == 0 {
 			return ""
 		} else {

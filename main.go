@@ -922,12 +922,12 @@ func (m *model) scrollIntoView() {
 func (m *model) View() string {
 	if m.showHelp {
 		statusBar := flex(m.termWidth, ": press q or ? to close help", "")
-		return m.help.View() + "\n" + string(theme.CurrentTheme.StatusBar([]byte(statusBar)))
+		return m.help.View() + "\n" + theme.CurrentTheme.StatusBar(statusBar)
 	}
 
 	if m.showPreview {
 		statusBar := flex(m.termWidth, m.cursorPath(), m.fileName)
-		return m.preview.View() + "\n" + string(theme.CurrentTheme.StatusBar([]byte(statusBar)))
+		return m.preview.View() + "\n" + theme.CurrentTheme.StatusBar(statusBar)
 	}
 
 	var screen []byte
@@ -961,9 +961,9 @@ func (m *model) View() string {
 		}
 
 		if isRef {
-			screen = append(screen, theme.CurrentTheme.String([]byte{'"'})...)
-			screen = append(screen, theme.CurrentTheme.Ref([]byte(isRefValue))...)
-			screen = append(screen, theme.CurrentTheme.String([]byte{'"'})...)
+			screen = append(screen, theme.CurrentTheme.String("\"")...)
+			screen = append(screen, theme.CurrentTheme.Ref(isRefValue)...)
+			screen = append(screen, theme.CurrentTheme.String("\"")...)
 		} else {
 			screen = append(screen, m.prettyPrint(n, isSelected)...)
 		}
@@ -971,13 +971,13 @@ func (m *model) View() string {
 		if n.IsCollapsed() {
 			if n.Kind == Object {
 				if n.Collapsed.Key != nil {
-					screen = append(screen, theme.CurrentTheme.Preview(n.Collapsed.Key)...)
+					screen = append(screen, theme.CurrentTheme.Preview(string(n.Collapsed.Key))...)
 					screen = append(screen, theme.ColonPreview...)
 					if len(n.Collapsed.Value) > 0 &&
 						len(n.Collapsed.Value) < 42 &&
 						n.Collapsed.Kind != Object &&
 						n.Collapsed.Kind != Array {
-						screen = append(screen, theme.CurrentTheme.Preview(n.Collapsed.Value)...)
+						screen = append(screen, theme.CurrentTheme.Preview(string(n.Collapsed.Value))...)
 						if n.Size > 1 {
 							screen = append(screen, theme.CommaPreview...)
 							screen = append(screen, theme.Dot3...)
@@ -1001,12 +1001,12 @@ func (m *model) View() string {
 
 		if m.showSizes && (n.Kind == Array || n.Kind == Object) {
 			if n.IsCollapsed() || n.Size > 1 {
-				screen = append(screen, theme.CurrentTheme.Size([]byte(fmt.Sprintf(" |%d|", n.Size)))...)
+				screen = append(screen, theme.CurrentTheme.Size(fmt.Sprintf(" |%d|", n.Size))...)
 			}
 		}
 
 		if isRefSelected {
-			screen = append(screen, theme.CurrentTheme.Preview([]byte("  ctrl+g goto"))...)
+			screen = append(screen, theme.CurrentTheme.Preview("  ctrl+g goto")...)
 		}
 
 		screen = append(screen, '\n')
@@ -1026,14 +1026,14 @@ func (m *model) View() string {
 		str := m.fuzzyMatch.Str
 		for i := 0; i < len(str); i++ {
 			if utils.Contains(i, m.fuzzyMatch.MatchedIndexes) {
-				matchedStr = append(matchedStr, theme.CurrentTheme.Search([]byte{str[i]})...)
+				matchedStr = append(matchedStr, theme.CurrentTheme.Search(string(str[i]))...)
 			} else {
-				matchedStr = append(matchedStr, theme.CurrentTheme.StatusBar([]byte{str[i]})...)
+				matchedStr = append(matchedStr, theme.CurrentTheme.StatusBar(string(str[i]))...)
 			}
 		}
 		repeatCount := m.termWidth - len(str)
 		if repeatCount > 0 {
-			matchedStr = append(matchedStr, theme.CurrentTheme.StatusBar([]byte(strings.Repeat(" ", repeatCount)))...)
+			matchedStr = append(matchedStr, theme.CurrentTheme.StatusBar(strings.Repeat(" ", repeatCount))...)
 		}
 		screen = append(screen, matchedStr...)
 	} else if m.digInput.Focused() {
@@ -1046,7 +1046,7 @@ func (m *model) View() string {
 			currentPath = fmt.Sprintf(" indexing %s", m.spinner.View())
 		}
 		statusBar := flex(m.termWidth, currentPath, m.fileName)
-		screen = append(screen, theme.CurrentTheme.StatusBar([]byte(statusBar))...)
+		screen = append(screen, theme.CurrentTheme.StatusBar(statusBar)...)
 	}
 
 	if m.yank {
@@ -1090,16 +1090,16 @@ func (m *model) prettyKey(node *Node, selected bool) []byte {
 		var out []byte
 		for i, p := range splitBytesByIndexes(b, indexes) {
 			if i%2 == 0 {
-				out = append(out, style(p.b)...)
+				out = append(out, style(string(p.b))...)
 			} else if p.index == m.search.cursor {
-				out = append(out, theme.CurrentTheme.Cursor(p.b)...)
+				out = append(out, theme.CurrentTheme.Cursor(string(p.b))...)
 			} else {
-				out = append(out, theme.CurrentTheme.Search(p.b)...)
+				out = append(out, theme.CurrentTheme.Search(string(p.b))...)
 			}
 		}
 		return out
 	} else {
-		return style(b)
+		return []byte(style(string(b)))
 	}
 }
 
@@ -1113,7 +1113,7 @@ func (m *model) prettyPrint(node *Node, selected bool) []byte {
 
 	if len(b) == 0 {
 		if selected {
-			return theme.CurrentTheme.Cursor([]byte{' '})
+			return []byte(theme.CurrentTheme.Cursor(" "))
 		} else {
 			return b
 		}
@@ -1125,16 +1125,16 @@ func (m *model) prettyPrint(node *Node, selected bool) []byte {
 		var out []byte
 		for i, p := range splitBytesByIndexes(b, indexes) {
 			if i%2 == 0 {
-				out = append(out, style(p.b)...)
+				out = append(out, style(string(p.b))...)
 			} else if p.index == m.search.cursor {
-				out = append(out, theme.CurrentTheme.Cursor(p.b)...)
+				out = append(out, theme.CurrentTheme.Cursor(string(p.b))...)
 			} else {
-				out = append(out, theme.CurrentTheme.Search(p.b)...)
+				out = append(out, theme.CurrentTheme.Search(string(p.b))...)
 			}
 		}
 		return out
 	} else {
-		return style(b)
+		return []byte(style(string(b)))
 	}
 }
 

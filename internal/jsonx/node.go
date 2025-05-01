@@ -364,28 +364,30 @@ func (n *Node) ToValue(vm *goja.Runtime) goja.Value {
 	case Object:
 		obj := vm.NewObject()
 
-		it := n
-		if it.IsCollapsed() {
-			it = it.Collapsed
-		} else {
-			it = it.Next
-		}
-
-		for it != nil && it != n.End {
-			unquotedKey, err := strconv.Unquote(string(it.Key))
-			if err != nil {
-				panic(err)
-			}
-
-			err = obj.Set(unquotedKey, it.ToValue(vm))
-			if err != nil {
-				panic(err)
-			}
-
-			if it.HasChildren() {
-				it = it.End.Next
+		if n.HasChildren() {
+			it := n
+			if it.IsCollapsed() {
+				it = it.Collapsed
 			} else {
 				it = it.Next
+			}
+
+			for it != nil && it != n.End {
+				unquotedKey, err := strconv.Unquote(string(it.Key))
+				if err != nil {
+					panic(err)
+				}
+
+				err = obj.Set(unquotedKey, it.ToValue(vm))
+				if err != nil {
+					panic(err)
+				}
+
+				if it.HasChildren() {
+					it = it.End.Next
+				} else {
+					it = it.Next
+				}
 			}
 		}
 
@@ -394,20 +396,22 @@ func (n *Node) ToValue(vm *goja.Runtime) goja.Value {
 	case Array:
 		var arr []any
 
-		it := n
-		if it.IsCollapsed() {
-			it = it.Collapsed
-		} else {
-			it = it.Next
-		}
-
-		for it != nil && it != n.End {
-			arr = append(arr, it.ToValue(vm))
-
-			if it.HasChildren() {
-				it = it.End.Next
+		if n.HasChildren() {
+			it := n
+			if it.IsCollapsed() {
+				it = it.Collapsed
 			} else {
 				it = it.Next
+			}
+
+			for it != nil && it != n.End {
+				arr = append(arr, it.ToValue(vm))
+
+				if it.HasChildren() {
+					it = it.End.Next
+				} else {
+					it = it.Next
+				}
 			}
 		}
 

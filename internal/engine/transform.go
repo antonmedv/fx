@@ -11,6 +11,7 @@ func Transform(code string) string {
     const x = this
     return %s
   }).call(json), json)
+
 `, transpile(code))
 }
 
