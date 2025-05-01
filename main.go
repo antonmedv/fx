@@ -269,6 +269,7 @@ type model struct {
 }
 
 type location struct {
+	head *Node
 	node *Node
 }
 
@@ -813,19 +814,21 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			at := m.cursorPointsTo()
 			m.locationIndex--
 
-			gotoNode := m.locationHistory[m.locationIndex].node
-			for gotoNode == at && m.locationIndex > 0 {
+			loc := m.locationHistory[m.locationIndex]
+			for loc.node == at && m.locationIndex > 0 {
 				m.locationIndex--
-				gotoNode = m.locationHistory[m.locationIndex].node
+				loc = m.locationHistory[m.locationIndex]
 			}
-			m.selectNode(gotoNode)
+			m.selectNode(loc.head)
+			m.selectNode(loc.node)
 		}
 
 	case key.Matches(msg, keyMap.GoForward):
 		if m.locationIndex < len(m.locationHistory)-1 {
 			m.locationIndex++
-			gotoNode := m.locationHistory[m.locationIndex].node
-			m.selectNode(gotoNode)
+			loc := m.locationHistory[m.locationIndex]
+			m.selectNode(loc.head)
+			m.selectNode(loc.node)
 		}
 
 	}
@@ -880,7 +883,10 @@ func (m *model) recordHistory() {
 	if m.locationIndex < len(m.locationHistory) {
 		m.locationHistory = m.locationHistory[:m.locationIndex+1]
 	}
-	m.locationHistory = append(m.locationHistory, location{node: at})
+	m.locationHistory = append(m.locationHistory, location{
+		head: m.head,
+		node: at,
+	})
 	m.locationIndex = len(m.locationHistory)
 }
 
