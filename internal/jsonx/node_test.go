@@ -30,8 +30,16 @@ func TestNode_Paths(t *testing.T) {
 
 	paths := make([]string, 0, 10)
 	nodes := make([]*Node, 0, 10)
-	n.Paths("", &paths, &nodes)
-	assert.Equal(t, []string{".a", ".b", ".b.f", ".c", ".c[0]", ".c[1]", ".c[1].d"}, paths)
+	n.Paths(&paths, &nodes)
+	assert.Equal(t, []string{
+		".a",
+		".b",
+		".c",
+		".b.f",
+		".c[0]",
+		".c[1]",
+		".c[1].d",
+	}, paths)
 }
 
 func TestNode_Paths_Collapsed(t *testing.T) {
@@ -41,6 +49,14 @@ func TestNode_Paths_Collapsed(t *testing.T) {
 
 	paths := make([]string, 0, 10)
 	nodes := make([]*Node, 0, 10)
-	n.Paths("", &paths, &nodes)
-	assert.Equal(t, []string{".a", ".b", ".b.f", ".c", ".c[0]", ".c[1]", ".c[1].d"}, paths)
+	n.Paths(&paths, &nodes)
+	assert.Equal(t, []string{
+		".a",
+		".b",
+		".c",
+		".b.f",
+		".c[0]",
+		".c[1]",
+		".c[1].d",
+	}, paths)
 }

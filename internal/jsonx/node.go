@@ -272,41 +272,59 @@ func (n *Node) Bottom() *Node {
 	return it
 }
 
-func (n *Node) Paths(prefix string, paths *[]string, nodes *[]*Node) {
-	var it *Node
-	if n.IsCollapsed() {
-		it = n.Collapsed
-	} else {
-		it = n.Next
+func (n *Node) Paths(paths *[]string, nodes *[]*Node) {
+	type item struct {
+		node *Node
+		path string
 	}
-	for it != nil && it != n.End {
-		var path string
+	var queue []item
+	queue = append(queue, item{node: n, path: ""})
 
-		if it.Key != nil {
-			quoted := string(it.Key)
-			unquoted, err := strconv.Unquote(quoted)
-			if err == nil && jsonpath.Identifier.MatchString(unquoted) {
-				path = prefix + "." + unquoted
-			} else {
-				path = prefix + "[" + quoted + "]"
-			}
-		} else if it.Index >= 0 {
-			path = prefix + "[" + strconv.Itoa(it.Index) + "]"
-		}
+	for len(queue) > 0 {
+		curr := queue[0]
+		queue = queue[1:]
 
-		if path != "" {
-			if len(*paths) == cap(*paths) {
-				return
-			}
-			*paths = append(*paths, path)
-			*nodes = append(*nodes, it)
-		}
+		it := curr.node
+		prefix := curr.path
 
-		if it.HasChildren() {
-			it.Paths(path, paths, nodes)
-			it = it.End.Next
+		if it.IsCollapsed() {
+			it = it.Collapsed
 		} else {
 			it = it.Next
 		}
+
+		for it != nil && it != curr.node.End {
+			path := joinPath(prefix, it)
+			if path != "" {
+				if len(*paths) == cap(*paths) {
+					return
+				}
+				*paths = append(*paths, path)
+				*nodes = append(*nodes, it)
+			}
+
+			if it.HasChildren() {
+				queue = append(queue, item{node: it, path: path})
+				it = it.End.Next
+			} else {
+				it = it.Next
+			}
+		}
 	}
+}
+
+func joinPath(prefix string, n *Node) string {
+	var path string
+	if n.Key != nil {
+		quoted := string(n.Key)
+		unquoted, err := strconv.Unquote(quoted)
+		if err == nil && jsonpath.Identifier.MatchString(unquoted) {
+			path = prefix + "." + unquoted
+		} else {
+			path = prefix + "[" + quoted + "]"
+		}
+	} else if n.Index >= 0 {
+		path = prefix + "[" + strconv.Itoa(n.Index) + "]"
+	}
+	return path
 }
