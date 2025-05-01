@@ -351,6 +351,15 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						} else {
 							to.Collapse()
 						}
+
+						value, isRef := isRefNode(to)
+						if isRef {
+							refPath, ok := jsonpath.ParseSchemaRef(value)
+							if ok {
+								m.selectNode(m.selectByPath(refPath))
+								m.recordHistory()
+							}
+						}
 					}
 				} else {
 					to := m.at(msg.Y)
@@ -776,11 +785,14 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.createKeysIndex()
 
 	case key.Matches(msg, keyMap.GotoRef):
-		ref := m.cursorValue()
-		refPath, ok := jsonpath.ParseSchemaRef(string(ref))
-		if ok {
-			m.selectNode(m.selectByPath(refPath))
-			m.recordHistory()
+		at := m.cursorPointsTo()
+		value, isRef := isRefNode(at)
+		if isRef {
+			refPath, ok := jsonpath.ParseSchemaRef(value)
+			if ok {
+				m.selectNode(m.selectByPath(refPath))
+				m.recordHistory()
+			}
 		}
 
 	case key.Matches(msg, keyMap.Search):
@@ -936,23 +948,25 @@ func (m *model) View() string {
 		}
 
 		isRef := false
+		isRefSelected := false
+		var isRefValue string
 
 		if n.Key != nil {
 			screen = append(screen, m.prettyKey(n, isSelected)...)
 			screen = append(screen, theme.Colon...)
 
-			if isSelected && n.Kind == String && len(n.Key) == 6 && string(n.Key) == `"$ref"` {
-				value, err := strconv.Unquote(string(n.Value))
-				if err == nil {
-					_, ok := jsonpath.ParseSchemaRef(value)
-					isRef = ok
-				}
-			}
-
+			isRefValue, isRef = isRefNode(n)
+			isRefSelected = isRef && isSelected
 			isSelected = false // don't highlight the key's value
 		}
 
-		screen = append(screen, m.prettyPrint(n, isSelected)...)
+		if isRef {
+			screen = append(screen, theme.CurrentTheme.String([]byte{'"'})...)
+			screen = append(screen, theme.CurrentTheme.Ref([]byte(isRefValue))...)
+			screen = append(screen, theme.CurrentTheme.String([]byte{'"'})...)
+		} else {
+			screen = append(screen, m.prettyPrint(n, isSelected)...)
+		}
 
 		if n.IsCollapsed() {
 			if n.Kind == Object {
@@ -991,7 +1005,7 @@ func (m *model) View() string {
 			}
 		}
 
-		if isRef {
+		if isRefSelected {
 			screen = append(screen, theme.CurrentTheme.Preview([]byte("  ctrl+g goto"))...)
 		}
 

@@ -25,6 +25,7 @@ type Theme struct {
 	Boolean   Color
 	Number    Color
 	Size      Color
+	Ref       Color
 }
 
 type Color func(s []byte) []byte
@@ -97,6 +98,7 @@ var (
 	defaultSearch    = toColor(lipgloss.NewStyle().Background(lipgloss.Color("11")).Foreground(lipgloss.Color("16")).Render)
 	defaultNull      = fg("243")
 	defaultSize      = toColor(lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render)
+	underline        = toColor(lipgloss.NewStyle().Underline(true).Render)
 )
 
 var (
@@ -123,6 +125,7 @@ var themes = map[string]Theme{
 		Boolean:   noColor,
 		Number:    noColor,
 		Size:      noColor,
+		Ref:       noColor,
 	},
 	"1": {
 		Cursor:    defaultCursor,
@@ -136,6 +139,7 @@ var themes = map[string]Theme{
 		Boolean:   fg("5"),
 		Number:    fg("6"),
 		Size:      defaultSize,
+		Ref:       underlineFg("2"),
 	},
 	"2": {
 		Cursor:    defaultCursor,
@@ -149,6 +153,7 @@ var themes = map[string]Theme{
 		Boolean:   fg("5"),
 		Number:    fg("6"),
 		Size:      defaultSize,
+		Ref:       underlineFg("4"),
 	},
 	"3": {
 		Cursor:    defaultCursor,
@@ -162,6 +167,7 @@ var themes = map[string]Theme{
 		Boolean:   fg("1"),
 		Number:    fg("14"),
 		Size:      defaultSize,
+		Ref:       underlineFg("11"),
 	},
 	"4": {
 		Cursor:    defaultCursor,
@@ -175,6 +181,7 @@ var themes = map[string]Theme{
 		Boolean:   fg("#F15BB5"),
 		Number:    fg("#9B5DE5"),
 		Size:      defaultSize,
+		Ref:       underlineFg("#00BBF9"),
 	},
 	"5": {
 		Cursor:    defaultCursor,
@@ -188,6 +195,7 @@ var themes = map[string]Theme{
 		Boolean:   fg("#ee964b"),
 		Number:    fg("#ee964b"),
 		Size:      defaultSize,
+		Ref:       underlineFg("#f4d35e"),
 	},
 	"6": {
 		Cursor:    defaultCursor,
@@ -201,6 +209,7 @@ var themes = map[string]Theme{
 		Boolean:   fg("#FF6B6B"),
 		Number:    fg("#FFD93D"),
 		Size:      defaultSize,
+		Ref:       underlineFg("#6BCB77"),
 	},
 	"7": {
 		Cursor:    defaultCursor,
@@ -214,6 +223,7 @@ var themes = map[string]Theme{
 		Boolean:   boldFg("201"),
 		Number:    boldFg("201"),
 		Size:      defaultSize,
+		Ref:       underlineFg("213"),
 	},
 	"8": {
 		Cursor:    defaultCursor,
@@ -227,6 +237,7 @@ var themes = map[string]Theme{
 		Boolean:   fg("50"),
 		Number:    fg("123"),
 		Size:      defaultSize,
+		Ref:       underlineFg("195"),
 	},
 	"🔵": {
 		Cursor: toColor(lipgloss.NewStyle().
@@ -243,6 +254,7 @@ var themes = map[string]Theme{
 		Boolean:   noColor,
 		Number:    noColor,
 		Size:      defaultSize,
+		Ref:       underline,
 	},
 	"🥝": {
 		Cursor:    defaultCursor,
@@ -256,6 +268,7 @@ var themes = map[string]Theme{
 		Boolean:   fg("226"),
 		Number:    fg("226"),
 		Size:      defaultSize,
+		Ref:       underlineFg("82"),
 	},
 }
 
@@ -271,6 +284,10 @@ func toColor(f func(s ...string) string) Color {
 
 func fg(color string) Color {
 	return toColor(lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Render)
+}
+
+func underlineFg(color string) Color {
+	return toColor(lipgloss.NewStyle().Underline(true).Foreground(lipgloss.Color(color)).Render)
 }
 
 func boldFg(color string) Color {

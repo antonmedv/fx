@@ -3,8 +3,11 @@ package main
 import (
 	"bytes"
 	"io"
+	"strconv"
 	"strings"
 
+	"github.com/antonmedv/fx/internal/jsonpath"
+	"github.com/antonmedv/fx/internal/jsonx"
 	"github.com/goccy/go-yaml"
 )
 
@@ -63,4 +66,17 @@ func parseYAML(b []byte) ([]byte, error) {
 		out = append(out, j...)
 	}
 	return out, nil
+}
+
+func isRefNode(n *jsonx.Node) (string, bool) {
+	if n.Kind == jsonx.String && len(n.Key) == 6 && string(n.Key) == `"$ref"` {
+		value, err := strconv.Unquote(string(n.Value))
+		if err == nil {
+			_, ok := jsonpath.ParseSchemaRef(value)
+			if ok {
+				return value, true
+			}
+		}
+	}
+	return "", false
 }
