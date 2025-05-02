@@ -295,13 +295,12 @@ func boldFg(color string) Color {
 }
 
 func ThemeTester() {
-	title := lipgloss.NewStyle().Bold(true)
 	for _, name := range themeNames {
 		t := themes[name]
 		comma := t.Syntax(",")
 		colon := t.Syntax(":")
 
-		fmt.Println(title.Render(fmt.Sprintf("Theme %q", name)))
+		fmt.Println(fmt.Sprintf("export FX_THEME=%q", name))
 		fmt.Println(t.Syntax("{"))
 
 		fmt.Printf("  %v%v %v%v\n",
