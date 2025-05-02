@@ -10,7 +10,7 @@ import (
 	"github.com/dop251/goja"
 )
 
-func Print(value goja.Value, vm *goja.Runtime, depth int) string {
+func Stringify(value goja.Value, vm *goja.Runtime, depth int) string {
 	rtype := value.ExportType()
 	if rtype == nil {
 		return CurrentTheme.Null("null")
@@ -53,7 +53,7 @@ func Print(value goja.Value, vm *goja.Runtime, depth int) string {
 			out.WriteString(CurrentTheme.Key(strconv.Quote(key)))
 			out.WriteString(CurrentTheme.Syntax(":"))
 			out.WriteString(" ")
-			out.WriteString(Print(obj.Get(key), vm, depth+1))
+			out.WriteString(Stringify(obj.Get(key), vm, depth+1))
 			if i < len(keys)-1 {
 				out.WriteString(CurrentTheme.Syntax(","))
 			}
@@ -80,7 +80,7 @@ func Print(value goja.Value, vm *goja.Runtime, depth int) string {
 		for i, key := range keys {
 			item := arr.Get(key)
 			out.WriteString(strings.Repeat("  ", depth+1))
-			out.WriteString(Print(item, vm, depth+1))
+			out.WriteString(Stringify(item, vm, depth+1))
 			if i < len(keys)-1 {
 				out.WriteString(CurrentTheme.Syntax(","))
 			}

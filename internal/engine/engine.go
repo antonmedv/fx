@@ -86,7 +86,7 @@ func Reduce(parser *jsonx.JsonParser, fns []string) {
 		} else if rtype != nil && rtype.Kind() == reflect.String {
 			fmt.Println(output.ToString())
 		} else {
-			fmt.Println(Print(output, vm, 0))
+			fmt.Println(Stringify(output, vm, 0))
 		}
 	}
 }
