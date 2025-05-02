@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/antonmedv/fx/internal/jsonx"
-	"github.com/antonmedv/fx/internal/theme"
 	"github.com/dop251/goja"
 )
 
@@ -29,7 +28,7 @@ func Reduce(parser *jsonx.JsonParser, fns []string) {
 				os.Exit(1)
 			}
 
-			fmt.Print(theme.PrintFullJson(node))
+			fmt.Print(StringifyNode(node))
 		}
 	}
 
@@ -78,10 +77,12 @@ func Reduce(parser *jsonx.JsonParser, fns []string) {
 			os.Exit(1)
 		}
 
-		rtype := output.ExportType()
 		if output.StrictEquals(skip) {
 			continue
-		} else if output.StrictEquals(undefined) {
+		}
+
+		rtype := output.ExportType()
+		if output.StrictEquals(undefined) {
 			_, _ = fmt.Fprintln(os.Stderr, "undefined")
 		} else if rtype != nil && rtype.Kind() == reflect.String {
 			fmt.Println(output.ToString())

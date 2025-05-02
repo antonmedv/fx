@@ -1041,13 +1041,14 @@ func (m *model) View() string {
 	} else if m.digInput.Focused() {
 		screen = append(screen, m.digInput.View()...)
 	} else {
-		if m.head != nil {
-			currentPath := m.cursorPath()
-			statusBar := flex(m.termWidth, currentPath, m.fileName)
-			screen = append(screen, theme.CurrentTheme.StatusBar(statusBar)...)
-		} else {
+		if m.head == nil {
 			indicator := fmt.Sprintf(" indexing %s ", m.spinner.View())
 			statusBar := flex(m.termWidth+2, indicator, m.fileName)
+			screen = append(screen, theme.CurrentTheme.StatusBar(statusBar)...)
+		} else {
+			currentPath := m.cursorPath()
+			info := fmt.Sprintf("%s %s", "%42", m.fileName)
+			statusBar := flex(m.termWidth, currentPath, info)
 			screen = append(screen, theme.CurrentTheme.StatusBar(statusBar)...)
 		}
 	}
