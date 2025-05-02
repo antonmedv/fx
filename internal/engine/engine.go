@@ -2,7 +2,6 @@ package engine
 
 import (
 	_ "embed"
-	"fmt"
 	"io"
 	"os"
 	"reflect"
@@ -15,7 +14,7 @@ import (
 //go:embed stdlib.js
 var Stdlib string
 
-func Reduce(parser *jsonx.JsonParser, fns []string) {
+func Start(parser *jsonx.JsonParser, fns []string, writeOut, writeErr func(string)) {
 	if len(fns) == 1 && (fns[0] == "." || fns[0] == "this" || fns[0] == "x") {
 		// Fast path.
 		for {
@@ -24,11 +23,11 @@ func Reduce(parser *jsonx.JsonParser, fns []string) {
 				if err == io.EOF {
 					break
 				}
-				println(err.Error())
+				writeErr(err.Error())
 				os.Exit(1)
 			}
 
-			fmt.Print(StringifyNode(node))
+			writeOut(StringifyNode(node))
 		}
 	}
 
@@ -42,14 +41,14 @@ func Reduce(parser *jsonx.JsonParser, fns []string) {
 
 	vm := goja.New()
 	if err := vm.Set("println", func(s string) any {
-		fmt.Println(s)
+		writeOut(s)
 		return nil
 	}); err != nil {
 		panic(err)
 	}
 
 	if _, err := vm.RunString(code.String()); err != nil {
-		println(err.Error())
+		writeErr(err.Error())
 		os.Exit(1)
 	}
 
@@ -66,14 +65,14 @@ func Reduce(parser *jsonx.JsonParser, fns []string) {
 			if err == io.EOF {
 				break
 			}
-			println(err.Error())
+			writeErr(err.Error())
 			os.Exit(1)
 		}
 
 		input := node.ToValue(vm)
 		output, err := transform(goja.Undefined(), input)
 		if err != nil {
-			println(err.Error())
+			writeErr(err.Error())
 			os.Exit(1)
 		}
 
@@ -83,11 +82,11 @@ func Reduce(parser *jsonx.JsonParser, fns []string) {
 
 		rtype := output.ExportType()
 		if output.StrictEquals(undefined) {
-			_, _ = fmt.Fprintln(os.Stderr, "undefined")
+			writeErr("undefined")
 		} else if rtype != nil && rtype.Kind() == reflect.String {
-			fmt.Println(output.ToString())
+			writeOut(output.String())
 		} else {
-			fmt.Println(Stringify(output, vm, 0))
+			writeOut(Stringify(output, vm, 0))
 		}
 	}
 }
