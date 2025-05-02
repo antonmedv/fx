@@ -3,8 +3,8 @@ package engine
 import (
 	_ "embed"
 	"io"
-	"os"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/antonmedv/fx/internal/jsonx"
@@ -14,7 +14,7 @@ import (
 //go:embed stdlib.js
 var Stdlib string
 
-func Start(parser *jsonx.JsonParser, fns []string, writeOut, writeErr func(string)) {
+func Start(parser *jsonx.JsonParser, fns []string, writeOut, writeErr func(string)) int {
 	if len(fns) == 1 && (fns[0] == "." || fns[0] == "this" || fns[0] == "x") {
 		// Fast path.
 		for {
@@ -24,11 +24,21 @@ func Start(parser *jsonx.JsonParser, fns []string, writeOut, writeErr func(strin
 					break
 				}
 				writeErr(err.Error())
-				os.Exit(1)
+				return 1
 			}
 
-			writeOut(StringifyNode(node))
+			if node.Kind == jsonx.String {
+				unquoted, err := strconv.Unquote(string(node.Value))
+				if err != nil {
+					panic(err)
+				}
+				writeOut(unquoted)
+			} else {
+				writeOut(StringifyNode(node))
+			}
 		}
+
+		return 0
 	}
 
 	var code strings.Builder
@@ -49,7 +59,7 @@ func Start(parser *jsonx.JsonParser, fns []string, writeOut, writeErr func(strin
 
 	if _, err := vm.RunString(code.String()); err != nil {
 		writeErr(err.Error())
-		os.Exit(1)
+		return 1
 	}
 
 	skip := vm.Get("skip")
@@ -66,14 +76,14 @@ func Start(parser *jsonx.JsonParser, fns []string, writeOut, writeErr func(strin
 				break
 			}
 			writeErr(err.Error())
-			os.Exit(1)
+			return 1
 		}
 
 		input := node.ToValue(vm)
 		output, err := transform(goja.Undefined(), input)
 		if err != nil {
 			writeErr(err.Error())
-			os.Exit(1)
+			return 1
 		}
 
 		if output.StrictEquals(skip) {
@@ -89,4 +99,6 @@ func Start(parser *jsonx.JsonParser, fns []string, writeOut, writeErr func(strin
 			writeOut(Stringify(output, vm, 0))
 		}
 	}
+
+	return 0
 }

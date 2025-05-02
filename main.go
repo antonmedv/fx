@@ -154,8 +154,8 @@ func main() {
 	if len(args) > 0 {
 		writeOut := func(s string) { fmt.Println(s) }
 		writeErr := func(s string) { _, _ = fmt.Fprintln(os.Stderr, s) }
-		engine.Start(jsonParser, args, writeOut, writeErr)
-		return
+		exitCode := engine.Start(jsonParser, args, writeOut, writeErr)
+		os.Exit(exitCode)
 	}
 
 	digInput := textinput.New()
