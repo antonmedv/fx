@@ -14,9 +14,16 @@ import (
 //go:embed stdlib.js
 var Stdlib string
 
-func Start(parser *jsonx.JsonParser, fns []string, writeOut, writeErr func(string)) int {
-	if len(fns) == 1 && (fns[0] == "." || fns[0] == "this" || fns[0] == "x") {
-		// Fast path.
+func Start(
+	parser *jsonx.JsonParser,
+	fns []string,
+	slurp bool,
+	writeOut, writeErr func(string),
+) int {
+	isPrettyPrintArg := len(fns) == 1 && (fns[0] == "." || fns[0] == "this" || fns[0] == "x")
+
+	// Fast path.
+	if isPrettyPrintArg && !slurp {
 		for {
 			node, err := parser.Parse()
 			if err != nil {
@@ -43,9 +50,9 @@ func Start(parser *jsonx.JsonParser, fns []string, writeOut, writeErr func(strin
 
 	var code strings.Builder
 	code.WriteString(Stdlib)
-	code.WriteString("\nfunction __transform__(json) {\n")
+	code.WriteString("\nfunction __main__(json) {\n")
 	for _, fn := range fns {
-		code.WriteString(Transform(fn))
+		code.WriteString(Transpile(fn))
 	}
 	code.WriteString("  return json\n}\n")
 
@@ -64,32 +71,9 @@ func Start(parser *jsonx.JsonParser, fns []string, writeOut, writeErr func(strin
 
 	skip := vm.Get("skip")
 	undefined := vm.Get("undefined")
-	transform, ok := goja.AssertFunction(vm.Get("__transform__"))
-	if !ok {
-		panic("__transform__ function not found")
-	}
+	main, _ := goja.AssertFunction(vm.Get("__main__"))
 
-	for {
-		node, err := parser.Parse()
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			writeErr(err.Error())
-			return 1
-		}
-
-		input := node.ToValue(vm)
-		output, err := transform(goja.Undefined(), input)
-		if err != nil {
-			writeErr(err.Error())
-			return 1
-		}
-
-		if output.StrictEquals(skip) {
-			continue
-		}
-
+	echo := func(output goja.Value) {
 		rtype := output.ExportType()
 		if output.StrictEquals(undefined) {
 			writeErr("undefined")
@@ -97,6 +81,59 @@ func Start(parser *jsonx.JsonParser, fns []string, writeOut, writeErr func(strin
 			writeOut(output.String())
 		} else {
 			writeOut(Stringify(output, vm, 0))
+		}
+	}
+
+	if slurp {
+		var arr []any
+
+		for {
+			node, err := parser.Parse()
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				writeErr(err.Error())
+				return 1
+			}
+
+			arr = append(arr, node.ToValue(vm))
+		}
+
+		input := vm.NewArray(arr...)
+		output, err := main(goja.Undefined(), input)
+		if err != nil {
+			writeErr(err.Error())
+			return 1
+		}
+
+		if output.StrictEquals(skip) {
+			return 0
+		}
+		echo(output)
+
+	} else {
+		for {
+			node, err := parser.Parse()
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				writeErr(err.Error())
+				return 1
+			}
+
+			input := node.ToValue(vm)
+			output, err := main(goja.Undefined(), input)
+			if err != nil {
+				writeErr(err.Error())
+				return 1
+			}
+
+			if output.StrictEquals(skip) {
+				continue
+			}
+			echo(output)
 		}
 	}
 

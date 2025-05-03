@@ -48,7 +48,7 @@ func TestEngine(t *testing.T) {
 			writeOut := func(s string) { outs = append(outs, s) }
 			writeErr := func(s string) { errs = append(errs, s) }
 
-			exitCode := engine.Start(parser, tc.args, writeOut, writeErr)
+			exitCode := engine.Start(parser, tc.args, false, writeOut, writeErr)
 
 			assert.Equal(t, 0, exitCode)
 			assert.Len(t, errs, tc.errCount, "%s: unexpected error count", tc.name)
@@ -65,7 +65,7 @@ func TestStart_InvalidJSON(t *testing.T) {
 	writeOut := func(s string) { outs = append(outs, s) }
 	writeErr := func(s string) { errs = append(errs, s) }
 
-	exitCode := engine.Start(parser, []string{".unclosed + '!'"}, writeOut, writeErr)
+	exitCode := engine.Start(parser, []string{".unclosed + '!'"}, false, writeOut, writeErr)
 
 	assert.Equal(t, 1, exitCode)
 	assert.Len(t, errs, 1, "Expected one error message")
@@ -79,7 +79,7 @@ func TestStart_FastPath_InvalidJSON(t *testing.T) {
 	writeOut := func(s string) { outs = append(outs, s) }
 	writeErr := func(s string) { errs = append(errs, s) }
 
-	exitCode := engine.Start(parser, []string{"."}, writeOut, writeErr)
+	exitCode := engine.Start(parser, []string{"."}, false, writeOut, writeErr)
 
 	assert.Equal(t, 1, exitCode)
 	assert.Len(t, errs, 1, "Expected one error message")

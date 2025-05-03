@@ -195,7 +195,7 @@ func codeComplete(input []byte, args []string, compWord string) {
 		if arg == "" { // After dropTail, we can have empty strings.
 			continue
 		}
-		code.WriteString(engine.Transform(arg))
+		code.WriteString(engine.Transpile(arg))
 	}
 	code.WriteString("\n__keys\n")
 

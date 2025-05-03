@@ -151,10 +151,10 @@ func main() {
 
 	jsonParser := NewParser(src)
 
-	if len(args) > 0 {
+	if len(args) > 0 || flagSlurp {
 		writeOut := func(s string) { fmt.Println(s) }
 		writeErr := func(s string) { _, _ = fmt.Fprintln(os.Stderr, s) }
-		exitCode := engine.Start(jsonParser, args, writeOut, writeErr)
+		exitCode := engine.Start(jsonParser, args, flagSlurp, writeOut, writeErr)
 		os.Exit(exitCode)
 	}
 

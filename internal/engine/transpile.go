@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func Transform(code string) string {
+func Transpile(code string) string {
 	return fmt.Sprintf(`  json = apply((function () {
     const x = this
     return %s
