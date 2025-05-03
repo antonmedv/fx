@@ -27,11 +27,13 @@ func StringifyNode(n *jsonx.Node) string {
 		if it.Comma {
 			out.WriteString(theme.Comma)
 		}
-		out.WriteByte('\n')
 		if it.IsCollapsed() {
 			it = it.Collapsed
 		} else {
 			it = it.Next
+		}
+		if it != nil {
+			out.WriteByte('\n')
 		}
 	}
 
