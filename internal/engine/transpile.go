@@ -10,8 +10,8 @@ import (
 )
 
 func Transpile(args []string, i int) string {
-	jsCode := transpile(args[0])
-	snippet := formatErr(args, i)
+	jsCode := transpile(args[i])
+	snippet := formatErr(args, i, jsCode)
 	return fmt.Sprintf(`  json = apply((function () {
     const x = this
     try {
@@ -79,33 +79,29 @@ func fold(s []string) string {
 	return fmt.Sprintf(`x => %s.flatMap(%s)`, obj, fold(s))
 }
 
-func formatErr(args []string, i int) string {
-	// Determine terminal width, fallback to 80
+func formatErr(args []string, i int, jsCode string) string {
 	width, _, wErr := term.GetSize(os.Stdout.Fd())
 	if wErr != nil || width <= 0 {
 		width = 80
 	}
 
-	// Extract the code token and use it as JS code placeholder
+	if i < 0 || i >= len(args) {
+		return fmt.Sprintf("Invalid argument index: %d", i)
+	}
+
 	code := args[i]
-	jsCode := code
 
-	// Placeholder for actual error message
-	errPlaceholder := "<error placeholder>"
+	errPlaceholder := "${e}"
 
-	// Reserve space: 2 for indent, 1 for spaces, len(code), 1 space separators
 	reserve := 2 + 1 + len(code) + 1 + 2
-	// Split remaining width for pre and post context
 	maxCtx := (width - reserve) / 2
 	if maxCtx < 10 {
 		maxCtx = 10
 	}
 
-	// Join parts before and after the error index
 	pre := strings.Join(args[:i], " ")
 	post := strings.Join(args[i+1:], " ")
 
-	// Trim to at most maxCtx characters
 	if len(pre) > maxCtx {
 		pre = "..." + pre[len(pre)-maxCtx:]
 	}
@@ -113,21 +109,17 @@ func formatErr(args []string, i int) string {
 		post = post[:maxCtx] + "..."
 	}
 
-	// Build the pointer line under the code segment
 	pointer := strings.Repeat("^", len(code))
 	spacing := strings.Repeat(" ", len(pre)+1)
 
-	// Assemble the error message
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("\n  %s %s %s\n", pre, code, post))
 	sb.WriteString(fmt.Sprintf("  %s%s\n", spacing, pointer))
 
-	// Include original JS code if it differs
 	if jsCode != code {
 		sb.WriteString(fmt.Sprintf("\n%s\n", jsCode))
 	}
 
-	// Append the placeholder error message
 	sb.WriteString(fmt.Sprintf("\n%s\n", errPlaceholder))
 
 	return sb.String()

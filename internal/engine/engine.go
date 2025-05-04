@@ -60,7 +60,6 @@ func Start(
 		code.WriteString(Transpile(args, i))
 	}
 	code.WriteString("  return json\n}\n")
-	println(code.String())
 
 	vm := goja.New()
 	if err := vm.Set("println", func(s string) any {
