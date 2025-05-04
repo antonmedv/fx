@@ -9,7 +9,11 @@ import (
 func Transpile(code string) string {
 	return fmt.Sprintf(`  json = apply((function () {
     const x = this
-    return %s
+    try {
+      return %s
+    } catch (e) {
+      throw e
+    }
   }).call(json), json)
 
 `, transpile(code))

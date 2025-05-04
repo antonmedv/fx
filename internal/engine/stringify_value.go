@@ -1,10 +1,12 @@
 package engine
 
 import (
+	"fmt"
 	"math/big"
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 
 	. "github.com/antonmedv/fx/internal/theme"
 	"github.com/dop251/goja"
@@ -15,10 +17,17 @@ func Stringify(value goja.Value, vm *goja.Runtime, depth int) string {
 	if rtype == nil {
 		return CurrentTheme.Null("null")
 	}
-	if isBigIntPtr(rtype) {
+
+	switch rtype {
+	case bigIntType:
 		bi := value.Export().(*big.Int)
 		return CurrentTheme.Number(bi.String())
+	case timeTimeType:
+		t := value.Export().(time.Time)
+		quoted := strconv.Quote(t.String())
+		return CurrentTheme.String(quoted)
 	}
+
 	switch rtype.Kind() {
 	case reflect.Bool:
 		if value.ToBoolean() {
@@ -91,11 +100,5 @@ func Stringify(value goja.Value, vm *goja.Runtime, depth int) string {
 		out.WriteString(CurrentTheme.Syntax("]"))
 		return out.String()
 	}
-	return value.String()
-}
-
-var bigIntPtrType = reflect.TypeOf((*big.Int)(nil))
-
-func isBigIntPtr(t reflect.Type) bool {
-	return t == bigIntPtrType
+	panic(fmt.Sprintf("Unsupported value type: %v", rtype.Kind()))
 }

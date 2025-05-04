@@ -69,8 +69,18 @@ func Start(
 		panic(err)
 	}
 
-	if _, err := vm.RunString(code.String()); err != nil {
+	onError := func(err error) {
+		if exception, ok := err.(*goja.Exception); ok {
+			message := exception.Value().String()
+			message = extractErrorMessage(message)
+			writeErr(message)
+			return
+		}
 		writeErr(err.Error())
+	}
+
+	if _, err := vm.RunString(code.String()); err != nil {
+		onError(err)
 		return 1
 	}
 
@@ -131,7 +141,7 @@ func Start(
 			input := node.ToValue(vm)
 			output, err := main(goja.Undefined(), input)
 			if err != nil {
-				writeErr(err.Error())
+				onError(err)
 				return 1
 			}
 
