@@ -24,7 +24,7 @@ type JsonParser struct {
 }
 
 func Parse(b []byte) (*Node, error) {
-	p := NewParser(bytes.NewReader(b))
+	p := NewJsonParser(bytes.NewReader(b))
 	node, err := p.Parse()
 	if err == io.EOF {
 		err = nil
@@ -32,7 +32,7 @@ func Parse(b []byte) (*Node, error) {
 	return node, err
 }
 
-func NewParser(in io.Reader) *JsonParser {
+func NewJsonParser(in io.Reader) *JsonParser {
 	p := &JsonParser{
 		buf:        bufio.NewReader(in),
 		lineNumber: 1,

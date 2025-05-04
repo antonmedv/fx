@@ -98,6 +98,10 @@ func main() {
 		}
 	}
 
+	if flagYaml && flagRaw {
+
+	}
+
 	if flagComp {
 		shell := flag.String("comp", "", "")
 		flag.Parse()
@@ -116,6 +120,7 @@ func main() {
 
 	fd := os.Stdin.Fd()
 	stdinIsTty := isatty.IsTerminal(fd) || isatty.IsCygwinTerminal(fd)
+
 	var fileName string
 	var src io.Reader
 
@@ -135,6 +140,8 @@ func main() {
 		src = os.Stdin
 	}
 
+	var parser engine.Parser
+
 	if flagYaml {
 		b, err := io.ReadAll(src)
 		if err != nil {
@@ -147,14 +154,16 @@ func main() {
 			return
 		}
 		src = bytes.NewReader(data)
+	} else if flagRaw {
+		parser = NewLineParser(src)
+	} else {
+		parser = NewJsonParser(src)
 	}
-
-	jsonParser := NewParser(src)
 
 	if len(args) > 0 || flagSlurp {
 		writeOut := func(s string) { fmt.Println(s) }
 		writeErr := func(s string) { _, _ = fmt.Fprintln(os.Stderr, s) }
-		exitCode := engine.Start(jsonParser, args, flagSlurp, writeOut, writeErr)
+		exitCode := engine.Start(parser, args, flagSlurp, writeOut, writeErr)
 		os.Exit(exitCode)
 	}
 
@@ -216,12 +225,12 @@ func main() {
 
 	go func() {
 		for {
-			node, err := jsonParser.Parse()
+			node, err := parser.Parse()
 			if err != nil {
 				if err == io.EOF {
 					break
 				}
-				textNode := jsonParser.Recover()
+				textNode := parser.Recover()
 				p.Send(nodeMsg{node: textNode})
 			} else {
 				p.Send(nodeMsg{node: node})

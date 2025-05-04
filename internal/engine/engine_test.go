@@ -42,7 +42,7 @@ func TestEngine(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			parser := jsonx.NewParser(strings.NewReader(tc.input))
+			parser := jsonx.NewJsonParser(strings.NewReader(tc.input))
 
 			var outs, errs []string
 			writeOut := func(s string) { outs = append(outs, s) }
@@ -59,7 +59,7 @@ func TestEngine(t *testing.T) {
 
 func TestStart_InvalidJSON(t *testing.T) {
 	input := `{"unclosed": 1`
-	parser := jsonx.NewParser(strings.NewReader(input))
+	parser := jsonx.NewJsonParser(strings.NewReader(input))
 
 	var outs, errs []string
 	writeOut := func(s string) { outs = append(outs, s) }
@@ -73,7 +73,7 @@ func TestStart_InvalidJSON(t *testing.T) {
 
 func TestStart_FastPath_InvalidJSON(t *testing.T) {
 	input := `{"unclosed": 1`
-	parser := jsonx.NewParser(strings.NewReader(input))
+	parser := jsonx.NewJsonParser(strings.NewReader(input))
 
 	var outs, errs []string
 	writeOut := func(s string) { outs = append(outs, s) }

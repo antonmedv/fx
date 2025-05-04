@@ -14,8 +14,13 @@ import (
 //go:embed stdlib.js
 var Stdlib string
 
+type Parser interface {
+	Parse() (*jsonx.Node, error)
+	Recover() *jsonx.Node
+}
+
 func Start(
-	parser *jsonx.JsonParser,
+	parser Parser,
 	fns []string,
 	slurp bool,
 	writeOut, writeErr func(string),
