@@ -99,7 +99,8 @@ func main() {
 	}
 
 	if flagYaml && flagRaw {
-
+		println("Error: can't use both --yaml and --raw flags together")
+		os.Exit(1)
 	}
 
 	if flagComp {
