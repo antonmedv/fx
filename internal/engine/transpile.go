@@ -2,21 +2,26 @@ package engine
 
 import (
 	"fmt"
+	"os"
 	"regexp"
 	"strings"
+
+	"github.com/charmbracelet/x/term"
 )
 
-func Transpile(code string) string {
+func Transpile(args []string, i int) string {
+	jsCode := transpile(args[0])
+	snippet := formatErr(args, i)
 	return fmt.Sprintf(`  json = apply((function () {
     const x = this
     try {
       return %s
     } catch (e) {
-      throw e
+      throw %s
     }
   }).call(json), json)
 
-`, transpile(code))
+`, jsCode, "`"+snippet+"`")
 }
 
 var (
@@ -72,4 +77,58 @@ func fold(s []string) string {
 		obj = "x" + obj
 	}
 	return fmt.Sprintf(`x => %s.flatMap(%s)`, obj, fold(s))
+}
+
+func formatErr(args []string, i int) string {
+	// Determine terminal width, fallback to 80
+	width, _, wErr := term.GetSize(os.Stdout.Fd())
+	if wErr != nil || width <= 0 {
+		width = 80
+	}
+
+	// Extract the code token and use it as JS code placeholder
+	code := args[i]
+	jsCode := code
+
+	// Placeholder for actual error message
+	errPlaceholder := "<error placeholder>"
+
+	// Reserve space: 2 for indent, 1 for spaces, len(code), 1 space separators
+	reserve := 2 + 1 + len(code) + 1 + 2
+	// Split remaining width for pre and post context
+	maxCtx := (width - reserve) / 2
+	if maxCtx < 10 {
+		maxCtx = 10
+	}
+
+	// Join parts before and after the error index
+	pre := strings.Join(args[:i], " ")
+	post := strings.Join(args[i+1:], " ")
+
+	// Trim to at most maxCtx characters
+	if len(pre) > maxCtx {
+		pre = "..." + pre[len(pre)-maxCtx:]
+	}
+	if len(post) > maxCtx {
+		post = post[:maxCtx] + "..."
+	}
+
+	// Build the pointer line under the code segment
+	pointer := strings.Repeat("^", len(code))
+	spacing := strings.Repeat(" ", len(pre)+1)
+
+	// Assemble the error message
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("\n  %s %s %s\n", pre, code, post))
+	sb.WriteString(fmt.Sprintf("  %s%s\n", spacing, pointer))
+
+	// Include original JS code if it differs
+	if jsCode != code {
+		sb.WriteString(fmt.Sprintf("\n%s\n", jsCode))
+	}
+
+	// Append the placeholder error message
+	sb.WriteString(fmt.Sprintf("\n%s\n", errPlaceholder))
+
+	return sb.String()
 }

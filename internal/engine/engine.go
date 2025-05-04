@@ -21,11 +21,11 @@ type Parser interface {
 
 func Start(
 	parser Parser,
-	fns []string,
+	args []string,
 	slurp bool,
 	writeOut, writeErr func(string),
 ) int {
-	isPrettyPrintArg := len(fns) == 1 && (fns[0] == "." || fns[0] == "this" || fns[0] == "x")
+	isPrettyPrintArg := len(args) == 1 && (args[0] == "." || args[0] == "this" || args[0] == "x")
 
 	// Fast path.
 	if isPrettyPrintArg && !slurp {
@@ -56,10 +56,11 @@ func Start(
 	var code strings.Builder
 	code.WriteString(Stdlib)
 	code.WriteString("\nfunction __main__(json) {\n")
-	for _, fn := range fns {
-		code.WriteString(Transpile(fn))
+	for i := range args {
+		code.WriteString(Transpile(args, i))
 	}
 	code.WriteString("  return json\n}\n")
+	println(code.String())
 
 	vm := goja.New()
 	if err := vm.Set("println", func(s string) any {
