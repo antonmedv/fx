@@ -80,8 +80,8 @@ func fold(s []string) string {
 }
 
 func formatErr(args []string, i int, jsCode string) string {
-	width, _, wErr := term.GetSize(os.Stdout.Fd())
-	if wErr != nil || width <= 0 {
+	width, _, err := term.GetSize(os.Stdout.Fd())
+	if err != nil || width <= 0 {
 		width = 80
 	}
 
@@ -91,36 +91,59 @@ func formatErr(args []string, i int, jsCode string) string {
 
 	code := args[i]
 
-	errPlaceholder := "${e}"
+	const indentCols = 2 // we print "  " before everything
+	const sepCols = 1    // one space before code
+	const sepCols2 = 1   // one space after code
+	reserve := indentCols + sepCols + len(code) + sepCols2
 
-	reserve := 2 + 1 + len(code) + 1 + 2
-	maxCtx := (width - reserve) / 2
-	if maxCtx < 10 {
-		maxCtx = 10
+	available := width - reserve
+	if available < 0 {
+		available = 0
+	}
+	maxCtx := available / 2
+	if maxCtx < 0 {
+		maxCtx = 0
 	}
 
 	pre := strings.Join(args[:i], " ")
 	post := strings.Join(args[i+1:], " ")
 
 	if len(pre) > maxCtx {
-		pre = "..." + pre[len(pre)-maxCtx:]
+		pre = "…" + pre[len(pre)-maxCtx+1:]
 	}
 	if len(post) > maxCtx {
-		post = post[:maxCtx] + "..."
+		post = post[:maxCtx-1] + "…"
 	}
 
-	pointer := strings.Repeat("^", len(code))
-	spacing := strings.Repeat(" ", len(pre)+1)
+	spacer := strings.Repeat(" ", indentCols+len(pre)+sepCols)
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("\n  %s %s %s\n", pre, code, post))
-	sb.WriteString(fmt.Sprintf("  %s%s\n", spacing, pointer))
+	sb.WriteString("\n")
+	sb.WriteString("  ")
+	sb.WriteString(pre)
+	sb.WriteByte(' ')
+	sb.WriteString(code)
+	if post != "" {
+		sb.WriteByte(' ')
+		sb.WriteString(post)
+	}
+	sb.WriteByte('\n')
 
-	if jsCode != code {
-		sb.WriteString(fmt.Sprintf("\n%s\n", jsCode))
+	sb.WriteString(spacer)
+	sb.WriteString(strings.Repeat("^", len(code)))
+	sb.WriteByte('\n')
+
+	if jsCode != "" && jsCode != code {
+		line := jsCode
+		if len(line) > width {
+			line = line[:width-1] + "…"
+		}
+		sb.WriteByte('\n')
+		sb.WriteString(line)
+		sb.WriteByte('\n')
 	}
 
-	sb.WriteString(fmt.Sprintf("\n%s\n", errPlaceholder))
+	sb.WriteString("\n${e}\n")
 
 	return sb.String()
 }
