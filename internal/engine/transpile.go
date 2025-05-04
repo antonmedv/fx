@@ -89,11 +89,10 @@ func formatErr(args []string, i int, jsCode string) string {
 	if i < 0 || i >= len(args) {
 		return fmt.Sprintf("Invalid argument index: %d", i)
 	}
-
 	code := args[i]
 
-	const indentCols = 2
-	const sepCols = 1
+	const indentCols = 2 // we print "  " before everything
+	const sepCols = 1    // the single space between pre and code
 	reserve := indentCols + sepCols + runewidth.StringWidth(code) + sepCols
 
 	available := width - reserve
@@ -108,7 +107,11 @@ func formatErr(args []string, i int, jsCode string) string {
 	pre = trimLeft(pre, maxCtx)
 	post = trimRight(post, maxCtx)
 
-	spacerCols := indentCols + runewidth.StringWidth(pre) + sepCols
+	leftSep := 0
+	if pre != "" {
+		leftSep = sepCols
+	}
+	spacerCols := indentCols + runewidth.StringWidth(pre) + leftSep
 	spacer := strings.Repeat(" ", spacerCols)
 
 	var sb strings.Builder
@@ -144,8 +147,6 @@ func formatErr(args []string, i int, jsCode string) string {
 	return sb.String()
 }
 
-// trimLeft returns at most ctx columns of s,
-// taking its *last* ctx−1 columns and prefixing “…”
 func trimLeft(s string, ctx int) string {
 	if runewidth.StringWidth(s) <= ctx {
 		return s
@@ -153,7 +154,6 @@ func trimLeft(s string, ctx int) string {
 	rs := []rune(s)
 	widthAccum := 0
 	var out []rune
-	// walk backward until we fill ctx−1 columns
 	for i := len(rs) - 1; i >= 0; i-- {
 		w := runewidth.RuneWidth(rs[i])
 		if widthAccum+w > ctx-1 {
@@ -165,8 +165,6 @@ func trimLeft(s string, ctx int) string {
 	return "…" + string(out)
 }
 
-// trimRight returns at most ctx columns of s,
-// taking its *first* ctx−1 columns and suffixing “…”
 func trimRight(s string, ctx int) string {
 	if runewidth.StringWidth(s) <= ctx {
 		return s
@@ -174,7 +172,6 @@ func trimRight(s string, ctx int) string {
 	rs := []rune(s)
 	widthAccum := 0
 	var out []rune
-	// walk forward until we fill ctx−1 columns
 	for _, r := range rs {
 		w := runewidth.RuneWidth(r)
 		if widthAccum+w > ctx-1 {
