@@ -53,6 +53,16 @@ func Start(
 		return 0
 	}
 
+	for i := range args {
+		if err := validateSyntax(args, i); err != nil {
+			jsCode := transpile(args[i])
+			snippet := formatErr(args, i, jsCode)
+			message := errorToString(err)
+			writeErr(snippet + message)
+			return 1
+		}
+	}
+
 	var code strings.Builder
 	code.WriteString(Stdlib)
 	code.WriteString("\nfunction __main__(json) {\n")
@@ -69,18 +79,8 @@ func Start(
 		panic(err)
 	}
 
-	onError := func(err error) {
-		if exception, ok := err.(*goja.Exception); ok {
-			message := exception.Value().String()
-			message = extractErrorMessage(message)
-			writeErr(message)
-			return
-		}
-		writeErr(err.Error())
-	}
-
 	if _, err := vm.RunString(code.String()); err != nil {
-		onError(err)
+		writeErr(errorToString(err))
 		return 1
 	}
 
@@ -141,7 +141,7 @@ func Start(
 			input := node.ToValue(vm)
 			output, err := main(goja.Undefined(), input)
 			if err != nil {
-				onError(err)
+				writeErr(errorToString(err))
 				return 1
 			}
 
@@ -153,4 +153,15 @@ func Start(
 	}
 
 	return 0
+}
+
+func validateSyntax(args []string, i int) error {
+	var code strings.Builder
+	code.WriteString("\nfunction __main__(json) {\n")
+	code.WriteString(Transpile(args, i))
+	code.WriteString("  return json\n}\n")
+
+	vm := goja.New()
+	_, err := vm.RunString(code.String())
+	return err
 }

@@ -21,7 +21,7 @@ func Transpile(args []string, i int) string {
     }
   }).call(json), json)
 
-`, jsCode, "`"+snippet+"`")
+`, jsCode, "`"+snippet+"${e}`")
 }
 
 var (
@@ -143,7 +143,7 @@ func formatErr(args []string, i int, jsCode string) string {
 		sb.WriteByte('\n')
 	}
 
-	sb.WriteString("\n${e}\n")
+	sb.WriteString("\n")
 
 	return sb.String()
 }
