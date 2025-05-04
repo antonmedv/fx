@@ -62,6 +62,9 @@ func (p *JsonParser) Recover() *Node {
 	start := p.end - 1
 	for {
 		p.next()
+		if p.err == io.EOF {
+			break
+		}
 		if p.lastChar == '{' || p.lastChar == '[' {
 			break
 		}
