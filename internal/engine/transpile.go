@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/x/term"
+	"github.com/mattn/go-runewidth"
 )
 
 func Transpile(args []string, i int) string {
@@ -91,37 +92,32 @@ func formatErr(args []string, i int, jsCode string) string {
 
 	code := args[i]
 
-	const indentCols = 2 // we print "  " before everything
-	const sepCols = 1    // one space before code
-	const sepCols2 = 1   // one space after code
-	reserve := indentCols + sepCols + len(code) + sepCols2
+	const indentCols = 2
+	const sepCols = 1
+	reserve := indentCols + sepCols + runewidth.StringWidth(code) + sepCols
 
 	available := width - reserve
 	if available < 0 {
 		available = 0
 	}
 	maxCtx := available / 2
-	if maxCtx < 0 {
-		maxCtx = 0
-	}
 
 	pre := strings.Join(args[:i], " ")
 	post := strings.Join(args[i+1:], " ")
 
-	if len(pre) > maxCtx {
-		pre = "…" + pre[len(pre)-maxCtx+1:]
-	}
-	if len(post) > maxCtx {
-		post = post[:maxCtx-1] + "…"
-	}
+	pre = trimLeft(pre, maxCtx)
+	post = trimRight(post, maxCtx)
 
-	spacer := strings.Repeat(" ", indentCols+len(pre)+sepCols)
+	spacerCols := indentCols + runewidth.StringWidth(pre) + sepCols
+	spacer := strings.Repeat(" ", spacerCols)
 
 	var sb strings.Builder
 	sb.WriteString("\n")
-	sb.WriteString("  ")
-	sb.WriteString(pre)
-	sb.WriteByte(' ')
+	sb.WriteString(strings.Repeat(" ", indentCols))
+	if pre != "" {
+		sb.WriteString(pre)
+		sb.WriteByte(' ')
+	}
 	sb.WriteString(code)
 	if post != "" {
 		sb.WriteByte(' ')
@@ -130,20 +126,62 @@ func formatErr(args []string, i int, jsCode string) string {
 	sb.WriteByte('\n')
 
 	sb.WriteString(spacer)
-	sb.WriteString(strings.Repeat("^", len(code)))
+	sb.WriteString(strings.Repeat("^", runewidth.StringWidth(code)))
 	sb.WriteByte('\n')
 
 	if jsCode != "" && jsCode != code {
-		line := jsCode
-		if len(line) > width {
-			line = line[:width-1] + "…"
+		snippet := jsCode
+		if runewidth.StringWidth(snippet) > width {
+			snippet = trimRight(snippet, width)
 		}
 		sb.WriteByte('\n')
-		sb.WriteString(line)
+		sb.WriteString(snippet)
 		sb.WriteByte('\n')
 	}
 
 	sb.WriteString("\n")
 
 	return sb.String()
+}
+
+// trimLeft returns at most ctx columns of s,
+// taking its *last* ctx−1 columns and prefixing “…”
+func trimLeft(s string, ctx int) string {
+	if runewidth.StringWidth(s) <= ctx {
+		return s
+	}
+	rs := []rune(s)
+	widthAccum := 0
+	var out []rune
+	// walk backward until we fill ctx−1 columns
+	for i := len(rs) - 1; i >= 0; i-- {
+		w := runewidth.RuneWidth(rs[i])
+		if widthAccum+w > ctx-1 {
+			break
+		}
+		widthAccum += w
+		out = append([]rune{rs[i]}, out...)
+	}
+	return "…" + string(out)
+}
+
+// trimRight returns at most ctx columns of s,
+// taking its *first* ctx−1 columns and suffixing “…”
+func trimRight(s string, ctx int) string {
+	if runewidth.StringWidth(s) <= ctx {
+		return s
+	}
+	rs := []rune(s)
+	widthAccum := 0
+	var out []rune
+	// walk forward until we fill ctx−1 columns
+	for _, r := range rs {
+		w := runewidth.RuneWidth(r)
+		if widthAccum+w > ctx-1 {
+			break
+		}
+		out = append(out, r)
+		widthAccum += w
+	}
+	return string(out) + "…"
 }
