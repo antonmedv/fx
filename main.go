@@ -782,6 +782,13 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, m.print()
 
 	case key.Matches(msg, keyMap.Dig):
+		at := m.cursorPointsTo()
+		if at.Kind == Err {
+			nextJson := at.FindNextNonErr()
+			if nextJson != nil {
+				m.selectNode(nextJson)
+			}
+		}
 		m.digInput.SetValue(m.cursorPath() + ".")
 		m.digInput.CursorEnd()
 		m.digInput.Width = m.termWidth - 1

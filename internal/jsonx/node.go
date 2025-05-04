@@ -240,6 +240,14 @@ func (n *Node) FindChildByIndex(index int) *Node {
 	return nil
 }
 
+func (n *Node) FindNextNonErr() *Node {
+	it := n
+	for it != nil && it.Kind == Err {
+		it = it.Next
+	}
+	return it
+}
+
 func (n *Node) Children() ([]string, []*Node) {
 	if !n.HasChildren() {
 		return nil, nil
