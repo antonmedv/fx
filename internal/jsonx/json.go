@@ -1,7 +1,6 @@
 package jsonx
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"io"
@@ -13,9 +12,10 @@ import (
 )
 
 type JsonParser struct {
-	io         *bufio.Reader
+	rd         io.Reader
 	buf        []byte
-	err        error
+	data       []byte
+	eof        bool
 	end        int
 	lastChar   byte
 	lineNumber uint
@@ -32,9 +32,10 @@ func Parse(b []byte) (*Node, error) {
 	return node, err
 }
 
-func NewJsonParser(in io.Reader) *JsonParser {
+func NewJsonParser(rd io.Reader) *JsonParser {
 	p := &JsonParser{
-		io:         bufio.NewReader(in),
+		rd:         rd,
+		buf:        make([]byte, 4096),
 		lineNumber: 1,
 		sourceTail: &ring{},
 	}
@@ -43,8 +44,8 @@ func NewJsonParser(in io.Reader) *JsonParser {
 }
 
 func (p *JsonParser) Parse() (node *Node, err error) {
-	if p.err != nil {
-		return nil, p.err
+	if p.eof {
+		return nil, io.EOF
 	}
 	defer func() {
 		if r := recover(); r != nil {
@@ -56,13 +57,13 @@ func (p *JsonParser) Parse() (node *Node, err error) {
 }
 
 func (p *JsonParser) Recover() *Node {
-	p.err = nil
+	p.eof = false
 	p.depth = 0
 
 	start := p.end - 1
 	for {
 		p.next()
-		if p.err == io.EOF {
+		if p.eof {
 			break
 		}
 		if p.lastChar == '{' || p.lastChar == '[' {
@@ -71,11 +72,11 @@ func (p *JsonParser) Recover() *Node {
 	}
 
 	end := p.end - 1
-	if p.buf[end-1] == '\n' {
+	if p.data[end-1] == '\n' {
 		end-- // Trim trailing newline.
 	}
 
-	text := string(p.buf[start:end])
+	text := string(p.data[start:end])
 	text = strings.ReplaceAll(text, "\t", "    ")
 	text = strings.ReplaceAll(text, "\r", "")
 	lines := strings.Split(text, "\n")
@@ -96,17 +97,28 @@ func (p *JsonParser) Recover() *Node {
 	return textNode
 }
 
-func (p *JsonParser) next() {
-	ch, err := p.io.ReadByte()
+func (p *JsonParser) refill() {
+	n, err := p.rd.Read(p.buf)
 	if err != nil {
 		if err == io.EOF {
-			p.err = err
+			p.eof = true
+			return
 		} else {
 			panic(err)
 		}
 	}
-	p.lastChar = ch
-	p.buf = append(p.buf, ch)
+	p.data = append(p.data, p.buf[:n]...)
+}
+
+func (p *JsonParser) next() {
+	if p.end == len(p.data) {
+		p.refill()
+	}
+	if p.eof {
+		p.lastChar = 0
+		return
+	}
+	p.lastChar = p.data[p.end]
 	p.end++
 	if p.lastChar == '\n' {
 		p.lineNumber++
@@ -179,7 +191,7 @@ func (p *JsonParser) parseString() *Node {
 		p.next()
 	}
 
-	str.Value = p.buf[start:p.end]
+	str.Value = p.data[start:p.end]
 	p.next()
 	return str
 }
@@ -230,7 +242,7 @@ func (p *JsonParser) parseNumber() *Node {
 		}
 	}
 
-	num.Value = p.buf[start : p.end-1]
+	num.Value = p.data[start : p.end-1]
 	return num
 }
 
