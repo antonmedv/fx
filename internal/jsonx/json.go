@@ -13,8 +13,8 @@ import (
 )
 
 type JsonParser struct {
-	buf        *bufio.Reader
-	data       []byte
+	io         *bufio.Reader
+	buf        []byte
 	err        error
 	end        int
 	lastChar   byte
@@ -34,7 +34,7 @@ func Parse(b []byte) (*Node, error) {
 
 func NewJsonParser(in io.Reader) *JsonParser {
 	p := &JsonParser{
-		buf:        bufio.NewReader(in),
+		io:         bufio.NewReader(in),
 		lineNumber: 1,
 		sourceTail: &ring{},
 	}
@@ -71,11 +71,11 @@ func (p *JsonParser) Recover() *Node {
 	}
 
 	end := p.end - 1
-	if p.data[end-1] == '\n' {
+	if p.buf[end-1] == '\n' {
 		end-- // Trim trailing newline.
 	}
 
-	text := string(p.data[start:end])
+	text := string(p.buf[start:end])
 	text = strings.ReplaceAll(text, "\t", "    ")
 	text = strings.ReplaceAll(text, "\r", "")
 	lines := strings.Split(text, "\n")
@@ -97,7 +97,7 @@ func (p *JsonParser) Recover() *Node {
 }
 
 func (p *JsonParser) next() {
-	ch, err := p.buf.ReadByte()
+	ch, err := p.io.ReadByte()
 	if err != nil {
 		if err == io.EOF {
 			p.err = err
@@ -106,7 +106,7 @@ func (p *JsonParser) next() {
 		}
 	}
 	p.lastChar = ch
-	p.data = append(p.data, ch)
+	p.buf = append(p.buf, ch)
 	p.end++
 	if p.lastChar == '\n' {
 		p.lineNumber++
@@ -179,7 +179,7 @@ func (p *JsonParser) parseString() *Node {
 		p.next()
 	}
 
-	str.Value = p.data[start:p.end]
+	str.Value = p.buf[start:p.end]
 	p.next()
 	return str
 }
@@ -230,7 +230,7 @@ func (p *JsonParser) parseNumber() *Node {
 		}
 	}
 
-	num.Value = p.data[start : p.end-1]
+	num.Value = p.buf[start : p.end-1]
 	return num
 }
 
