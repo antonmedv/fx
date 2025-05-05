@@ -74,6 +74,7 @@ func (p *JsonParser) Recover() *Node {
 		end-- // Trim trailing newline.
 	}
 
+	start = min(start, end)
 	text := string(p.data[start:end])
 	text = strings.ReplaceAll(text, "\t", "    ")
 	text = strings.ReplaceAll(text, "\r", "")
@@ -109,11 +110,12 @@ func (p *JsonParser) refill() {
 }
 
 func (p *JsonParser) next() {
-	if p.end == len(p.data) {
+	if p.end >= len(p.data) {
 		p.refill()
 	}
 	if p.eof {
 		p.lastChar = 0
+		p.end = len(p.data) + 1
 		return
 	}
 	p.lastChar = p.data[p.end]
