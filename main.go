@@ -165,7 +165,7 @@ func main() {
 	if len(args) > 0 || flagSlurp {
 		debug.SetGCPercent(-1)
 		writeOut := func(s string) { fmt.Println(s) }
-		writeErr := func(s string) { _, _ = fmt.Fprintln(os.Stderr, s) }
+		writeErr := func(s string) { fmt.Fprintln(os.Stderr, s) }
 		exitCode := engine.Start(parser, args, flagSlurp, writeOut, writeErr)
 		if exitCode != 0 {
 			os.Exit(exitCode)
