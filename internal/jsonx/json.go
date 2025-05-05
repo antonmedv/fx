@@ -114,8 +114,6 @@ func (p *JsonParser) next() {
 	}
 	if p.eof {
 		p.lastChar = 0
-		p.data = append(p.data, 0)
-		p.end++
 		return
 	}
 	p.lastChar = p.data[p.end]
