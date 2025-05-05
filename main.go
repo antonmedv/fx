@@ -149,13 +149,13 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		data, err := parseYAML(b)
+		jsonBytes, err := parseYAML(b)
 		if err != nil {
 			fmt.Print(err.Error())
 			os.Exit(1)
 			return
 		}
-		src = bytes.NewReader(data)
+		parser = NewJsonParser(bytes.NewReader(jsonBytes))
 	} else if flagRaw {
 		parser = NewLineParser(src)
 	} else {
