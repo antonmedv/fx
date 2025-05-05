@@ -19,7 +19,6 @@ type JsonParser struct {
 	end        int
 	lastChar   byte
 	lineNumber uint
-	sourceTail *ring
 	depth      uint8
 }
 
@@ -37,7 +36,6 @@ func NewJsonParser(rd io.Reader) *JsonParser {
 		rd:         rd,
 		buf:        make([]byte, 4096),
 		lineNumber: 1,
-		sourceTail: &ring{},
 	}
 	p.next()
 	return p
@@ -124,7 +122,6 @@ func (p *JsonParser) next() {
 	if p.lastChar == '\n' {
 		p.lineNumber++
 	}
-	p.sourceTail.writeByte(p.lastChar)
 }
 
 func (p *JsonParser) parseValue() *Node {
@@ -435,7 +432,24 @@ func (p *JsonParser) skipComment() {
 }
 
 func (p *JsonParser) errorSnippet(message string) error {
-	lines := strings.Split(p.sourceTail.string(), "\n")
+	var buf []byte
+	br := 0
+	start := max(0, p.end-70)
+	for i := p.end - 1; i >= start; i-- {
+		if p.data[i] == '\n' {
+			br++
+			if br == 2 {
+				break
+			}
+		}
+		buf = append(buf, p.data[i])
+	}
+	for i, j := 0, len(buf)-1; i < j; i, j = i+1, j-1 {
+		buf[i], buf[j] = buf[j], buf[i]
+	}
+
+	tail := strings.TrimRight(string(buf), "\t \n")
+	lines := strings.Split(tail, "\n")
 	lastLineLen := utf8.RuneCountInString(lines[len(lines)-1])
 	pointer := strings.Repeat(".", lastLineLen-1) + "^"
 	lines = append(lines, pointer)
