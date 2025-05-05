@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"runtime/debug"
 	"runtime/pprof"
 	"strconv"
 	"strings"
@@ -25,9 +26,8 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/sahilm/fuzzy"
 
-	"github.com/antonmedv/fx/internal/engine"
-
 	"github.com/antonmedv/fx/internal/complete"
+	"github.com/antonmedv/fx/internal/engine"
 	"github.com/antonmedv/fx/internal/jsonpath"
 	. "github.com/antonmedv/fx/internal/jsonx"
 	"github.com/antonmedv/fx/internal/theme"
@@ -163,6 +163,7 @@ func main() {
 	}
 
 	if len(args) > 0 || flagSlurp {
+		debug.SetGCPercent(-1)
 		writeOut := func(s string) { fmt.Println(s) }
 		writeErr := func(s string) { _, _ = fmt.Fprintln(os.Stderr, s) }
 		exitCode := engine.Start(parser, args, flagSlurp, writeOut, writeErr)

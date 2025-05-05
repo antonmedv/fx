@@ -7,8 +7,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/antonmedv/fx/internal/jsonx"
 	"github.com/dop251/goja"
+
+	"github.com/antonmedv/fx/internal/jsonx"
 )
 
 //go:embed stdlib.js
