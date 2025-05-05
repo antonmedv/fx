@@ -114,7 +114,6 @@ func (p *JsonParser) next() {
 	}
 	if p.eof {
 		p.lastChar = 0
-		p.end++
 		return
 	}
 	p.lastChar = p.data[p.end]
@@ -435,7 +434,8 @@ func (p *JsonParser) errorSnippet(message string) error {
 	var buf []byte
 	br := 0
 	start := max(0, p.end-70)
-	for i := p.end - 1; i >= start; i-- {
+	end := min(p.end, len(p.data))
+	for i := end - 1; i >= start; i-- {
 		if p.data[i] == '\n' {
 			br++
 			if br == 2 {

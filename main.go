@@ -713,7 +713,9 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.collapsed = true
 			n := m.top
 			for n != nil {
-				n.CollapseRecursively()
+				if n.Kind != Err {
+					n.CollapseRecursively()
+				}
 				if n.End == nil {
 					n = nil
 				} else {
