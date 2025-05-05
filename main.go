@@ -16,7 +16,6 @@ import (
 	"strings"
 
 	"github.com/antonmedv/clipboard"
-	"github.com/antonmedv/fx/internal/engine"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -25,6 +24,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mattn/go-isatty"
 	"github.com/sahilm/fuzzy"
+
+	"github.com/antonmedv/fx/internal/engine"
 
 	"github.com/antonmedv/fx/internal/complete"
 	"github.com/antonmedv/fx/internal/jsonpath"
@@ -165,7 +166,10 @@ func main() {
 		writeOut := func(s string) { fmt.Println(s) }
 		writeErr := func(s string) { _, _ = fmt.Fprintln(os.Stderr, s) }
 		exitCode := engine.Start(parser, args, flagSlurp, writeOut, writeErr)
-		os.Exit(exitCode)
+		if exitCode != 0 {
+			os.Exit(exitCode)
+		}
+		return
 	}
 
 	digInput := textinput.New()
