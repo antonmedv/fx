@@ -64,3 +64,57 @@ func TestJsonParser_Recovery(t *testing.T) {
 		assert.Equal(t, string(node.Value), "here goes the text", "expected recovery node to contain error snippet")
 	})
 }
+
+func TestJsonParser_NestedStructureVerification(t *testing.T) {
+	input := `{
+		"user": {
+			"name": "John",
+			"age": 30,
+			"active": true,
+			"contacts": {
+				"email": "john@example.com",
+				"phone": "123456789"
+			},
+			"roles": ["admin", "editor"]
+		}
+	}`
+
+	node, err := jsonx.Parse([]byte(input))
+	assert.NoError(t, err)
+	assert.Equal(t, jsonx.Object, node.Kind)
+
+	// user object
+	user := node.FindByPath([]any{"user"})
+	assert.NotNil(t, user)
+	assert.Equal(t, jsonx.Object, user.Kind)
+
+	// user.name
+	name := node.FindByPath([]any{"user", "name"})
+	assert.NotNil(t, name)
+	assert.Equal(t, jsonx.String, name.Kind)
+	assert.Equal(t, `"John"`, string(name.Value))
+
+	// user.age
+	age := node.FindByPath([]any{"user", "age"})
+	assert.NotNil(t, age)
+	assert.Equal(t, jsonx.Number, age.Kind)
+	assert.Equal(t, "30", string(age.Value))
+
+	// user.active
+	active := node.FindByPath([]any{"user", "active"})
+	assert.NotNil(t, active)
+	assert.Equal(t, jsonx.Bool, active.Kind)
+	assert.Equal(t, "true", string(active.Value))
+
+	// user.contacts.email
+	email := node.FindByPath([]any{"user", "contacts", "email"})
+	assert.NotNil(t, email)
+	assert.Equal(t, jsonx.String, email.Kind)
+	assert.Equal(t, `"john@example.com"`, string(email.Value))
+
+	// user.roles[1]
+	role := node.FindByPath([]any{"user", "roles", 1})
+	assert.NotNil(t, role)
+	assert.Equal(t, jsonx.String, role.Kind)
+	assert.Equal(t, `"editor"`, string(role.Value))
+}
