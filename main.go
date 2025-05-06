@@ -1106,12 +1106,6 @@ func (m *model) View() string {
 		} else {
 			currentPath := m.cursorPath()
 			percent := fmt.Sprintf("%d%%", int(float64(cursorLineNumber)/float64(m.totalLines)*100))
-			if m.totalLines == 0 {
-				percent = "0%"
-			}
-			if cursorLineNumber == 1 {
-				percent = "1%"
-			}
 			info := fmt.Sprintf("%s %s", percent, m.fileName)
 			statusBar := flex(m.termWidth, currentPath, info)
 			screen = append(screen, theme.CurrentTheme.StatusBar(statusBar)...)
