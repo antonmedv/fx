@@ -51,12 +51,12 @@ func Wrap(n *Node, termWidth int) {
 	}
 }
 
-func doWrap(n *Node, termWidth int) ([][]byte, int) {
-	lines := make([][]byte, 0, 1)
+func doWrap(n *Node, termWidth int) ([]string, int) {
+	lines := make([]string, 0, 1)
 	width := int(n.Depth) * 2
 
-	if n.Key != nil {
-		for _, ch := range string(n.Key) {
+	if n.Key != "" {
+		for _, ch := range n.Key {
 			width += runewidth.RuneWidth(ch)
 		}
 		width += 2 // for ": "
@@ -64,7 +64,7 @@ func doWrap(n *Node, termWidth int) ([][]byte, int) {
 
 	linesCount := 0
 	start, end := 0, 0
-	b := n.Value
+	b := []byte(n.Value)
 
 	for len(b) > 0 {
 		r, size := utf8.DecodeRune(b)

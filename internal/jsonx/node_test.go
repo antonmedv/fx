@@ -21,7 +21,7 @@ func TestNode_expandRecursively(t *testing.T) {
 
 	n.CollapseRecursively()
 	n.ExpandRecursively(0, 3)
-	assert.Equal(t, `"c"`, string(n.Next.Next.Next.Key))
+	assert.Equal(t, `"c"`, n.Next.Next.Next.Key)
 }
 
 func TestNode_Paths(t *testing.T) {

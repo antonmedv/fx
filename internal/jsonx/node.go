@@ -24,10 +24,10 @@ type Node struct {
 	Collapsed       *Node
 	Depth           uint8
 	Kind            Kind
-	Key             []byte
-	Value           []byte
+	Key             string
+	Value           string
 	Size            int
-	Chunk           []byte
+	Chunk           string
 	ChunkEnd        *Node
 	Comma           bool
 	Index           int
@@ -90,7 +90,7 @@ func (n *Node) dropChunks() {
 		return
 	}
 
-	n.Chunk = nil
+	n.Chunk = ""
 
 	n.Next = n.ChunkEnd.Next
 	if n.Next != nil {
@@ -114,7 +114,7 @@ func (n *Node) Root() *Node {
 }
 
 func (n *Node) IsWrap() bool {
-	return n.Value == nil && n.Chunk != nil
+	return n.Value == "" && n.Chunk != ""
 }
 
 func (n *Node) IsCollapsed() bool {
@@ -195,8 +195,8 @@ func (n *Node) FindByPath(path []any) *Node {
 func (n *Node) FindChildByKey(key string) *Node {
 	it := n.Next
 	for it != nil && it != n.End {
-		if it.Key != nil {
-			k, err := strconv.Unquote(string(it.Key))
+		if it.Key != "" {
+			k, err := strconv.Unquote(it.Key)
 			if err != nil {
 				return nil
 			}
@@ -253,7 +253,7 @@ func (n *Node) Children() ([]string, []*Node) {
 	}
 
 	for it != nil && it != n.End {
-		if it.Key != nil {
+		if it.Key != "" {
 			key := string(it.Key)
 			unquoted, err := strconv.Unquote(key)
 			if err == nil {
@@ -288,8 +288,8 @@ func (n *Node) Bottom() *Node {
 func (n *Node) Paths(paths *[]string, nodes *[]*Node) {
 	joinPath := func(prefix string, n *Node) string {
 		var path string
-		if n.Key != nil {
-			quoted := string(n.Key)
+		if n.Key != "" {
+			quoted := n.Key
 			unquoted, err := strconv.Unquote(quoted)
 			if err == nil && jsonpath.Identifier.MatchString(unquoted) {
 				path = prefix + "." + unquoted

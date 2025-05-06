@@ -14,25 +14,25 @@ func (n *Node) ToValue(vm *goja.Runtime) goja.Value {
 		return goja.Null()
 
 	case Bool:
-		if string(n.Value) == "true" {
+		if n.Value == trueValue {
 			return vm.ToValue(true)
 		} else {
 			return vm.ToValue(false)
 		}
 
 	case Number:
-		i, ok := ParseNumber(string(n.Value))
+		i, ok := ParseNumber(n.Value)
 		if ok {
 			return vm.ToValue(i)
 		}
-		f, err := strconv.ParseFloat(string(n.Value), 64)
+		f, err := strconv.ParseFloat(n.Value, 64)
 		if err == nil {
 			return vm.ToValue(f)
 		}
 		panic(err)
 
 	case String:
-		unquoted, err := strconv.Unquote(string(n.Value))
+		unquoted, err := strconv.Unquote(n.Value)
 		if err != nil {
 			panic(err)
 		}
@@ -50,7 +50,7 @@ func (n *Node) ToValue(vm *goja.Runtime) goja.Value {
 			}
 
 			for it != nil && it != n.End {
-				unquotedKey, err := strconv.Unquote(string(it.Key))
+				unquotedKey, err := strconv.Unquote(it.Key)
 				if err != nil {
 					panic(err)
 				}

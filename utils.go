@@ -11,9 +11,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/goccy/go-yaml"
+
 	"github.com/antonmedv/fx/internal/jsonpath"
 	"github.com/antonmedv/fx/internal/jsonx"
-	"github.com/goccy/go-yaml"
 )
 
 func open(filePath string, flagYaml *bool) *os.File {
@@ -49,8 +50,8 @@ func flex(width int, a, b string) string {
 	return a + strings.Repeat(" ", max(1, width-len(a)-len(b))) + b
 }
 
-func safeSlice(b []byte, start, end int) []byte {
-	length := len(b)
+func safeSlice(s string, start, end int) string {
+	length := len(s)
 	if start > length {
 		start = length
 	}
@@ -66,7 +67,7 @@ func safeSlice(b []byte, start, end int) []byte {
 	if start > end {
 		start = end
 	}
-	return b[start:end]
+	return s[start:end]
 }
 
 func parseYAML(b []byte) ([]byte, error) {
