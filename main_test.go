@@ -39,6 +39,7 @@ func prepare(t *testing.T, opts ...options) *teatest.TestModel {
 		top:         head,
 		head:        head,
 		bottom:      head,
+		totalLines:  head.Bottom().LineNumber,
 		wrap:        true,
 		showCursor:  true,
 		digInput:    textinput.New(),

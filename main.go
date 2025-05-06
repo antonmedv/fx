@@ -1106,6 +1106,9 @@ func (m *model) View() string {
 		} else {
 			currentPath := m.cursorPath()
 			percent := fmt.Sprintf("%d%%", int(float64(cursorLineNumber)/float64(m.totalLines)*100))
+			if m.totalLines == 0 {
+				percent = "0%"
+			}
 			if cursorLineNumber == 1 {
 				percent = "1%"
 			}
