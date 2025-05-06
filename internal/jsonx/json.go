@@ -153,7 +153,14 @@ func (p *JsonParser) parseValue() *Node {
 }
 
 func (p *JsonParser) parseString() *Node {
-	str := &Node{Kind: String, Depth: p.depth}
+	return &Node{
+		Kind:  String,
+		Depth: p.depth,
+		Value: p.scanString(),
+	}
+}
+
+func (p *JsonParser) scanString() []byte {
 	start := p.end - 1
 	p.next()
 	escaped := false
@@ -190,8 +197,9 @@ func (p *JsonParser) parseString() *Node {
 		p.next()
 	}
 
-	str.Value = p.data[start:p.end]
+	str := p.data[start:p.end]
 	p.next()
+
 	return str
 }
 
