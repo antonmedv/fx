@@ -673,7 +673,7 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			parent := prevSibling.Parent
 			if parent != nil && parent.End == prevSibling {
 				prevSibling = parent
-			} else if prevSibling.Chunk != nil {
+			} else if prevSibling.Chunk != "" {
 				prevSibling = parent
 			}
 		}
@@ -765,7 +765,7 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		} else {
 			DropWrapAll(m.top)
 		}
-		if at.Chunk != nil && at.Value == nil {
+		if at.Chunk != "" && at.Value == "" {
 			at = at.Parent
 		}
 		m.redoSearch()
@@ -903,7 +903,7 @@ func (m *model) recordHistory() {
 	if at == nil {
 		return
 	}
-	if at.Chunk != nil && at.Value == nil {
+	if at.Chunk != "" && at.Value == "" {
 		// We at the wrapped string, save the location of the original string node.
 		at = at.Parent
 	}
@@ -1011,7 +1011,7 @@ func (m *model) View() string {
 		isRefSelected := false
 		var isRefValue string
 
-		if n.Key != nil {
+		if n.Key != "" {
 			screen = append(screen, m.prettyKey(n, isSelected)...)
 			screen = append(screen, theme.Colon...)
 
@@ -1030,14 +1030,14 @@ func (m *model) View() string {
 
 		if n.IsCollapsed() {
 			if n.Kind == Object {
-				if n.Collapsed.Key != nil {
-					screen = append(screen, theme.CurrentTheme.Preview(string(n.Collapsed.Key))...)
+				if n.Collapsed.Key != "" {
+					screen = append(screen, theme.CurrentTheme.Preview(n.Collapsed.Key)...)
 					screen = append(screen, theme.ColonPreview...)
 					if len(n.Collapsed.Value) > 0 &&
 						len(n.Collapsed.Value) < 42 &&
 						n.Collapsed.Kind != Object &&
 						n.Collapsed.Kind != Array {
-						screen = append(screen, theme.CurrentTheme.Preview(string(n.Collapsed.Value))...)
+						screen = append(screen, theme.CurrentTheme.Preview(n.Collapsed.Value)...)
 						if n.Size > 1 {
 							screen = append(screen, theme.CommaPreview...)
 							screen = append(screen, theme.Dot3...)
@@ -1167,53 +1167,53 @@ func (m *model) prettyKey(node *Node, selected bool) []byte {
 
 	if indexes, ok := m.search.keys[node]; ok {
 		var out []byte
-		for i, p := range splitBytesByIndexes(b, indexes) {
+		for i, p := range splitByIndexes(b, indexes) {
 			if i%2 == 0 {
-				out = append(out, style(string(p.b))...)
+				out = append(out, style(p.b)...)
 			} else if p.index == m.search.cursor {
-				out = append(out, theme.CurrentTheme.Cursor(string(p.b))...)
+				out = append(out, theme.CurrentTheme.Cursor(p.b)...)
 			} else {
-				out = append(out, theme.CurrentTheme.Search(string(p.b))...)
+				out = append(out, theme.CurrentTheme.Search(p.b)...)
 			}
 		}
 		return out
 	} else {
-		return []byte(style(string(b)))
+		return []byte(style(b))
 	}
 }
 
-func (m *model) prettyPrint(node *Node, selected bool) []byte {
-	var b []byte
-	if node.Chunk != nil {
-		b = node.Chunk
+func (m *model) prettyPrint(node *Node, selected bool) string {
+	var s string
+	if node.Chunk != "" {
+		s = node.Chunk
 	} else {
-		b = node.Value
+		s = node.Value
 	}
 
-	if len(b) == 0 {
+	if len(s) == 0 {
 		if selected {
-			return []byte(theme.CurrentTheme.Cursor(" "))
+			return theme.CurrentTheme.Cursor(" ")
 		} else {
-			return b
+			return s
 		}
 	}
 
 	style := theme.Value(node.Kind, selected)
 
 	if indexes, ok := m.search.values[node]; ok {
-		var out []byte
-		for i, p := range splitBytesByIndexes(b, indexes) {
+		var out strings.Builder
+		for i, p := range splitByIndexes(s, indexes) {
 			if i%2 == 0 {
-				out = append(out, style(string(p.b))...)
+				out.WriteString(style(p.b))
 			} else if p.index == m.search.cursor {
-				out = append(out, theme.CurrentTheme.Cursor(string(p.b))...)
+				out.WriteString(theme.CurrentTheme.Cursor(p.b))
 			} else {
-				out = append(out, theme.CurrentTheme.Search(string(p.b))...)
+				out.WriteString(theme.CurrentTheme.Search(p.b))
 			}
 		}
-		return out
+		return out.String()
 	} else {
-		return []byte(style(string(b)))
+		return style(s)
 	}
 }
 
@@ -1298,11 +1298,11 @@ func (m *model) cursorPath() string {
 	at := m.cursorPointsTo()
 	for at != nil {
 		if at.Prev != nil {
-			if at.Chunk != nil && at.Value == nil {
+			if at.Chunk != "" && at.Value == "" {
 				at = at.Parent
 			}
-			if at.Key != nil {
-				quoted := string(at.Key)
+			if at.Key != "" {
+				quoted := at.Key
 				unquoted, err := strconv.Unquote(quoted)
 				if err == nil && jsonpath.Identifier.MatchString(unquoted) {
 					path = "." + unquoted + path
@@ -1326,7 +1326,7 @@ func (m *model) cursorValue() string {
 	parent := at.Parent
 	if parent != nil {
 		// wrapped string part
-		if at.Chunk != nil && at.Value == nil {
+		if at.Chunk != "" && at.Value == "" {
 			at = parent
 		}
 		if at.Kind == Object || at.Kind == Array {
@@ -1335,15 +1335,15 @@ func (m *model) cursorValue() string {
 	}
 
 	if at.Kind == String {
-		str, err := strconv.Unquote(string(at.Value))
+		str, err := strconv.Unquote(at.Value)
 		if err == nil {
 			return str
 		}
-		return string(at.Value)
+		return at.Value
 	}
 
 	var out strings.Builder
-	out.Write(at.Value)
+	out.WriteString(at.Value)
 	out.WriteString("\n")
 	if at.HasChildren() {
 		it := at.Next
@@ -1352,12 +1352,12 @@ func (m *model) cursorValue() string {
 		}
 		for it != nil {
 			out.WriteString(strings.Repeat("  ", int(it.Depth-at.Depth)))
-			if it.Key != nil {
-				out.Write(it.Key)
+			if it.Key != "" {
+				out.WriteString(it.Key)
 				out.WriteString(": ")
 			}
-			if it.Value != nil {
-				out.Write(it.Value)
+			if it.Value != "" {
+				out.WriteString(it.Value)
 			}
 			if it == at.End {
 				break
@@ -1386,9 +1386,9 @@ func (m *model) cursorKey() string {
 	if at.IsWrap() {
 		at = at.Parent
 	}
-	if at.Key != nil {
+	if at.Key != "" {
 		var v string
-		_ = json.Unmarshal(at.Key, &v)
+		_ = json.Unmarshal([]byte(at.Key), &v)
 		return v
 	}
 	return strconv.Itoa(at.Index)
@@ -1432,8 +1432,8 @@ func (m *model) doSearch(s string) {
 	n := m.top
 	searchIndex := 0
 	for n != nil {
-		if n.Key != nil {
-			indexes := re.FindAllIndex(n.Key, -1)
+		if n.Key != "" {
+			indexes := re.FindAllStringIndex(n.Key, -1)
 			if len(indexes) > 0 {
 				for i, pair := range indexes {
 					m.search.results = append(m.search.results, n)
@@ -1442,14 +1442,14 @@ func (m *model) doSearch(s string) {
 				searchIndex += len(indexes)
 			}
 		}
-		indexes := re.FindAllIndex(n.Value, -1)
+		indexes := re.FindAllStringIndex(n.Value, -1)
 		if len(indexes) > 0 {
 			for range indexes {
 				m.search.results = append(m.search.results, n)
 			}
-			if n.Chunk != nil {
+			if n.Chunk != "" {
 				// String can be split into chunks, so we need to map the indexes to the chunks.
-				chunks := [][]byte{n.Chunk}
+				chunks := []string{n.Chunk}
 				chunkNodes := []*Node{n}
 
 				it := n.Next

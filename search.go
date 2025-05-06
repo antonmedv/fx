@@ -26,23 +26,23 @@ type match struct {
 }
 
 type piece struct {
-	b     []byte
+	b     string
 	index int
 }
 
-func splitBytesByIndexes(b []byte, indexes []match) []piece {
+func splitByIndexes(s string, indexes []match) []piece {
 	out := make([]piece, 0, 1)
 	pos := 0
 	for _, pair := range indexes {
-		out = append(out, piece{safeSlice(b, pos, pair.start), -1})
-		out = append(out, piece{safeSlice(b, pair.start, pair.end), pair.index})
+		out = append(out, piece{safeSlice(s, pos, pair.start), -1})
+		out = append(out, piece{safeSlice(s, pair.start, pair.end), pair.index})
 		pos = pair.end
 	}
-	out = append(out, piece{safeSlice(b, pos, len(b)), -1})
+	out = append(out, piece{safeSlice(s, pos, len(s)), -1})
 	return out
 }
 
-func splitIndexesToChunks(chunks [][]byte, indexes [][]int, searchIndex int) (chunkIndexes [][]match) {
+func splitIndexesToChunks(chunks []string, indexes [][]int, searchIndex int) (chunkIndexes [][]match) {
 	chunkIndexes = make([][]match, len(chunks))
 
 	for index, idx := range indexes {

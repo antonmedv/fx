@@ -82,14 +82,14 @@ func (p *JsonParser) Recover() *Node {
 
 	textNode := &Node{
 		Kind:       Err,
-		Value:      []byte(lines[0]),
+		Value:      lines[0],
 		Index:      -1,
 		LineNumber: p.nextLineNumber(),
 	}
 	for i := 1; i < len(lines); i++ {
 		textNode.Append(&Node{
 			Kind:       Err,
-			Value:      []byte(lines[i]),
+			Value:      lines[i],
 			Index:      -1,
 			Parent:     textNode,
 			LineNumber: p.nextLineNumber(),
@@ -144,11 +144,11 @@ func (p *JsonParser) parseValue() *Node {
 	case '[':
 		l = p.parseArray()
 	case 't':
-		l = p.parseKeyword("true", Bool)
+		l = p.parseKeyword(trueValue, Bool)
 	case 'f':
-		l = p.parseKeyword("false", Bool)
+		l = p.parseKeyword(falseValue, Bool)
 	case 'n':
-		l = p.parseKeyword("null", Null)
+		l = p.parseKeyword(nullValue, Null)
 	default:
 		panic(fmt.Sprintf("Unexpected character %q", p.char))
 	}
@@ -166,7 +166,7 @@ func (p *JsonParser) parseString() *Node {
 	}
 }
 
-func (p *JsonParser) scanString() []byte {
+func (p *JsonParser) scanString() string {
 	start := p.end - 1
 	p.next()
 	escaped := false
@@ -203,7 +203,7 @@ func (p *JsonParser) scanString() []byte {
 		p.next()
 	}
 
-	str := p.data[start:p.end]
+	str := string(p.data[start:p.end])
 	p.next()
 
 	return str
@@ -259,7 +259,7 @@ func (p *JsonParser) parseNumber() *Node {
 		}
 	}
 
-	num.Value = p.data[start : p.end-1]
+	num.Value = string(p.data[start : p.end-1])
 	return num
 }
 
@@ -269,14 +269,14 @@ func (p *JsonParser) parseObject() *Node {
 		Depth:      p.depth,
 		LineNumber: p.nextLineNumber(),
 	}
-	object.Value = []byte{'{'}
+	object.Value = curlyBracketOpen
 
 	p.next()
 	p.skipWhitespace()
 
 	// Empty object
 	if p.char == '}' {
-		object.Value = append(object.Value, '}')
+		object.Value = curlyBracketPair
 		p.next()
 		return object
 	}
@@ -326,7 +326,7 @@ func (p *JsonParser) parseObject() *Node {
 				Depth:      p.depth,
 				LineNumber: p.nextLineNumber(),
 			}
-			closeBracket.Value = []byte{'}'}
+			closeBracket.Value = curlyBracketClose
 			closeBracket.Parent = object
 			closeBracket.Index = -1
 			object.Append(closeBracket)
@@ -344,13 +344,13 @@ func (p *JsonParser) parseArray() *Node {
 		Depth:      p.depth,
 		LineNumber: p.nextLineNumber(),
 	}
-	arr.Value = []byte{'['}
+	arr.Value = squareBracketOpen
 
 	p.next()
 	p.skipWhitespace()
 
 	if p.char == ']' {
-		arr.Value = append(arr.Value, ']')
+		arr.Value = squareBracketPair
 		p.next()
 		return arr
 	}
@@ -383,7 +383,7 @@ func (p *JsonParser) parseArray() *Node {
 				Depth:      p.depth,
 				LineNumber: p.nextLineNumber(),
 			}
-			closeBracket.Value = []byte{']'}
+			closeBracket.Value = squareBracketClose
 			closeBracket.Parent = arr
 			closeBracket.Index = -1
 			arr.Append(closeBracket)
@@ -411,7 +411,7 @@ func (p *JsonParser) parseKeyword(name string, kind Kind) *Node {
 			Depth:      p.depth,
 			LineNumber: p.nextLineNumber(),
 		}
-		keyword.Value = []byte(name)
+		keyword.Value = name
 		return keyword
 	}
 

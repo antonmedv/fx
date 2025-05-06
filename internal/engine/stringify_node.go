@@ -17,12 +17,12 @@ func StringifyNode(n *jsonx.Node) string {
 		for ident := 0; ident < int(it.Depth); ident++ {
 			out.WriteString("  ")
 		}
-		if it.Key != nil {
-			out.WriteString(theme.CurrentTheme.Key(string(it.Key)))
+		if it.Key != "" {
+			out.WriteString(theme.CurrentTheme.Key(it.Key))
 			out.WriteString(theme.Colon)
 		}
-		if it.Value != nil {
-			out.WriteString(theme.Value(it.Kind, false)(string(it.Value)))
+		if it.Value != "" {
+			out.WriteString(theme.Value(it.Kind, false)(it.Value))
 		}
 		if it.Comma {
 			out.WriteString(theme.Comma)

@@ -37,7 +37,7 @@ func (p *LineParser) Parse() (*Node, error) {
 		b = b[:len(b)-1] // Trim "\n" char at the end.
 	}
 	quoted := strconv.Quote(string(b))
-	node := &Node{Kind: String, Value: []byte(quoted)}
+	node := &Node{Kind: String, Value: quoted}
 	return node, nil
 }
 
