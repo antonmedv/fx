@@ -269,7 +269,7 @@ type model struct {
 	collapsed             bool
 	showSizes             bool
 	showLineNumbers       bool
-	margin                int
+	totalLines            int
 	fileName              string
 	digInput              textinput.Model
 	gotoSymbolInput       textinput.Model
@@ -330,6 +330,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.collapsed {
 			msg.node.CollapseRecursively()
 		}
+		m.totalLines = msg.node.Bottom().LineNumber
 
 		if m.head == nil {
 			m.head = msg.node
@@ -970,6 +971,7 @@ func (m *model) View() string {
 	n := m.head
 
 	var lineNumbersWidth int
+	var cursorLineNumber int
 	if m.showLineNumbers {
 		lineNumbersWidth = m.calcLineNumberWidth()
 	}
@@ -994,6 +996,13 @@ func (m *model) View() string {
 		}
 
 		isSelected := m.cursor == lineNumber
+		if isSelected {
+			if n.LineNumber == 0 {
+				cursorLineNumber = n.Parent.LineNumber
+			} else {
+				cursorLineNumber = n.LineNumber
+			}
+		}
 		if !m.showCursor {
 			isSelected = false // don't highlight the cursor while iterating search results
 		}
@@ -1096,7 +1105,11 @@ func (m *model) View() string {
 			screen = append(screen, theme.CurrentTheme.StatusBar(statusBar)...)
 		} else {
 			currentPath := m.cursorPath()
-			info := fmt.Sprintf("%s", m.fileName)
+			percent := fmt.Sprintf("%d%%", int(float64(cursorLineNumber)/float64(m.totalLines)*100))
+			if cursorLineNumber == 1 {
+				percent = "1%"
+			}
+			info := fmt.Sprintf("%s %s", percent, m.fileName)
 			statusBar := flex(m.termWidth, currentPath, info)
 			screen = append(screen, theme.CurrentTheme.StatusBar(statusBar)...)
 		}
