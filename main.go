@@ -966,6 +966,8 @@ func (m *model) View() string {
 			break
 		}
 
+		screen = append(screen, []byte(fmt.Sprintf("%d ", n.LineNumber))...)
+
 		for ident := 0; ident < int(n.Depth); ident++ {
 			screen = append(screen, ' ', ' ')
 		}

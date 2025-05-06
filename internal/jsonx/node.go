@@ -31,6 +31,7 @@ type Node struct {
 	ChunkEnd        *Node
 	Comma           bool
 	Index           int
+	LineNumber      uint
 }
 
 // Append ands a node as a child to the current node (body of {...} or [...]).
