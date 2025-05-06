@@ -1105,8 +1105,11 @@ func (m *model) View() string {
 			screen = append(screen, theme.CurrentTheme.StatusBar(statusBar)...)
 		} else {
 			currentPath := m.cursorPath()
-			percent := fmt.Sprintf("%d%%", int(float64(cursorLineNumber)/float64(m.totalLines)*100))
-			info := fmt.Sprintf("%s %s", percent, m.fileName)
+			percent := int(float64(cursorLineNumber) / float64(m.totalLines) * 100)
+			if cursorLineNumber == 1 {
+				percent = min(1, percent)
+			}
+			info := fmt.Sprintf("%d%% %s", percent, m.fileName)
 			statusBar := flex(m.termWidth, currentPath, info)
 			screen = append(screen, theme.CurrentTheme.StatusBar(statusBar)...)
 		}
