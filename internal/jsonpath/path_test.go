@@ -1,11 +1,11 @@
-package path_test
+package jsonpath_test
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/antonmedv/fx/path"
+	"github.com/antonmedv/fx/internal/jsonpath"
 )
 
 func Test_SplitPath(t *testing.T) {
@@ -88,7 +88,7 @@ func Test_SplitPath(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			p, ok := path.Split(tt.input)
+			p, ok := jsonpath.Split(tt.input)
 			require.Equal(t, tt.want, p)
 			require.True(t, ok)
 		})
@@ -138,7 +138,7 @@ func Test_SplitPath_negative(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			p, ok := path.Split(tt.input)
+			p, ok := jsonpath.Split(tt.input)
 			require.False(t, ok, p)
 		})
 	}
@@ -188,7 +188,7 @@ func TestJoin(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.want, func(t *testing.T) {
-			require.Equal(t, tt.want, path.Join(tt.input))
+			require.Equal(t, tt.want, jsonpath.Join(tt.input))
 		})
 	}
 }

@@ -6,12 +6,19 @@ import (
 	"strings"
 )
 
-func Transform(code string) string {
-	return fmt.Sprintf(`json = apply((function () {
+func Transpile(args []string, i int) string {
+	jsCode := transpile(args[i])
+	snippet := formatErr(args, i, jsCode)
+	return fmt.Sprintf(`  json = apply((function () {
     const x = this
-    return %s
+    try {
+      return %s
+    } catch (e) {
+      throw %s
+    }
   }).call(json), json)
-`, transpile(code))
+
+`, jsCode, "`"+snippet+"${e}`")
 }
 
 var (

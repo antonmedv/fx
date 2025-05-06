@@ -7,3 +7,12 @@ func IsHexDigit(ch byte) bool {
 func IsDigit(ch byte) bool {
 	return ch >= '0' && ch <= '9'
 }
+
+func Contains(needle int, haystack []int) bool {
+	for _, i := range haystack {
+		if needle == i {
+			return true
+		}
+	}
+	return false
+}

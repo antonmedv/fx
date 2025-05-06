@@ -2,14 +2,12 @@ package engine
 
 import (
 	_ "embed"
-	"fmt"
 	"io"
-	"os"
+	"reflect"
 	"strconv"
 	"strings"
 
 	"github.com/dop251/goja"
-	"github.com/goccy/go-yaml"
 
 	"github.com/antonmedv/fx/internal/jsonx"
 )
@@ -17,114 +15,154 @@ import (
 //go:embed stdlib.js
 var Stdlib string
 
-//go:embed prelude.js
-var prelude string
+type Parser interface {
+	Parse() (*jsonx.Node, error)
+	Recover() *jsonx.Node
+}
 
-func Reduce(args []string) {
-	if len(args) < 1 {
-		panic("args must have at least one element")
-	}
+func Start(
+	parser Parser,
+	args []string,
+	slurp bool,
+	writeOut, writeErr func(string),
+) int {
+	isPrettyPrintArg := len(args) == 1 && (args[0] == "." || args[0] == "this" || args[0] == "x")
 
-	var (
-		flagYaml  bool
-		flagRaw   bool
-		flagSlurp bool
-	)
+	// Fast path.
+	if isPrettyPrintArg && !slurp {
+		for {
+			node, err := parser.Parse()
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				writeErr(err.Error())
+				return 1
+			}
 
-	var src io.Reader = os.Stdin
-	if isFile(args[0]) {
-		src = open(args[0], &flagYaml)
-		args = args[1:]
-	} else if isFile(args[len(args)-1]) {
-		src = open(args[len(args)-1], &flagYaml)
-		args = args[:len(args)-1]
-	}
-
-	var fns []string
-	for _, arg := range args {
-		switch arg {
-		case "--yaml":
-			flagYaml = true
-		case "--raw", "-r":
-			flagRaw = true
-		case "--slurp", "-s":
-			flagSlurp = true
-		case "-rs", "-sr":
-			flagRaw = true
-			flagSlurp = true
-		default:
-			fns = append(fns, arg)
+			if node.Kind == jsonx.String {
+				unquoted, err := strconv.Unquote(string(node.Value))
+				if err != nil {
+					panic(err)
+				}
+				writeOut(unquoted)
+			} else {
+				writeOut(StringifyNode(node))
+			}
 		}
+
+		return 0
 	}
 
-	if flagSlurp {
-		println("Error: Built-in JS engine does not support \"--slurp\" flag. Install Node.js or Deno to use this flag.")
-		os.Exit(1)
-	}
-
-	data, err := io.ReadAll(src)
-	if err != nil {
-		panic(err)
-	}
-
-	if flagRaw {
-		data = []byte(strconv.Quote(string(data)))
-	} else if flagYaml {
-		data, err = yaml.YAMLToJSON(data)
-		if err != nil {
-			println(err.Error())
-			os.Exit(1)
+	for i := range args {
+		if err := validateSyntax(args, i); err != nil {
+			jsCode := transpile(args[i])
+			snippet := formatErr(args, i, jsCode)
+			message := errorToString(err)
+			writeErr(snippet + message)
+			return 1
 		}
-	} else {
-		node, err := jsonx.Parse(data)
-		if err != nil {
-			println(err.Error())
-			os.Exit(1)
-		}
-		data = []byte(node.String())
 	}
 
 	var code strings.Builder
-	code.WriteString(prelude)
 	code.WriteString(Stdlib)
-	code.WriteString(fmt.Sprintf("let json = JSON.parse(%q)\n", data))
-	for _, fn := range fns {
-		code.WriteString(Transform(fn))
+	code.WriteString("\nfunction __main__(json) {\n")
+	for i := range args {
+		code.WriteString(Transpile(args, i))
 	}
-	code.WriteString(`json === skip ? '__skip__' : JSON.stringify(json)`)
+	code.WriteString("  return json\n}\n")
 
 	vm := goja.New()
-	vm.Set("println", func(s string) any {
-		fmt.Println(s)
+	if err := vm.Set("println", func(s string) any {
+		writeOut(s)
 		return nil
-	})
-
-	value, err := vm.RunString(code.String())
-	if err != nil {
-		println(err.Error())
-		os.Exit(1)
+	}); err != nil {
+		panic(err)
 	}
 
-	output, ok := value.Export().(string)
-	if !ok {
-		println("undefined")
-		return
+	if _, err := vm.RunString(code.String()); err != nil {
+		writeErr(errorToString(err))
+		return 1
 	}
 
-	if output == "__skip__" {
-		return
+	skip := vm.Get("skip")
+	undefined := vm.Get("undefined")
+	main, _ := goja.AssertFunction(vm.Get("__main__"))
+
+	echo := func(output goja.Value) {
+		rtype := output.ExportType()
+		if output.StrictEquals(undefined) {
+			writeErr("undefined")
+		} else if rtype != nil && rtype.Kind() == reflect.String {
+			writeOut(output.String())
+		} else {
+			writeOut(Stringify(output, vm, 0))
+		}
 	}
 
-	node, err := jsonx.Parse([]byte(output))
-	if err != nil {
-		println(err.Error())
-		os.Exit(1)
+	if slurp {
+		var arr []any
+
+		for {
+			node, err := parser.Parse()
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				writeErr(err.Error())
+				return 1
+			}
+
+			arr = append(arr, node.ToValue(vm))
+		}
+
+		input := vm.NewArray(arr...)
+		output, err := main(goja.Undefined(), input)
+		if err != nil {
+			writeErr(err.Error())
+			return 1
+		}
+
+		if output.StrictEquals(skip) {
+			return 0
+		}
+		echo(output)
+
+	} else {
+		for {
+			node, err := parser.Parse()
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				writeErr(err.Error())
+				return 1
+			}
+
+			input := node.ToValue(vm)
+			output, err := main(goja.Undefined(), input)
+			if err != nil {
+				writeErr(errorToString(err))
+				return 1
+			}
+
+			if output.StrictEquals(skip) {
+				continue
+			}
+			echo(output)
+		}
 	}
 
-	if len(node.Value) > 0 && node.Value[0] == '"' {
-		s, _ := strconv.Unquote(string(node.Value))
-		fmt.Println(s)
-		return
-	}
-	fmt.Print(node.PrettyPrint())
+	return 0
+}
+
+func validateSyntax(args []string, i int) error {
+	var code strings.Builder
+	code.WriteString("\nfunction __main__(json) {\n")
+	code.WriteString(Transpile(args, i))
+	code.WriteString("  return json\n}\n")
+
+	vm := goja.New()
+	_, err := vm.RunString(code.String())
+	return err
 }

@@ -1,7 +1,9 @@
 package jsonx
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -9,61 +11,130 @@ import (
 	"github.com/antonmedv/fx/internal/utils"
 )
 
-type jsonParser struct {
-	data           []byte
-	end            int
-	lastChar       byte
-	lineNumber     uint
-	sourceTail     *ring
-	depth          uint8
-	skipFirstIdent bool
+type JsonParser struct {
+	rd         io.Reader
+	buf        []byte
+	data       []byte
+	end        int
+	eof        bool
+	char       byte
+	lineNumber int
+	depth      uint8
 }
 
-func Parse(data []byte) (head *Node, err error) {
-	p := &jsonParser{
-		data:       data,
+func Parse(b []byte) (*Node, error) {
+	p := NewJsonParser(bytes.NewReader(b))
+	node, err := p.Parse()
+	if err == io.EOF {
+		err = nil
+	}
+	return node, err
+}
+
+func NewJsonParser(rd io.Reader) *JsonParser {
+	p := &JsonParser{
+		rd:         rd,
+		buf:        make([]byte, 4096),
 		lineNumber: 1,
-		sourceTail: &ring{},
+	}
+	p.next()
+	return p
+}
+
+func (p *JsonParser) Parse() (node *Node, err error) {
+	if p.eof {
+		return nil, io.EOF
 	}
 	defer func() {
 		if r := recover(); r != nil {
 			err = p.errorSnippet(fmt.Sprintf("%v", r))
 		}
 	}()
-	p.next()
-	var next *Node
-	for p.lastChar != 0 {
-		value := p.parseValue()
-		if head == nil {
-			head = value
-			next = head
-		} else {
-			value.Index = -1
-			next.adjacent(value)
-			next = value
-		}
-	}
+	node = p.parseValue()
 	return
 }
 
-func (p *jsonParser) next() {
-	if p.end < len(p.data) {
-		p.lastChar = p.data[p.end]
-		p.end++
-	} else {
-		p.lastChar = 0
+func (p *JsonParser) Recover() *Node {
+	p.eof = false
+	p.depth = 0
+
+	start := p.end - 1
+	for {
+		p.next()
+		if p.eof {
+			break
+		}
+		if p.char == '{' || p.char == '[' {
+			break
+		}
 	}
-	if p.lastChar == '\n' {
-		p.lineNumber++
+
+	end := p.end - 1
+	if p.data[end-1] == '\n' {
+		end-- // Trim trailing newline.
 	}
-	p.sourceTail.writeByte(p.lastChar)
+
+	start = min(start, end)
+	text := string(p.data[start:end])
+	text = strings.ReplaceAll(text, "\t", "    ")
+	text = strings.ReplaceAll(text, "\r", "")
+	lines := strings.Split(text, "\n")
+
+	textNode := &Node{
+		Kind:       Err,
+		Value:      []byte(lines[0]),
+		Index:      -1,
+		LineNumber: p.nextLineNumber(),
+	}
+	for i := 1; i < len(lines); i++ {
+		textNode.Append(&Node{
+			Kind:       Err,
+			Value:      []byte(lines[i]),
+			Index:      -1,
+			Parent:     textNode,
+			LineNumber: p.nextLineNumber(),
+		})
+	}
+	return textNode
 }
 
-func (p *jsonParser) parseValue() *Node {
+func (p *JsonParser) refill() {
+	n, err := p.rd.Read(p.buf)
+	if err != nil {
+		if err == io.EOF {
+			p.eof = true
+			return
+		} else {
+			panic(err)
+		}
+	}
+	p.data = append(p.data, p.buf[:n]...)
+}
+
+func (p *JsonParser) next() {
+	if p.end >= len(p.data) {
+		p.refill()
+	}
+	if p.eof {
+		p.char = 0
+		p.end = len(p.data) + 1
+		return
+	}
+	p.char = p.data[p.end]
+	p.end++
+}
+
+func (p *JsonParser) nextLineNumber() int {
+	n := p.lineNumber
+	p.lineNumber++
+	return n
+}
+
+func (p *JsonParser) parseValue() *Node {
 	p.skipWhitespace()
 
 	var l *Node
-	switch p.lastChar {
+	switch p.char {
 	case '"':
 		l = p.parseString()
 	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-':
@@ -73,35 +144,43 @@ func (p *jsonParser) parseValue() *Node {
 	case '[':
 		l = p.parseArray()
 	case 't':
-		l = p.parseKeyword("true")
+		l = p.parseKeyword("true", Bool)
 	case 'f':
-		l = p.parseKeyword("false")
+		l = p.parseKeyword("false", Bool)
 	case 'n':
-		l = p.parseKeyword("null")
+		l = p.parseKeyword("null", Null)
 	default:
-		panic(fmt.Sprintf("Unexpected character %q", p.lastChar))
+		panic(fmt.Sprintf("Unexpected character %q", p.char))
 	}
 
 	p.skipWhitespace()
 	return l
 }
 
-func (p *jsonParser) parseString() *Node {
-	str := &Node{Depth: p.depth}
+func (p *JsonParser) parseString() *Node {
+	return &Node{
+		Kind:       String,
+		Depth:      p.depth,
+		Value:      p.scanString(),
+		LineNumber: p.nextLineNumber(),
+	}
+}
+
+func (p *JsonParser) scanString() []byte {
 	start := p.end - 1
 	p.next()
 	escaped := false
 	for {
 		if escaped {
-			switch p.lastChar {
+			switch p.char {
 			case 'u':
 				var unicode string
 				for i := 0; i < 4; i++ {
 					p.next()
-					if !utils.IsHexDigit(p.lastChar) {
-						panic(fmt.Sprintf("Invalid Unicode escape sequence '\\u%s%c'", unicode, p.lastChar))
+					if !utils.IsHexDigit(p.char) {
+						panic(fmt.Sprintf("Invalid Unicode escape sequence '\\u%s%c'", unicode, p.char))
 					}
-					unicode += string(p.lastChar)
+					unicode += string(p.char)
 				}
 				_, err := strconv.ParseInt(unicode, 16, 32)
 				if err != nil {
@@ -109,68 +188,73 @@ func (p *jsonParser) parseString() *Node {
 				}
 			case '"', '\\', '/', 'b', 'f', 'n', 'r', 't':
 			default:
-				panic(fmt.Sprintf("Invalid escape sequence '\\%c'", p.lastChar))
+				panic(fmt.Sprintf("Invalid escape sequence '\\%c'", p.char))
 			}
 			escaped = false
-		} else if p.lastChar == '\\' {
+		} else if p.char == '\\' {
 			escaped = true
-		} else if p.lastChar == '"' {
+		} else if p.char == '"' {
 			break
-		} else if p.lastChar == 0 {
+		} else if p.char == 0 {
 			panic("Unexpected end of input in string")
-		} else if p.lastChar < 0x1F {
-			panic(fmt.Sprintf("Invalid character %q in string", p.lastChar))
+		} else if p.char < 0x1F {
+			panic(fmt.Sprintf("Invalid character %q in string", p.char))
 		}
 		p.next()
 	}
 
-	str.Value = p.data[start:p.end]
+	str := p.data[start:p.end]
 	p.next()
+
 	return str
 }
 
-func (p *jsonParser) parseNumber() *Node {
-	num := &Node{Depth: p.depth}
+func (p *JsonParser) parseNumber() *Node {
+	num := &Node{
+		Kind:       Number,
+		Depth:      p.depth,
+		LineNumber: p.nextLineNumber(),
+	}
 	start := p.end - 1
 
 	// Handle negative numbers
-	if p.lastChar == '-' {
+	if p.char == '-' {
 		p.next()
-		if !utils.IsDigit(p.lastChar) {
-			panic(fmt.Sprintf("Invalid character %q in number", p.lastChar))
+		if !utils.IsDigit(p.char) {
+			panic(fmt.Sprintf("Invalid character %q in number", p.char))
 		}
 	}
 
 	// Leading zero
-	if p.lastChar == '0' {
+	if p.char == '0' {
 		p.next()
 	} else {
-		for utils.IsDigit(p.lastChar) {
+		for utils.IsDigit(p.char) {
 			p.next()
 		}
 	}
 
 	// Decimal portion
-	if p.lastChar == '.' {
+	if p.char == '.' {
 		p.next()
-		if !utils.IsDigit(p.lastChar) {
-			panic(fmt.Sprintf("Invalid character %q in number", p.lastChar))
+		if !utils.IsDigit(p.char) {
+			panic(fmt.Sprintf("Invalid character %q in number", p.char))
 		}
-		for utils.IsDigit(p.lastChar) {
+		for utils.IsDigit(p.char) {
 			p.next()
 		}
 	}
 
 	// Exponent
-	if p.lastChar == 'e' || p.lastChar == 'E' {
+	if p.char == 'e' || p.char == 'E' {
 		p.next()
-		if p.lastChar == '+' || p.lastChar == '-' {
+		if p.char == '+' || p.char == '-' {
 			p.next()
 		}
-		if !utils.IsDigit(p.lastChar) {
-			panic(fmt.Sprintf("Invalid character %q in number", p.lastChar))
+		if !utils.IsDigit(p.char) {
+			panic(fmt.Sprintf("Invalid character %q in number", p.char))
 		}
-		for utils.IsDigit(p.lastChar) {
+		for utils.IsDigit(p.char) {
 			p.next()
 		}
 	}
@@ -179,15 +263,19 @@ func (p *jsonParser) parseNumber() *Node {
 	return num
 }
 
-func (p *jsonParser) parseObject() *Node {
-	object := &Node{Depth: p.depth}
+func (p *JsonParser) parseObject() *Node {
+	object := &Node{
+		Kind:       Object,
+		Depth:      p.depth,
+		LineNumber: p.nextLineNumber(),
+	}
 	object.Value = []byte{'{'}
 
 	p.next()
 	p.skipWhitespace()
 
 	// Empty object
-	if p.lastChar == '}' {
+	if p.char == '}' {
 		object.Value = append(object.Value, '}')
 		p.next()
 		return object
@@ -195,74 +283,73 @@ func (p *jsonParser) parseObject() *Node {
 
 	for {
 		// Expecting a key which should be a string
-		if p.lastChar != '"' {
-			panic(fmt.Sprintf("Expected object key to be a string, got %q", p.lastChar))
+		if p.char != '"' {
+			panic(fmt.Sprintf("Expected object key to be a string, got %q", p.char))
 		}
 
-		p.depth++
-		key := p.parseString()
-		key.Key, key.Value = key.Value, nil
-		object.Size += 1
-		key.directParent = object
+		keyBytes := p.scanString()
 
 		p.skipWhitespace()
 
 		// Expecting colon after key
-		if p.lastChar != ':' {
-			panic(fmt.Sprintf("Expected colon after object key, got %q", p.lastChar))
+		if p.char != ':' {
+			panic(fmt.Sprintf("Expected colon after object key, got %q", p.char))
 		}
 
 		p.next()
 
-		p.skipFirstIdent = true
+		p.depth++
 		value := p.parseValue()
+		value.Key = keyBytes
+		value.Parent = object
 		p.depth--
 
-		key.Value = value.Value
-		key.Size = value.Size
-		key.Next = value.Next
-		if key.Next != nil {
-			key.Next.Prev = key
-		}
-		key.End = value.End
-		value.indirectParent = key
-		object.append(key)
+		object.Append(value)
+		object.Size += 1
 
 		p.skipWhitespace()
 
-		if p.lastChar == ',' {
+		if p.char == ',' {
 			object.End.Comma = true
 			p.next()
 			p.skipWhitespace()
-			if p.lastChar == '}' {
+			if p.char == '}' {
 				object.End.Comma = false
 			} else {
 				continue
 			}
 		}
 
-		if p.lastChar == '}' {
-			closeBracket := &Node{Depth: p.depth}
+		if p.char == '}' {
+			closeBracket := &Node{
+				Kind:       Object,
+				Depth:      p.depth,
+				LineNumber: p.nextLineNumber(),
+			}
 			closeBracket.Value = []byte{'}'}
-			closeBracket.directParent = object
+			closeBracket.Parent = object
 			closeBracket.Index = -1
-			object.append(closeBracket)
+			object.Append(closeBracket)
 			p.next()
 			return object
 		}
 
-		panic(fmt.Sprintf("Unexpected character %q in object", p.lastChar))
+		panic(fmt.Sprintf("Unexpected character %q in object", p.char))
 	}
 }
 
-func (p *jsonParser) parseArray() *Node {
-	arr := &Node{Depth: p.depth}
+func (p *JsonParser) parseArray() *Node {
+	arr := &Node{
+		Kind:       Array,
+		Depth:      p.depth,
+		LineNumber: p.nextLineNumber(),
+	}
 	arr.Value = []byte{'['}
 
 	p.next()
 	p.skipWhitespace()
 
-	if p.lastChar == ']' {
+	if p.char == ']' {
 		arr.Value = append(arr.Value, ']')
 		p.next()
 		return arr
@@ -271,65 +358,73 @@ func (p *jsonParser) parseArray() *Node {
 	for i := 0; ; i++ {
 		p.depth++
 		value := p.parseValue()
-		value.directParent = arr
+		value.Parent = arr
 		arr.Size += 1
 		value.Index = i
 		p.depth--
 
-		arr.append(value)
+		arr.Append(value)
 		p.skipWhitespace()
 
-		if p.lastChar == ',' {
+		if p.char == ',' {
 			arr.End.Comma = true
 			p.next()
 			p.skipWhitespace()
-			if p.lastChar == ']' {
+			if p.char == ']' {
 				arr.End.Comma = false
 			} else {
 				continue
 			}
 		}
 
-		if p.lastChar == ']' {
-			closeBracket := &Node{Depth: p.depth}
+		if p.char == ']' {
+			closeBracket := &Node{
+				Kind:       Array,
+				Depth:      p.depth,
+				LineNumber: p.nextLineNumber(),
+			}
 			closeBracket.Value = []byte{']'}
-			closeBracket.directParent = arr
+			closeBracket.Parent = arr
 			closeBracket.Index = -1
-			arr.append(closeBracket)
+			arr.Append(closeBracket)
 			p.next()
 			return arr
 		}
 
-		panic(fmt.Sprintf("Invalid character %q in array", p.lastChar))
+		panic(fmt.Sprintf("Invalid character %q in array", p.char))
 	}
 }
 
-func (p *jsonParser) parseKeyword(name string) *Node {
+func (p *JsonParser) parseKeyword(name string, kind Kind) *Node {
 	for i := 1; i < len(name); i++ {
 		p.next()
-		if p.lastChar != name[i] {
-			panic(fmt.Sprintf("Unexpected character %q in keyword", p.lastChar))
+		if p.char != name[i] {
+			panic(fmt.Sprintf("Unexpected character %q in keyword", p.char))
 		}
 	}
 	p.next()
 
-	nextCharIsSpecial := isWhitespace(p.lastChar) || p.lastChar == ',' || p.lastChar == '}' || p.lastChar == ']' || p.lastChar == 0
+	nextCharIsSpecial := isWhitespace(p.char) || p.char == ',' || p.char == '}' || p.char == ']' || p.char == 0
 	if nextCharIsSpecial {
-		keyword := &Node{Depth: p.depth}
+		keyword := &Node{
+			Kind:       kind,
+			Depth:      p.depth,
+			LineNumber: p.nextLineNumber(),
+		}
 		keyword.Value = []byte(name)
 		return keyword
 	}
 
-	panic(fmt.Sprintf("Unexpected character %q in keyword", p.lastChar))
+	panic(fmt.Sprintf("Unexpected character %q in keyword", p.char))
 }
 
 func isWhitespace(ch byte) bool {
 	return ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r'
 }
 
-func (p *jsonParser) skipWhitespace() {
+func (p *JsonParser) skipWhitespace() {
 	for {
-		switch p.lastChar {
+		switch p.char {
 		case ' ', '\t', '\n', '\r':
 			p.next()
 		case '/':
@@ -340,34 +435,52 @@ func (p *jsonParser) skipWhitespace() {
 	}
 }
 
-func (p *jsonParser) skipComment() {
+func (p *JsonParser) skipComment() {
 	p.next()
-	switch p.lastChar {
+	switch p.char {
 	case '/':
-		for p.lastChar != '\n' && p.lastChar != 0 {
+		for p.char != '\n' && p.char != 0 {
 			p.next()
 		}
 	case '*':
 		for {
 			p.next()
-			if p.lastChar == '*' {
+			if p.char == '*' {
 				p.next()
-				if p.lastChar == '/' {
+				if p.char == '/' {
 					p.next()
 					return
 				}
 			}
-			if p.lastChar == 0 {
+			if p.char == 0 {
 				panic("Unexpected end of input in comment")
 			}
 		}
 	default:
-		panic(fmt.Sprintf("Invalid comment: '/%c'", p.lastChar))
+		panic(fmt.Sprintf("Invalid comment: '/%c'", p.char))
 	}
 }
 
-func (p *jsonParser) errorSnippet(message string) error {
-	lines := strings.Split(p.sourceTail.string(), "\n")
+func (p *JsonParser) errorSnippet(message string) error {
+	var buf []byte
+	br := 0
+	start := max(0, p.end-70)
+	end := min(p.end, len(p.data))
+	for i := end - 1; i >= start; i-- {
+		if p.data[i] == '\n' {
+			br++
+			if br == 2 {
+				break
+			}
+		}
+		buf = append(buf, p.data[i])
+	}
+	for i, j := 0, len(buf)-1; i < j; i, j = i+1, j-1 {
+		buf[i], buf[j] = buf[j], buf[i]
+	}
+
+	tail := strings.TrimRight(string(buf), "\t \n")
+	lines := strings.Split(tail, "\n")
 	lastLineLen := utf8.RuneCountInString(lines[len(lines)-1])
 	pointer := strings.Repeat(".", lastLineLen-1) + "^"
 	lines = append(lines, pointer)

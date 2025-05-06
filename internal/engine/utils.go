@@ -1,36 +1,35 @@
 package engine
 
 import (
-	"errors"
-	"io/fs"
-	"os"
-	"path"
+	"math/big"
+	"reflect"
 	"regexp"
+	"time"
+
+	"github.com/dop251/goja"
 )
 
-func isFile(name string) bool {
-	stat, err := os.Stat(name)
-	if err != nil {
-		return false
-	}
-	return !stat.IsDir()
+var (
+	bigIntType   = reflect.TypeOf((*big.Int)(nil))
+	timeTimeType = reflect.TypeOf((*time.Time)(nil)).Elem()
+)
+
+var (
+	syntaxErrorRe = regexp.MustCompile(`^SyntaxError: SyntaxError: \(anonymous\): Line \d+:\d+\s+`)
+	andMoreErrors = regexp.MustCompile(`\(and \d+ more errors\)$`)
+)
+
+func extractErrorMessage(s string) string {
+	s = syntaxErrorRe.ReplaceAllString(s, "")
+	s = andMoreErrors.ReplaceAllString(s, "")
+	return s
 }
 
-func open(filePath string, flagYaml *bool) *os.File {
-	f, err := os.Open(filePath)
-	if err != nil {
-		var pathError *fs.PathError
-		if errors.As(err, &pathError) {
-			println(err.Error())
-			os.Exit(1)
-		} else {
-			panic(err)
-		}
+func errorToString(err error) string {
+	if exception, ok := err.(*goja.Exception); ok {
+		message := exception.Value().String()
+		message = extractErrorMessage(message)
+		return message
 	}
-	fileName := path.Base(filePath)
-	hasYamlExt, _ := regexp.MatchString(`(?i)\.ya?ml$`, fileName)
-	if !*flagYaml && hasYamlExt {
-		*flagYaml = true
-	}
-	return f
+	return err.Error()
 }

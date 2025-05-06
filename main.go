@@ -1,39 +1,44 @@
 package main
 
 import (
+	"bytes"
+	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
-	"io/fs"
 	"math"
 	"os"
 	"path"
 	"regexp"
+	"runtime/debug"
 	"runtime/pprof"
 	"strconv"
 	"strings"
 
 	"github.com/antonmedv/clipboard"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/goccy/go-yaml"
 	"github.com/mattn/go-isatty"
 	"github.com/sahilm/fuzzy"
 
 	"github.com/antonmedv/fx/internal/complete"
+	"github.com/antonmedv/fx/internal/engine"
+	"github.com/antonmedv/fx/internal/jsonpath"
 	. "github.com/antonmedv/fx/internal/jsonx"
 	"github.com/antonmedv/fx/internal/theme"
-	jsonpath "github.com/antonmedv/fx/path"
+	"github.com/antonmedv/fx/internal/utils"
 )
 
 var (
-	flagYaml bool
-	flagComp bool
+	flagYaml  bool
+	flagRaw   bool
+	flagSlurp bool
+	flagComp  bool // Echo autocomplete integration code.
 )
 
 func main() {
@@ -80,9 +85,23 @@ func main() {
 		case "--export-themes":
 			theme.ExportThemes()
 			return
+		case "--yaml":
+			flagYaml = true
+		case "--raw", "-r":
+			flagRaw = true
+		case "--slurp", "-s":
+			flagSlurp = true
+		case "-rs", "-sr":
+			flagRaw = true
+			flagSlurp = true
 		default:
 			args = append(args, arg)
 		}
+	}
+
+	if flagYaml && flagRaw {
+		println("Error: can't use both --yaml and --raw flags together")
+		os.Exit(1)
 	}
 
 	if flagComp {
@@ -103,55 +122,54 @@ func main() {
 
 	fd := os.Stdin.Fd()
 	stdinIsTty := isatty.IsTerminal(fd) || isatty.IsCygwinTerminal(fd)
+
 	var fileName string
 	var src io.Reader
 
-	if stdinIsTty && len(args) == 0 {
-		fmt.Println(usage(keyMap))
-		return
-	} else if stdinIsTty && len(args) == 1 {
-		filePath := args[0]
-		f, err := os.Open(filePath)
-		if err != nil {
-			var pathError *fs.PathError
-			if errors.As(err, &pathError) {
-				fmt.Println(err)
-				os.Exit(1)
-			} else {
-				panic(err)
-			}
+	if stdinIsTty {
+		if len(args) == 0 {
+			// $ fx
+			fmt.Println(usage(keyMap))
+			return
+		} else {
+			// $ fx file.json arg*
+			src = open(args[0], &flagYaml)
+			fileName = path.Base(args[0])
+			args = args[1:]
 		}
-		fileName = path.Base(filePath)
-		src = f
-		hasYamlExt, _ := regexp.MatchString(`(?i)\.ya?ml$`, fileName)
-		if !flagYaml && hasYamlExt {
-			flagYaml = true
-		}
-	} else if !stdinIsTty && len(args) == 0 {
-		src = os.Stdin
 	} else {
-		reduce(os.Args[1:])
-		return
+		// cat file.json | fx arg*
+		src = os.Stdin
 	}
 
-	data, err := io.ReadAll(src)
-	if err != nil {
-		panic(err)
-	}
+	var parser engine.Parser
 
 	if flagYaml {
-		data, err = yaml.YAMLToJSON(data)
+		b, err := io.ReadAll(src)
+		if err != nil {
+			panic(err)
+		}
+		jsonBytes, err := parseYAML(b)
 		if err != nil {
 			fmt.Print(err.Error())
 			os.Exit(1)
 			return
 		}
+		parser = NewJsonParser(bytes.NewReader(jsonBytes))
+	} else if flagRaw {
+		parser = NewLineParser(src)
+	} else {
+		parser = NewJsonParser(src)
 	}
 
-	head, err := Parse(data)
-	if err != nil {
-		fmt.Print(err.Error())
-		os.Exit(1)
+	if len(args) > 0 || flagSlurp {
+		debug.SetGCPercent(-1)
+		writeOut := func(s string) { fmt.Println(s) }
+		writeErr := func(s string) { fmt.Fprintln(os.Stderr, s) }
+		exitCode := engine.Start(parser, args, flagSlurp, writeOut, writeErr)
+		if exitCode != 0 {
+			os.Exit(exitCode)
+		}
 		return
 	}
 
@@ -167,15 +185,41 @@ func main() {
 	searchInput := textinput.New()
 	searchInput.Prompt = "/"
 
+	gotoSymbolInput := textinput.New()
+	gotoSymbolInput.Prompt = "@"
+
+	spinnerModel := spinner.New()
+	spinnerModel.Spinner = spinner.MiniDot
+
+	collapsed := false
+	if _, ok := os.LookupEnv("FX_COLLAPSED"); ok {
+		collapsed = true
+	}
+
+	showLineNumbers := false
+	if _, ok := os.LookupEnv("FX_LINE_NUMBERS"); ok {
+		showLineNumbers = true
+	}
+
+	showSizes := false
+	showSizesValue, ok := os.LookupEnv("FX_SHOW_SIZE")
+	if ok {
+		showSizesValue := strings.ToLower(showSizesValue)
+		showSizes = showSizesValue == "true" || showSizesValue == "yes" || showSizesValue == "on" || showSizesValue == "1"
+	}
+
 	m := &model{
-		head:        head,
-		top:         head,
-		showCursor:  true,
-		wrap:        true,
-		fileName:    fileName,
-		digInput:    digInput,
-		searchInput: searchInput,
-		search:      newSearch(),
+		showCursor:      true,
+		wrap:            true,
+		collapsed:       collapsed,
+		showSizes:       showSizes,
+		showLineNumbers: showLineNumbers,
+		fileName:        fileName,
+		digInput:        digInput,
+		gotoSymbolInput: gotoSymbolInput,
+		searchInput:     searchInput,
+		search:          newSearch(),
+		spinner:         spinnerModel,
 	}
 
 	lipgloss.SetColorProfile(theme.TermOutput.ColorProfile())
@@ -190,7 +234,23 @@ func main() {
 		withMouse,
 		tea.WithOutput(os.Stderr),
 	)
-	_, err = p.Run()
+
+	go func() {
+		for {
+			node, err := parser.Parse()
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				textNode := parser.Recover()
+				p.Send(nodeMsg{node: textNode})
+			} else {
+				p.Send(nodeMsg{node: node})
+			}
+		}
+	}()
+
+	_, err := p.Run()
 	if err != nil {
 		panic(err)
 	}
@@ -202,13 +262,17 @@ func main() {
 
 type model struct {
 	termWidth, termHeight int
-	head, top             *Node
+	head, top, bottom     *Node
 	cursor                int // cursor position [0, termHeight)
 	showCursor            bool
 	wrap                  bool
-	margin                int
+	collapsed             bool
+	showSizes             bool
+	showLineNumbers       bool
+	totalLines            int
 	fileName              string
 	digInput              textinput.Model
+	gotoSymbolInput       textinput.Model
 	searchInput           textinput.Model
 	search                *search
 	yank                  bool
@@ -217,10 +281,25 @@ type model struct {
 	showPreview           bool
 	preview               viewport.Model
 	printOnExit           bool
+	spinner               spinner.Model
+	locationHistory       []location
+	locationIndex         int // position in locationHistory
+	keysIndex             []string
+	keysIndexNodes        []*Node
+	fuzzyMatch            *fuzzy.Match
+}
+
+type location struct {
+	head *Node
+	node *Node
+}
+
+type nodeMsg struct {
+	node *Node
 }
 
 func (m *model) Init() tea.Cmd {
-	return nil
+	return m.spinner.Tick
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -231,7 +310,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.help.Height = m.termHeight - 1
 		m.preview.Width = m.termWidth
 		m.preview.Height = m.termHeight - 1
-		WrapAll(m.top, m.termWidth)
+		Wrap(m.top, m.termWidth)
 		m.redoSearch()
 	}
 
@@ -244,6 +323,37 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
+	case nodeMsg:
+		if m.wrap {
+			Wrap(msg.node, m.termWidth)
+		}
+		if m.collapsed {
+			msg.node.CollapseRecursively()
+		}
+		m.totalLines = msg.node.Bottom().LineNumber
+
+		if m.head == nil {
+			m.head = msg.node
+			m.top = msg.node
+			m.bottom = msg.node
+		} else {
+			scrollToBottom := m.cursorPointsTo() == m.bottom.Bottom()
+			msg.node.Index = -1 // To fix the statusbar path (to show .key instead of [0].key).
+			m.bottom.Adjacent(msg.node)
+			m.bottom = msg.node
+			if scrollToBottom {
+				m.scrollToBottom()
+			}
+		}
+		return m, nil
+
+	case spinner.TickMsg:
+		if m.head == nil {
+			var cmd tea.Cmd
+			m.spinner, cmd = m.spinner.Update(msg)
+			return m, cmd
+		}
+
 	case tea.MouseMsg:
 		switch msg.Type {
 		case tea.MouseWheelUp:
@@ -264,6 +374,15 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						} else {
 							to.Collapse()
 						}
+
+						value, isRef := isRefNode(to)
+						if isRef {
+							refPath, ok := jsonpath.ParseSchemaRef(value)
+							if ok {
+								m.selectNode(m.findByPath(refPath))
+								m.recordHistory()
+							}
+						}
 					}
 				} else {
 					to := m.at(msg.Y)
@@ -274,6 +393,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						}
 					}
 				}
+				m.recordHistory()
 			}
 		}
 
@@ -283,6 +403,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.searchInput.Focused() {
 			return m.handleSearchKey(msg)
+		}
+		if m.gotoSymbolInput.Focused() {
+			return m.handleGotoSymbolKey(msg)
 		}
 		if m.yank {
 			return m.handleYankKey(msg)
@@ -316,7 +439,7 @@ func (m *model) handleDigKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.digInput.Blur()
 		digPath, ok := jsonpath.Split(m.digInput.Value())
 		if ok {
-			n := m.selectByPath(digPath)
+			n := m.findByPath(digPath)
 			if n != nil {
 				m.selectNode(n)
 			}
@@ -328,7 +451,7 @@ func (m *model) handleDigKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if len(digPath) > 0 {
 				digPath = digPath[:len(digPath)-1]
 			}
-			n := m.selectByPath(digPath)
+			n := m.findByPath(digPath)
 			if n != nil {
 				m.selectNode(n)
 				m.digInput.SetValue(m.cursorPath())
@@ -418,10 +541,41 @@ func (m *model) handleSearchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case msg.Type == tea.KeyEnter:
 		m.searchInput.Blur()
 		m.doSearch(m.searchInput.Value())
+		m.recordHistory()
 
 	default:
 		m.searchInput, cmd = m.searchInput.Update(msg)
 	}
+	return m, cmd
+}
+
+func (m *model) handleGotoSymbolKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	switch msg.Type {
+	case tea.KeyEscape, tea.KeyEnter, tea.KeyUp, tea.KeyDown:
+		m.gotoSymbolInput.Blur()
+		m.gotoSymbolInput.SetValue("")
+		m.recordHistory()
+
+	default:
+		m.gotoSymbolInput, cmd = m.gotoSymbolInput.Update(msg)
+		matches := fuzzy.Find(m.gotoSymbolInput.Value(), m.keysIndex)
+		if len(matches) > 0 {
+			x := matches[0]
+			node := m.keysIndexNodes[x.Index]
+			m.fuzzyMatch = &x
+			m.selectNode(node)
+		}
+	}
+
+	switch msg.Type {
+	case tea.KeyUp:
+		m.up()
+
+	case tea.KeyDown:
+		m.down()
+	}
+
 	return m, cmd
 }
 
@@ -458,6 +612,7 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		for i := 0; i < m.viewHeight(); i++ {
 			m.up()
 		}
+		m.recordHistory()
 
 	case key.Matches(msg, keyMap.PageDown):
 		m.cursor = m.viewHeight() - 1
@@ -465,12 +620,14 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.down()
 		}
 		m.scrollIntoView()
+		m.recordHistory()
 
 	case key.Matches(msg, keyMap.HalfPageUp):
 		m.cursor = 0
 		for i := 0; i < m.viewHeight()/2; i++ {
 			m.up()
 		}
+		m.recordHistory()
 
 	case key.Matches(msg, keyMap.HalfPageDown):
 		m.cursor = m.viewHeight() - 1
@@ -478,56 +635,67 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.down()
 		}
 		m.scrollIntoView()
+		m.recordHistory()
 
 	case key.Matches(msg, keyMap.GotoTop):
 		m.head = m.top
 		m.cursor = 0
 		m.showCursor = true
+		m.recordHistory()
 
 	case key.Matches(msg, keyMap.GotoBottom):
-		m.head = m.findBottom()
-		m.cursor = 0
-		m.showCursor = true
-		m.scrollIntoView()
+		m.scrollToBottom()
+		m.recordHistory()
 
 	case key.Matches(msg, keyMap.NextSibling):
 		pointsTo := m.cursorPointsTo()
 		var nextSibling *Node
 		if pointsTo.End != nil && pointsTo.End.Next != nil {
 			nextSibling = pointsTo.End.Next
+		} else if pointsTo.ChunkEnd != nil && pointsTo.ChunkEnd.Next != nil {
+			nextSibling = pointsTo.ChunkEnd.Next
 		} else {
 			nextSibling = pointsTo.Next
 		}
 		if nextSibling != nil {
 			m.selectNode(nextSibling)
 		}
+		m.recordHistory()
 
 	case key.Matches(msg, keyMap.PrevSibling):
 		pointsTo := m.cursorPointsTo()
 		var prevSibling *Node
-		if pointsTo.Parent() != nil && pointsTo.Parent().End == pointsTo {
-			prevSibling = pointsTo.Parent()
+		parent := pointsTo.Parent
+		if parent != nil && parent.End == pointsTo {
+			prevSibling = parent
 		} else if pointsTo.Prev != nil {
 			prevSibling = pointsTo.Prev
-			parent := prevSibling.Parent()
+			parent := prevSibling.Parent
 			if parent != nil && parent.End == prevSibling {
+				prevSibling = parent
+			} else if prevSibling.Chunk != nil {
 				prevSibling = parent
 			}
 		}
 		if prevSibling != nil {
 			m.selectNode(prevSibling)
 		}
+		m.recordHistory()
 
 	case key.Matches(msg, keyMap.Collapse):
 		n := m.cursorPointsTo()
+		if n == nil {
+			return m, nil
+		}
 		if n.HasChildren() && !n.IsCollapsed() {
 			n.Collapse()
 		} else {
-			if n.Parent() != nil {
-				n = n.Parent()
+			if n.Parent != nil {
+				n = n.Parent
 			}
 		}
 		m.selectNode(n)
+		m.recordHistory()
 
 	case key.Matches(msg, keyMap.Expand):
 		m.cursorPointsTo().Expand()
@@ -548,21 +716,27 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.showCursor = true
 
 	case key.Matches(msg, keyMap.CollapseAll):
-		n := m.top
-		for n != nil {
-			n.CollapseRecursively()
-			if n.End == nil {
-				n = nil
-			} else {
-				n = n.End.Next
+		at := m.cursorPointsTo()
+		if at != nil {
+			m.collapsed = true
+			n := m.top
+			for n != nil {
+				if n.Kind != Err {
+					n.CollapseRecursively()
+				}
+				if n.End == nil {
+					n = nil
+				} else {
+					n = n.End.Next
+				}
 			}
+			m.selectNode(at.Root())
+			m.recordHistory()
 		}
-		m.cursor = 0
-		m.head = m.top
-		m.showCursor = true
 
 	case key.Matches(msg, keyMap.ExpandAll):
 		at := m.cursorPointsTo()
+		m.collapsed = false
 		n := m.top
 		for n != nil {
 			n.ExpandRecursively(0, math.MaxInt)
@@ -587,22 +761,35 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		at := m.cursorPointsTo()
 		m.wrap = !m.wrap
 		if m.wrap {
-			WrapAll(m.top, m.termWidth)
+			Wrap(m.top, m.termWidth)
 		} else {
 			DropWrapAll(m.top)
 		}
 		if at.Chunk != nil && at.Value == nil {
-			at = at.Parent()
+			at = at.Parent
 		}
 		m.redoSearch()
 		m.selectNode(at)
+
+	case key.Matches(msg, keyMap.ShowSizes):
+		m.showSizes = !m.showSizes
 
 	case key.Matches(msg, keyMap.Yank):
 		m.yank = true
 
 	case key.Matches(msg, keyMap.Preview):
 		m.showPreview = true
-		content := lipgloss.NewStyle().Width(m.termWidth).Render(m.cursorValue())
+		content := ""
+		value := m.cursorValue()
+		if decodedValue, err := base64.StdEncoding.DecodeString(value); err == nil {
+			img, err := utils.DrawImage(bytes.NewReader(decodedValue), m.termWidth, m.termHeight)
+			if err == nil {
+				content = strings.TrimRight(img, "\n")
+			}
+		}
+		if content == "" {
+			content = lipgloss.NewStyle().Width(m.termWidth).Render(value)
+		}
 		m.preview.SetContent(content)
 		m.preview.GotoTop()
 
@@ -610,10 +797,34 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, m.print()
 
 	case key.Matches(msg, keyMap.Dig):
+		at := m.cursorPointsTo()
+		if at.Kind == Err {
+			nextJson := at.FindNextNonErr()
+			if nextJson != nil {
+				m.selectNode(nextJson)
+			}
+		}
 		m.digInput.SetValue(m.cursorPath() + ".")
 		m.digInput.CursorEnd()
 		m.digInput.Width = m.termWidth - 1
 		m.digInput.Focus()
+
+	case key.Matches(msg, keyMap.GotoSymbol):
+		m.gotoSymbolInput.CursorEnd()
+		m.gotoSymbolInput.Width = m.termWidth - 2 // -1 for the prompt, -1 for the cursor
+		m.gotoSymbolInput.Focus()
+		m.createKeysIndex()
+
+	case key.Matches(msg, keyMap.GotoRef):
+		at := m.cursorPointsTo()
+		value, isRef := isRefNode(at)
+		if isRef {
+			refPath, ok := jsonpath.ParseSchemaRef(value)
+			if ok {
+				m.selectNode(m.findByPath(refPath))
+				m.recordHistory()
+			}
+		}
 
 	case key.Matches(msg, keyMap.Search):
 		m.searchInput.CursorEnd()
@@ -622,14 +833,42 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keyMap.SearchNext):
 		m.selectSearchResult(m.search.cursor + 1)
+		m.recordHistory()
 
 	case key.Matches(msg, keyMap.SearchPrev):
 		m.selectSearchResult(m.search.cursor - 1)
+		m.recordHistory()
+
+	case key.Matches(msg, keyMap.GoBack):
+		if m.locationIndex > 0 {
+			at := m.cursorPointsTo()
+			m.locationIndex--
+
+			loc := m.locationHistory[m.locationIndex]
+			for loc.node == at && m.locationIndex > 0 {
+				m.locationIndex--
+				loc = m.locationHistory[m.locationIndex]
+			}
+			m.selectNode(loc.head)
+			m.selectNode(loc.node)
+		}
+
+	case key.Matches(msg, keyMap.GoForward):
+		if m.locationIndex < len(m.locationHistory)-1 {
+			m.locationIndex++
+			loc := m.locationHistory[m.locationIndex]
+			m.selectNode(loc.head)
+			m.selectNode(loc.node)
+		}
+
 	}
 	return m, nil
 }
 
 func (m *model) up() {
+	if m.head == nil {
+		return
+	}
 	m.showCursor = true
 	m.cursor--
 	if m.cursor < 0 {
@@ -641,6 +880,9 @@ func (m *model) up() {
 }
 
 func (m *model) down() {
+	if m.head == nil {
+		return
+	}
 	m.showCursor = true
 	m.cursor++
 	n := m.cursorPointsTo()
@@ -656,6 +898,38 @@ func (m *model) down() {
 	}
 }
 
+func (m *model) recordHistory() {
+	at := m.cursorPointsTo()
+	if at == nil {
+		return
+	}
+	if at.Chunk != nil && at.Value == nil {
+		// We at the wrapped string, save the location of the original string node.
+		at = at.Parent
+	}
+	if len(m.locationHistory) > 0 && m.locationHistory[len(m.locationHistory)-1].node == at {
+		return
+	}
+	if m.locationIndex < len(m.locationHistory) {
+		m.locationHistory = m.locationHistory[:m.locationIndex+1]
+	}
+	m.locationHistory = append(m.locationHistory, location{
+		head: m.head,
+		node: at,
+	})
+	m.locationIndex = len(m.locationHistory)
+}
+
+func (m *model) scrollToBottom() {
+	if m.bottom == nil {
+		return
+	}
+	m.head = m.bottom.Bottom()
+	m.cursor = 0
+	m.showCursor = true
+	m.scrollIntoView()
+}
+
 func (m *model) visibleLines() int {
 	visibleLines := 0
 	n := m.head
@@ -667,6 +941,9 @@ func (m *model) visibleLines() int {
 }
 
 func (m *model) scrollIntoView() {
+	if m.head == nil {
+		return
+	}
 	visibleLines := m.visibleLines()
 	if m.cursor >= visibleLines {
 		m.cursor = visibleLines - 1
@@ -681,48 +958,96 @@ func (m *model) scrollIntoView() {
 func (m *model) View() string {
 	if m.showHelp {
 		statusBar := flex(m.termWidth, ": press q or ? to close help", "")
-		return m.help.View() + "\n" + string(theme.CurrentTheme.StatusBar([]byte(statusBar)))
+		return m.help.View() + "\n" + theme.CurrentTheme.StatusBar(statusBar)
 	}
 
 	if m.showPreview {
 		statusBar := flex(m.termWidth, m.cursorPath(), m.fileName)
-		return m.preview.View() + "\n" + string(theme.CurrentTheme.StatusBar([]byte(statusBar)))
+		return m.preview.View() + "\n" + theme.CurrentTheme.StatusBar(statusBar)
 	}
 
 	var screen []byte
+	printedLines := 0
 	n := m.head
 
-	printedLines := 0
+	var lineNumbersWidth int
+	var cursorLineNumber int
+	if m.showLineNumbers {
+		lineNumbersWidth = m.calcLineNumberWidth()
+	}
+
 	for lineNumber := 0; lineNumber < m.viewHeight(); lineNumber++ {
 		if n == nil {
 			break
 		}
+
+		if m.showLineNumbers {
+			if n.LineNumber == 0 {
+				screen = append(screen, bytes.Repeat([]byte{' '}, lineNumbersWidth)...)
+			} else {
+				lineNumStr := fmt.Sprintf("%*d", lineNumbersWidth, n.LineNumber)
+				screen = append(screen, theme.CurrentTheme.LineNumber(lineNumStr)...)
+			}
+			screen = append(screen, ' ', ' ')
+		}
+
 		for ident := 0; ident < int(n.Depth); ident++ {
 			screen = append(screen, ' ', ' ')
 		}
 
 		isSelected := m.cursor == lineNumber
+		if isSelected {
+			if n.LineNumber == 0 {
+				cursorLineNumber = n.Parent.LineNumber
+			} else {
+				cursorLineNumber = n.LineNumber
+			}
+		}
 		if !m.showCursor {
 			isSelected = false // don't highlight the cursor while iterating search results
 		}
 
+		isRef := false
+		isRefSelected := false
+		var isRefValue string
+
 		if n.Key != nil {
 			screen = append(screen, m.prettyKey(n, isSelected)...)
 			screen = append(screen, theme.Colon...)
+
+			isRefValue, isRef = isRefNode(n)
+			isRefSelected = isRef && isSelected
 			isSelected = false // don't highlight the key's value
 		}
 
-		screen = append(screen, m.prettyPrint(n, isSelected)...)
+		if isRef {
+			screen = append(screen, theme.CurrentTheme.String("\"")...)
+			screen = append(screen, theme.CurrentTheme.Ref(isRefValue)...)
+			screen = append(screen, theme.CurrentTheme.String("\"")...)
+		} else {
+			screen = append(screen, m.prettyPrint(n, isSelected)...)
+		}
 
 		if n.IsCollapsed() {
-			if n.Value[0] == '{' {
+			if n.Kind == Object {
 				if n.Collapsed.Key != nil {
-					screen = append(screen, theme.CurrentTheme.Preview(n.Collapsed.Key)...)
+					screen = append(screen, theme.CurrentTheme.Preview(string(n.Collapsed.Key))...)
 					screen = append(screen, theme.ColonPreview...)
+					if len(n.Collapsed.Value) > 0 &&
+						len(n.Collapsed.Value) < 42 &&
+						n.Collapsed.Kind != Object &&
+						n.Collapsed.Kind != Array {
+						screen = append(screen, theme.CurrentTheme.Preview(string(n.Collapsed.Value))...)
+						if n.Size > 1 {
+							screen = append(screen, theme.CommaPreview...)
+							screen = append(screen, theme.Dot3...)
+						}
+					} else {
+						screen = append(screen, theme.Dot3...)
+					}
 				}
-				screen = append(screen, theme.Dot3...)
 				screen = append(screen, theme.CloseCurlyBracket...)
-			} else if n.Value[0] == '[' {
+			} else if n.Kind == Array {
 				screen = append(screen, theme.Dot3...)
 				screen = append(screen, theme.CloseSquareBracket...)
 			}
@@ -734,10 +1059,14 @@ func (m *model) View() string {
 			screen = append(screen, theme.Comma...)
 		}
 
-		if theme.ShowSizes && len(n.Value) > 0 && (n.Value[0] == '{' || n.Value[0] == '[') {
+		if m.showSizes && (n.Kind == Array || n.Kind == Object) {
 			if n.IsCollapsed() || n.Size > 1 {
-				screen = append(screen, theme.CurrentTheme.Size([]byte(fmt.Sprintf(" // %d", n.Size)))...)
+				screen = append(screen, theme.CurrentTheme.Size(fmt.Sprintf(" |%d|", n.Size))...)
 			}
+		}
+
+		if isRefSelected {
+			screen = append(screen, theme.CurrentTheme.Preview("  ctrl+g goto")...)
 		}
 
 		screen = append(screen, '\n')
@@ -746,20 +1075,52 @@ func (m *model) View() string {
 	}
 
 	for i := printedLines; i < m.viewHeight(); i++ {
-		screen = append(screen, theme.Empty...)
+		if m.head != nil {
+			screen = append(screen, theme.Empty...)
+		}
 		screen = append(screen, '\n')
 	}
 
-	if m.digInput.Focused() {
+	if m.gotoSymbolInput.Focused() && m.fuzzyMatch != nil {
+		var matchedStr []byte
+		str := m.fuzzyMatch.Str
+		for i := 0; i < len(str); i++ {
+			if utils.Contains(i, m.fuzzyMatch.MatchedIndexes) {
+				matchedStr = append(matchedStr, theme.CurrentTheme.Search(string(str[i]))...)
+			} else {
+				matchedStr = append(matchedStr, theme.CurrentTheme.StatusBar(string(str[i]))...)
+			}
+		}
+		repeatCount := m.termWidth - len(str)
+		if repeatCount > 0 {
+			matchedStr = append(matchedStr, theme.CurrentTheme.StatusBar(strings.Repeat(" ", repeatCount))...)
+		}
+		screen = append(screen, matchedStr...)
+	} else if m.digInput.Focused() {
 		screen = append(screen, m.digInput.View()...)
 	} else {
-		statusBar := flex(m.termWidth, m.cursorPath(), m.fileName)
-		screen = append(screen, theme.CurrentTheme.StatusBar([]byte(statusBar))...)
+		if m.head == nil {
+			indicator := fmt.Sprintf(" indexing %s ", m.spinner.View())
+			statusBar := flex(m.termWidth+2, indicator, m.fileName)
+			screen = append(screen, theme.CurrentTheme.StatusBar(statusBar)...)
+		} else {
+			currentPath := m.cursorPath()
+			percent := int(float64(cursorLineNumber) / float64(m.totalLines) * 100)
+			if cursorLineNumber == 1 {
+				percent = min(1, percent)
+			}
+			info := fmt.Sprintf("%d%% %s", percent, m.fileName)
+			statusBar := flex(m.termWidth, currentPath, info)
+			screen = append(screen, theme.CurrentTheme.StatusBar(statusBar)...)
+		}
 	}
 
 	if m.yank {
 		screen = append(screen, '\n')
 		screen = append(screen, []byte("(y)value  (p)path  (k)key")...)
+	} else if m.gotoSymbolInput.Focused() {
+		screen = append(screen, '\n')
+		screen = append(screen, m.gotoSymbolInput.View()...)
 	} else if m.searchInput.Focused() {
 		screen = append(screen, '\n')
 		screen = append(screen, m.searchInput.View()...)
@@ -783,6 +1144,19 @@ func (m *model) View() string {
 	return string(screen)
 }
 
+func (m *model) calcLineNumberWidth() int {
+	n := m.head
+	width := 0
+	for i := 0; i < m.viewHeight(); i++ {
+		if n == nil {
+			break
+		}
+		width = max(width, len(fmt.Sprintf("%d", n.LineNumber)))
+		n = n.Next
+	}
+	return width
+}
+
 func (m *model) prettyKey(node *Node, selected bool) []byte {
 	b := node.Key
 
@@ -795,16 +1169,16 @@ func (m *model) prettyKey(node *Node, selected bool) []byte {
 		var out []byte
 		for i, p := range splitBytesByIndexes(b, indexes) {
 			if i%2 == 0 {
-				out = append(out, style(p.b)...)
+				out = append(out, style(string(p.b))...)
 			} else if p.index == m.search.cursor {
-				out = append(out, theme.CurrentTheme.Cursor(p.b)...)
+				out = append(out, theme.CurrentTheme.Cursor(string(p.b))...)
 			} else {
-				out = append(out, theme.CurrentTheme.Search(p.b)...)
+				out = append(out, theme.CurrentTheme.Search(string(p.b))...)
 			}
 		}
 		return out
 	} else {
-		return style(b)
+		return []byte(style(string(b)))
 	}
 }
 
@@ -817,29 +1191,36 @@ func (m *model) prettyPrint(node *Node, selected bool) []byte {
 	}
 
 	if len(b) == 0 {
-		return b
+		if selected {
+			return []byte(theme.CurrentTheme.Cursor(" "))
+		} else {
+			return b
+		}
 	}
 
-	style := theme.Value(b, selected, node.Chunk != nil)
+	style := theme.Value(node.Kind, selected)
 
 	if indexes, ok := m.search.values[node]; ok {
 		var out []byte
 		for i, p := range splitBytesByIndexes(b, indexes) {
 			if i%2 == 0 {
-				out = append(out, style(p.b)...)
+				out = append(out, style(string(p.b))...)
 			} else if p.index == m.search.cursor {
-				out = append(out, theme.CurrentTheme.Cursor(p.b)...)
+				out = append(out, theme.CurrentTheme.Cursor(string(p.b))...)
 			} else {
-				out = append(out, theme.CurrentTheme.Search(p.b)...)
+				out = append(out, theme.CurrentTheme.Search(string(p.b))...)
 			}
 		}
 		return out
 	} else {
-		return style(b)
+		return []byte(style(string(b)))
 	}
 }
 
 func (m *model) viewHeight() int {
+	if m.gotoSymbolInput.Focused() {
+		return m.termHeight - 2
+	}
 	if m.searchInput.Focused() || m.searchInput.Value() != "" {
 		return m.termHeight - 2
 	}
@@ -862,18 +1243,6 @@ func (m *model) at(pos int) *Node {
 		head = head.Next
 	}
 	return head
-}
-
-func (m *model) findBottom() *Node {
-	n := m.head
-	for n.Next != nil {
-		if n.End != nil {
-			n = n.End
-		} else {
-			n = n.Next
-		}
-	}
-	return n
 }
 
 func (m *model) nodeInsideView(n *Node) bool {
@@ -917,10 +1286,10 @@ func (m *model) selectNode(n *Node) {
 		m.head = n
 		m.scrollIntoView()
 	}
-	parent := n.Parent()
+	parent := n.Parent
 	for parent != nil {
 		parent.Expand()
-		parent = parent.Parent()
+		parent = parent.Parent
 	}
 }
 
@@ -930,7 +1299,7 @@ func (m *model) cursorPath() string {
 	for at != nil {
 		if at.Prev != nil {
 			if at.Chunk != nil && at.Value == nil {
-				at = at.Parent()
+				at = at.Parent
 			}
 			if at.Key != nil {
 				quoted := string(at.Key)
@@ -944,7 +1313,7 @@ func (m *model) cursorPath() string {
 				path = "[" + strconv.Itoa(at.Index) + "]" + path
 			}
 		}
-		at = at.Parent()
+		at = at.Parent
 	}
 	return path
 }
@@ -954,18 +1323,18 @@ func (m *model) cursorValue() string {
 	if at == nil {
 		return ""
 	}
-	parent := at.Parent()
+	parent := at.Parent
 	if parent != nil {
 		// wrapped string part
 		if at.Chunk != nil && at.Value == nil {
 			at = parent
 		}
-		if len(at.Value) == 1 && at.Value[0] == '}' || at.Value[0] == ']' {
+		if at.Kind == Object || at.Kind == Array {
 			at = parent
 		}
 	}
 
-	if len(at.Value) > 0 && at.Value[0] == '"' {
+	if at.Kind == String {
 		str, err := strconv.Unquote(string(at.Value))
 		if err == nil {
 			return str
@@ -1015,7 +1384,7 @@ func (m *model) cursorKey() string {
 		return ""
 	}
 	if at.IsWrap() {
-		at = at.Parent()
+		at = at.Parent
 	}
 	if at.Key != nil {
 		var v string
@@ -1026,20 +1395,9 @@ func (m *model) cursorKey() string {
 
 }
 
-func (m *model) selectByPath(path []any) *Node {
+func (m *model) findByPath(path []any) *Node {
 	n := m.currentTopNode()
-	for _, part := range path {
-		if n == nil {
-			return nil
-		}
-		switch part := part.(type) {
-		case string:
-			n = n.FindChildByKey(part)
-		case int:
-			n = n.FindChildByIndex(part)
-		}
-	}
-	return n
+	return n.FindByPath(path)
 }
 
 func (m *model) currentTopNode() *Node {
@@ -1047,8 +1405,8 @@ func (m *model) currentTopNode() *Node {
 	if at == nil {
 		return nil
 	}
-	for at.Parent() != nil {
-		at = at.Parent()
+	for at.Parent != nil {
+		at = at.Parent
 	}
 	return at
 }
@@ -1150,12 +1508,31 @@ func (m *model) redoSearch() {
 	}
 }
 
+func (m *model) createKeysIndex() {
+	at := m.cursorPointsTo()
+	if at == nil {
+		return
+	}
+	root := at.Root()
+	if root == nil {
+		return
+	}
+	paths := make([]string, 0, 10_000)
+	nodes := make([]*Node, 0, 10_000)
+
+	root.Paths(&paths, &nodes)
+
+	m.keysIndex = paths
+	m.keysIndexNodes = nodes
+	m.fuzzyMatch = nil
+}
+
 func (m *model) dig(v string) *Node {
 	p, ok := jsonpath.Split(v)
 	if !ok {
 		return nil
 	}
-	at := m.selectByPath(p)
+	at := m.findByPath(p)
 	if at != nil {
 		return at
 	}
@@ -1167,7 +1544,7 @@ func (m *model) dig(v string) *Node {
 	}
 	p = p[:len(p)-1]
 
-	at = m.selectByPath(p)
+	at = m.findByPath(p)
 	if at == nil {
 		return nil
 	}

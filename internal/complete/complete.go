@@ -191,11 +191,11 @@ func codeComplete(input []byte, args []string, compWord string) {
 	code.WriteString(engine.Stdlib)
 	code.WriteString("let json = ")
 	code.Write(input)
-	for _, arg := range args {
+	for i, arg := range args {
 		if arg == "" { // After dropTail, we can have empty strings.
 			continue
 		}
-		code.WriteString(engine.Transform(arg))
+		code.WriteString(engine.Transpile(args, i))
 	}
 	code.WriteString("\n__keys\n")
 

@@ -10,6 +10,8 @@ type KeyMap struct {
 	HalfPageDown        key.Binding
 	GotoTop             key.Binding
 	GotoBottom          key.Binding
+	GotoSymbol          key.Binding
+	GotoRef             key.Binding
 	Down                key.Binding
 	Up                  key.Binding
 	Help                key.Binding
@@ -23,12 +25,15 @@ type KeyMap struct {
 	NextSibling         key.Binding
 	PrevSibling         key.Binding
 	ToggleWrap          key.Binding
+	ShowSizes           key.Binding
 	Yank                key.Binding
 	Search              key.Binding
 	SearchNext          key.Binding
 	SearchPrev          key.Binding
 	Preview             key.Binding
 	Print               key.Binding
+	GoBack              key.Binding
+	GoForward           key.Binding
 	Dig                 key.Binding
 }
 
@@ -63,6 +68,14 @@ func init() {
 		GotoBottom: key.NewBinding(
 			key.WithKeys("G", "end"),
 			key.WithHelp("", "goto bottom"),
+		),
+		GotoSymbol: key.NewBinding(
+			key.WithKeys("@"),
+			key.WithHelp("", "goto symbol"),
+		),
+		GotoRef: key.NewBinding(
+			key.WithKeys("ctrl+g"),
+			key.WithHelp("", "goto ref"),
 		),
 		Down: key.NewBinding(
 			key.WithKeys("down", "j"),
@@ -116,6 +129,10 @@ func init() {
 			key.WithKeys("z"),
 			key.WithHelp("", "toggle strings wrap"),
 		),
+		ShowSizes: key.NewBinding(
+			key.WithKeys("s"),
+			key.WithHelp("", "show array/object sizes"),
+		),
 		Yank: key.NewBinding(
 			key.WithKeys("y"),
 			key.WithHelp("", "yank/copy"),
@@ -139,6 +156,14 @@ func init() {
 		Print: key.NewBinding(
 			key.WithKeys("P"),
 			key.WithHelp("", "print"),
+		),
+		GoBack: key.NewBinding(
+			key.WithKeys("["),
+			key.WithHelp("", "go back"),
+		),
+		GoForward: key.NewBinding(
+			key.WithKeys("]"),
+			key.WithHelp("", "go forward"),
 		),
 		Dig: key.NewBinding(
 			key.WithKeys("."),

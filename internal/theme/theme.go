@@ -6,49 +6,47 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/termenv"
 
-	"github.com/antonmedv/fx/internal/utils"
+	"github.com/antonmedv/fx/internal/jsonx"
 )
 
 type Theme struct {
-	Cursor    Color
-	Syntax    Color
-	Preview   Color
-	StatusBar Color
-	Search    Color
-	Key       Color
-	String    Color
-	Null      Color
-	Boolean   Color
-	Number    Color
-	Size      Color
+	Cursor     Color
+	Syntax     Color
+	Preview    Color
+	StatusBar  Color
+	Search     Color
+	Key        Color
+	String     Color
+	Null       Color
+	Boolean    Color
+	Number     Color
+	Size       Color
+	Ref        Color
+	LineNumber Color
 }
 
-type Color func(s []byte) []byte
+type Color func(s string) string
 
-func Value(b []byte, selected, chunk bool) Color {
+func Value(kind jsonx.Kind, selected bool) Color {
 	if selected {
 		return CurrentTheme.Cursor
-	} else if chunk {
-		return CurrentTheme.String
 	} else {
-		switch b[0] {
-		case '"':
+		switch kind {
+		case jsonx.String:
 			return CurrentTheme.String
-		case 't', 'f':
+		case jsonx.Bool:
 			return CurrentTheme.Boolean
-		case 'n':
+		case jsonx.Null:
 			return CurrentTheme.Null
-		case '{', '[', '}', ']':
+		case jsonx.Object, jsonx.Array:
 			return CurrentTheme.Syntax
+		case jsonx.Number:
+			return CurrentTheme.Number
 		default:
-			if utils.IsDigit(b[0]) || b[0] == '-' {
-				return CurrentTheme.Number
-			}
 			return noColor
 		}
 	}
@@ -70,12 +68,6 @@ func init() {
 		themeId = "1"
 	}
 
-	showSizesValue, ok := os.LookupEnv("FX_SHOW_SIZE")
-	if ok {
-		showSizesValue := strings.ToLower(showSizesValue)
-		ShowSizes = showSizesValue == "true" || showSizesValue == "yes" || showSizesValue == "on" || showSizesValue == "1"
-	}
-
 	CurrentTheme, ok = themes[themeId]
 	if !ok {
 		_, _ = fmt.Fprintf(os.Stderr, "fx: unknown theme %q, available themes: %v\n", themeId, themeNames)
@@ -86,193 +78,220 @@ func init() {
 		CurrentTheme = themes["0"]
 	}
 
-	Colon = CurrentTheme.Syntax([]byte{':', ' '})
-	ColonPreview = CurrentTheme.Preview([]byte{':'})
-	Comma = CurrentTheme.Syntax([]byte{','})
-	Empty = CurrentTheme.Preview([]byte{'~'})
-	Dot3 = CurrentTheme.Preview([]byte("…"))
-	CloseCurlyBracket = CurrentTheme.Syntax([]byte{'}'})
-	CloseSquareBracket = CurrentTheme.Syntax([]byte{']'})
+	Colon = CurrentTheme.Syntax(": ")
+	ColonPreview = CurrentTheme.Preview(":")
+	Comma = CurrentTheme.Syntax(",")
+	CommaPreview = CurrentTheme.Preview(",")
+	Empty = CurrentTheme.Preview("~")
+	Dot3 = CurrentTheme.Preview("…")
+	CloseCurlyBracket = CurrentTheme.Syntax("}")
+	CloseSquareBracket = CurrentTheme.Syntax("]")
 }
 
 var (
-	themeNames       []string
-	CurrentTheme     Theme
-	defaultCursor    = toColor(lipgloss.NewStyle().Reverse(true).Render)
-	defaultPreview   = toColor(lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render)
-	defaultStatusBar = toColor(lipgloss.NewStyle().Background(lipgloss.Color("7")).Foreground(lipgloss.Color("0")).Render)
-	defaultSearch    = toColor(lipgloss.NewStyle().Background(lipgloss.Color("11")).Foreground(lipgloss.Color("16")).Render)
-	defaultNull      = fg("243")
-	defaultSize      = toColor(lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render)
-	ShowSizes        = false
+	themeNames []string
+
+	CurrentTheme Theme
+
+	underline         = toColor(lipgloss.NewStyle().Underline(true).Render)
+	defaultCursor     = toColor(lipgloss.NewStyle().Reverse(true).Render)
+	defaultPreview    = toColor(lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render)
+	defaultStatusBar  = toColor(lipgloss.NewStyle().Background(lipgloss.Color("7")).Foreground(lipgloss.Color("0")).Render)
+	defaultSearch     = toColor(lipgloss.NewStyle().Background(lipgloss.Color("11")).Foreground(lipgloss.Color("16")).Render)
+	defaultNull       = fg("243")
+	defaultSize       = toColor(lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render)
+	defaultLineNumber = toColor(lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render)
 )
 
 var (
-	Colon              []byte
-	ColonPreview       []byte
-	Comma              []byte
-	Empty              []byte
-	Dot3               []byte
-	CloseCurlyBracket  []byte
-	CloseSquareBracket []byte
+	Colon              string
+	ColonPreview       string
+	Comma              string
+	CommaPreview       string
+	Empty              string
+	Dot3               string
+	CloseCurlyBracket  string
+	CloseSquareBracket string
 )
 
 var themes = map[string]Theme{
 	"0": {
-		Cursor:    defaultCursor,
-		Syntax:    noColor,
-		Preview:   noColor,
-		StatusBar: noColor,
-		Search:    defaultSearch,
-		Key:       noColor,
-		String:    noColor,
-		Null:      noColor,
-		Boolean:   noColor,
-		Number:    noColor,
-		Size:      noColor,
+		Cursor:     defaultCursor,
+		Syntax:     noColor,
+		Preview:    noColor,
+		StatusBar:  noColor,
+		Search:     defaultSearch,
+		Key:        noColor,
+		String:     noColor,
+		Null:       noColor,
+		Boolean:    noColor,
+		Number:     noColor,
+		Size:       noColor,
+		Ref:        noColor,
+		LineNumber: defaultLineNumber,
 	},
 	"1": {
-		Cursor:    defaultCursor,
-		Syntax:    noColor,
-		Preview:   defaultPreview,
-		StatusBar: defaultStatusBar,
-		Search:    defaultSearch,
-		Key:       boldFg("4"),
-		String:    fg("2"),
-		Null:      defaultNull,
-		Boolean:   fg("5"),
-		Number:    fg("6"),
-		Size:      defaultSize,
+		Cursor:     defaultCursor,
+		Syntax:     noColor,
+		Preview:    defaultPreview,
+		StatusBar:  defaultStatusBar,
+		Search:     defaultSearch,
+		Key:        boldFg("4"),
+		String:     fg("2"),
+		Null:       defaultNull,
+		Boolean:    fg("5"),
+		Number:     fg("6"),
+		Size:       defaultSize,
+		Ref:        underlineFg("2"),
+		LineNumber: defaultLineNumber,
 	},
 	"2": {
-		Cursor:    defaultCursor,
-		Syntax:    noColor,
-		Preview:   defaultPreview,
-		StatusBar: defaultStatusBar,
-		Search:    defaultSearch,
-		Key:       fg("2"),
-		String:    fg("4"),
-		Null:      defaultNull,
-		Boolean:   fg("5"),
-		Number:    fg("6"),
-		Size:      defaultSize,
+		Cursor:     defaultCursor,
+		Syntax:     noColor,
+		Preview:    defaultPreview,
+		StatusBar:  defaultStatusBar,
+		Search:     defaultSearch,
+		Key:        fg("2"),
+		String:     fg("4"),
+		Null:       defaultNull,
+		Boolean:    fg("5"),
+		Number:     fg("6"),
+		Size:       defaultSize,
+		Ref:        underlineFg("4"),
+		LineNumber: defaultLineNumber,
 	},
 	"3": {
-		Cursor:    defaultCursor,
-		Syntax:    noColor,
-		Preview:   defaultPreview,
-		StatusBar: defaultStatusBar,
-		Search:    defaultSearch,
-		Key:       fg("13"),
-		String:    fg("11"),
-		Null:      defaultNull,
-		Boolean:   fg("1"),
-		Number:    fg("14"),
-		Size:      defaultSize,
+		Cursor:     defaultCursor,
+		Syntax:     noColor,
+		Preview:    defaultPreview,
+		StatusBar:  defaultStatusBar,
+		Search:     defaultSearch,
+		Key:        fg("13"),
+		String:     fg("11"),
+		Null:       defaultNull,
+		Boolean:    fg("1"),
+		Number:     fg("14"),
+		Size:       defaultSize,
+		Ref:        underlineFg("11"),
+		LineNumber: defaultLineNumber,
 	},
 	"4": {
-		Cursor:    defaultCursor,
-		Syntax:    noColor,
-		Preview:   defaultPreview,
-		StatusBar: defaultStatusBar,
-		Search:    defaultSearch,
-		Key:       fg("#00F5D4"),
-		String:    fg("#00BBF9"),
-		Null:      defaultNull,
-		Boolean:   fg("#F15BB5"),
-		Number:    fg("#9B5DE5"),
-		Size:      defaultSize,
+		Cursor:     defaultCursor,
+		Syntax:     noColor,
+		Preview:    defaultPreview,
+		StatusBar:  defaultStatusBar,
+		Search:     defaultSearch,
+		Key:        fg("#00F5D4"),
+		String:     fg("#00BBF9"),
+		Null:       defaultNull,
+		Boolean:    fg("#F15BB5"),
+		Number:     fg("#9B5DE5"),
+		Size:       defaultSize,
+		Ref:        underlineFg("#00BBF9"),
+		LineNumber: defaultLineNumber,
 	},
 	"5": {
-		Cursor:    defaultCursor,
-		Syntax:    noColor,
-		Preview:   defaultPreview,
-		StatusBar: defaultStatusBar,
-		Search:    defaultSearch,
-		Key:       fg("#faf0ca"),
-		String:    fg("#f4d35e"),
-		Null:      defaultNull,
-		Boolean:   fg("#ee964b"),
-		Number:    fg("#ee964b"),
-		Size:      defaultSize,
+		Cursor:     defaultCursor,
+		Syntax:     noColor,
+		Preview:    defaultPreview,
+		StatusBar:  defaultStatusBar,
+		Search:     defaultSearch,
+		Key:        fg("#faf0ca"),
+		String:     fg("#f4d35e"),
+		Null:       defaultNull,
+		Boolean:    fg("#ee964b"),
+		Number:     fg("#ee964b"),
+		Size:       defaultSize,
+		Ref:        underlineFg("#f4d35e"),
+		LineNumber: defaultLineNumber,
 	},
 	"6": {
-		Cursor:    defaultCursor,
-		Syntax:    noColor,
-		Preview:   defaultPreview,
-		StatusBar: defaultStatusBar,
-		Search:    defaultSearch,
-		Key:       fg("#4D96FF"),
-		String:    fg("#6BCB77"),
-		Null:      defaultNull,
-		Boolean:   fg("#FF6B6B"),
-		Number:    fg("#FFD93D"),
-		Size:      defaultSize,
+		Cursor:     defaultCursor,
+		Syntax:     noColor,
+		Preview:    defaultPreview,
+		StatusBar:  defaultStatusBar,
+		Search:     defaultSearch,
+		Key:        fg("#4D96FF"),
+		String:     fg("#6BCB77"),
+		Null:       defaultNull,
+		Boolean:    fg("#FF6B6B"),
+		Number:     fg("#FFD93D"),
+		Size:       defaultSize,
+		Ref:        underlineFg("#6BCB77"),
+		LineNumber: defaultLineNumber,
 	},
 	"7": {
-		Cursor:    defaultCursor,
-		Syntax:    noColor,
-		Preview:   defaultPreview,
-		StatusBar: defaultStatusBar,
-		Search:    defaultSearch,
-		Key:       boldFg("42"),
-		String:    boldFg("213"),
-		Null:      defaultNull,
-		Boolean:   boldFg("201"),
-		Number:    boldFg("201"),
-		Size:      defaultSize,
+		Cursor:     defaultCursor,
+		Syntax:     noColor,
+		Preview:    defaultPreview,
+		StatusBar:  defaultStatusBar,
+		Search:     defaultSearch,
+		Key:        boldFg("42"),
+		String:     boldFg("213"),
+		Null:       defaultNull,
+		Boolean:    boldFg("201"),
+		Number:     boldFg("201"),
+		Size:       defaultSize,
+		Ref:        underlineFg("213"),
+		LineNumber: defaultLineNumber,
 	},
 	"8": {
-		Cursor:    defaultCursor,
-		Syntax:    noColor,
-		Preview:   defaultPreview,
-		StatusBar: defaultStatusBar,
-		Search:    defaultSearch,
-		Key:       boldFg("51"),
-		String:    fg("195"),
-		Null:      defaultNull,
-		Boolean:   fg("50"),
-		Number:    fg("123"),
-		Size:      defaultSize,
+		Cursor:     defaultCursor,
+		Syntax:     noColor,
+		Preview:    defaultPreview,
+		StatusBar:  defaultStatusBar,
+		Search:     defaultSearch,
+		Key:        boldFg("51"),
+		String:     fg("195"),
+		Null:       defaultNull,
+		Boolean:    fg("50"),
+		Number:     fg("123"),
+		Size:       defaultSize,
+		Ref:        underlineFg("195"),
+		LineNumber: defaultLineNumber,
 	},
 	"🔵": {
 		Cursor: toColor(lipgloss.NewStyle().
 			Foreground(lipgloss.Color("15")).
 			Background(lipgloss.Color("33")).
 			Render),
-		Syntax:    boldFg("33"),
-		Preview:   defaultPreview,
-		StatusBar: defaultStatusBar,
-		Search:    defaultSearch,
-		Key:       fg("33"),
-		String:    noColor,
-		Null:      noColor,
-		Boolean:   noColor,
-		Number:    noColor,
-		Size:      defaultSize,
+		Syntax:     boldFg("33"),
+		Preview:    defaultPreview,
+		StatusBar:  defaultStatusBar,
+		Search:     defaultSearch,
+		Key:        fg("33"),
+		String:     noColor,
+		Null:       noColor,
+		Boolean:    noColor,
+		Number:     noColor,
+		Size:       defaultSize,
+		Ref:        underline,
+		LineNumber: defaultLineNumber,
 	},
 	"🥝": {
-		Cursor:    defaultCursor,
-		Syntax:    fg("179"),
-		Preview:   defaultPreview,
-		StatusBar: defaultStatusBar,
-		Search:    defaultSearch,
-		Key:       boldFg("154"),
-		String:    fg("82"),
-		Null:      fg("230"),
-		Boolean:   fg("226"),
-		Number:    fg("226"),
-		Size:      defaultSize,
+		Cursor:     defaultCursor,
+		Syntax:     fg("179"),
+		Preview:    defaultPreview,
+		StatusBar:  defaultStatusBar,
+		Search:     defaultSearch,
+		Key:        boldFg("154"),
+		String:     fg("82"),
+		Null:       fg("230"),
+		Boolean:    fg("226"),
+		Number:     fg("226"),
+		Size:       defaultSize,
+		Ref:        underlineFg("82"),
+		LineNumber: defaultLineNumber,
 	},
 }
 
-func noColor(s []byte) []byte {
+func noColor(s string) string {
 	return s
 }
 
 func toColor(f func(s ...string) string) Color {
-	return func(s []byte) []byte {
-		return []byte(f(string(s)))
+	return func(s string) string {
+		return f(s)
 	}
 }
 
@@ -280,54 +299,57 @@ func fg(color string) Color {
 	return toColor(lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Render)
 }
 
+func underlineFg(color string) Color {
+	return toColor(lipgloss.NewStyle().Underline(true).Foreground(lipgloss.Color(color)).Render)
+}
+
 func boldFg(color string) Color {
 	return toColor(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(color)).Render)
 }
 
 func ThemeTester() {
-	title := lipgloss.NewStyle().Bold(true)
 	for _, name := range themeNames {
 		t := themes[name]
-		comma := string(t.Syntax([]byte{','}))
-		colon := string(t.Syntax([]byte{':'}))
+		comma := t.Syntax(",")
+		colon := t.Syntax(":")
 
-		fmt.Println(title.Render(fmt.Sprintf("Theme %q", name)))
-		fmt.Println(string(t.Syntax([]byte("{"))))
+		fmt.Println(fmt.Sprintf("export FX_THEME=%q", name))
+		fmt.Println(t.Syntax("{"))
 
 		fmt.Printf("  %v%v %v%v\n",
-			string(t.Key([]byte("\"string\""))),
+			t.Key("\"string\""),
 			colon,
-			string(t.String([]byte("\"Fox jumps over the lazy dog\""))),
+			t.String("\"Fox jumps over the lazy dog\""),
 			comma)
 
 		fmt.Printf("  %v%v %v%v\n",
-			string(t.Key([]byte("\"number\""))),
+			t.Key("\"number\""),
 			colon,
-			string(t.Number([]byte("1234567890"))),
+			t.Number("1234567890"),
 			comma)
 
 		fmt.Printf("  %v%v %v%v\n",
-			string(t.Key([]byte("\"boolean\""))),
+			t.Key("\"boolean\""),
 			colon,
-			string(t.Boolean([]byte("true"))),
+			t.Boolean("true"),
 			comma)
 		fmt.Printf("  %v%v %v%v\n",
-			string(t.Key([]byte("\"null\""))),
+			t.Key("\"null\""),
 			colon,
-			string(t.Null([]byte("null"))),
+			t.Null("null"),
 			comma)
-		fmt.Println(string(t.Syntax([]byte("}"))))
+		fmt.Println(t.Syntax("}"))
 		println()
 	}
 }
 
 func ExportThemes() {
 	lipgloss.SetColorProfile(termenv.ANSI256) // Export in Terminal.app compatible colors
-	placeholder := []byte{'_'}
-	extract := func(b []byte) string {
+	placeholder := "_"
+	extract := func(b string) string {
 		matches := regexp.
 			MustCompile(`^\x1b\[(.+)m_`).
-			FindStringSubmatch(string(b))
+			FindStringSubmatch(b)
 		if len(matches) == 0 {
 			return ""
 		} else {
