@@ -31,10 +31,10 @@ func Wrap(n *Node, termWidth int) {
 				n.Chunk = lines[0]
 				for i := 1; i < count; i++ {
 					child := &Node{
-						Kind:         n.Kind,
-						directParent: n,
-						Depth:        n.Depth,
-						Chunk:        lines[i],
+						Kind:   n.Kind,
+						Parent: n,
+						Depth:  n.Depth,
+						Chunk:  lines[i],
 					}
 					if n.Comma && i == count-1 {
 						child.Comma = true

@@ -20,8 +20,7 @@ const (
 
 type Node struct {
 	Prev, Next, End *Node
-	directParent    *Node
-	indirectParent  *Node
+	Parent          *Node
 	Collapsed       *Node
 	Depth           uint8
 	Kind            Kind
@@ -104,22 +103,11 @@ func (n *Node) HasChildren() bool {
 	return n.End != nil
 }
 
-func (n *Node) Parent() *Node {
-	if n.directParent == nil {
-		return nil
-	}
-	parent := n.directParent
-	if parent.indirectParent != nil {
-		parent = parent.indirectParent
-	}
-	return parent
-}
-
 func (n *Node) Root() *Node {
-	parent := n.Parent()
+	parent := n.Parent
 	for parent != nil {
 		n = parent
-		parent = n.Parent()
+		parent = n.Parent
 	}
 	return n
 }

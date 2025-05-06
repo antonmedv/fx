@@ -87,10 +87,10 @@ func (p *JsonParser) Recover() *Node {
 	}
 	for i := 1; i < len(lines); i++ {
 		textNode.Append(&Node{
-			Kind:         Err,
-			Value:        []byte(lines[i]),
-			Index:        -1,
-			directParent: textNode,
+			Kind:   Err,
+			Value:  []byte(lines[i]),
+			Index:  -1,
+			Parent: textNode,
 		})
 	}
 	return textNode
@@ -273,11 +273,7 @@ func (p *JsonParser) parseObject() *Node {
 			panic(fmt.Sprintf("Expected object key to be a string, got %q", p.lastChar))
 		}
 
-		p.depth++
-		key := p.parseString()
-		key.Key, key.Value = key.Value, nil
-		object.Size += 1
-		key.directParent = object
+		keyBytes := p.scanString()
 
 		p.skipWhitespace()
 
@@ -288,19 +284,14 @@ func (p *JsonParser) parseObject() *Node {
 
 		p.next()
 
+		p.depth++
 		value := p.parseValue()
+		value.Key = keyBytes
+		value.Parent = object
 		p.depth--
 
-		key.Kind = value.Kind
-		key.Value = value.Value
-		key.Size = value.Size
-		key.Next = value.Next
-		if key.Next != nil {
-			key.Next.Prev = key
-		}
-		key.End = value.End
-		value.indirectParent = key
-		object.Append(key)
+		object.Append(value)
+		object.Size += 1
 
 		p.skipWhitespace()
 
@@ -318,7 +309,7 @@ func (p *JsonParser) parseObject() *Node {
 		if p.lastChar == '}' {
 			closeBracket := &Node{Kind: Object, Depth: p.depth}
 			closeBracket.Value = []byte{'}'}
-			closeBracket.directParent = object
+			closeBracket.Parent = object
 			closeBracket.Index = -1
 			object.Append(closeBracket)
 			p.next()
@@ -345,7 +336,7 @@ func (p *JsonParser) parseArray() *Node {
 	for i := 0; ; i++ {
 		p.depth++
 		value := p.parseValue()
-		value.directParent = arr
+		value.Parent = arr
 		arr.Size += 1
 		value.Index = i
 		p.depth--
@@ -367,7 +358,7 @@ func (p *JsonParser) parseArray() *Node {
 		if p.lastChar == ']' {
 			closeBracket := &Node{Kind: Array, Depth: p.depth}
 			closeBracket.Value = []byte{']'}
-			closeBracket.directParent = arr
+			closeBracket.Parent = arr
 			closeBracket.Index = -1
 			arr.Append(closeBracket)
 			p.next()

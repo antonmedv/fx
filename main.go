@@ -657,12 +657,12 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keyMap.PrevSibling):
 		pointsTo := m.cursorPointsTo()
 		var prevSibling *Node
-		parent := pointsTo.Parent()
+		parent := pointsTo.Parent
 		if parent != nil && parent.End == pointsTo {
 			prevSibling = parent
 		} else if pointsTo.Prev != nil {
 			prevSibling = pointsTo.Prev
-			parent := prevSibling.Parent()
+			parent := prevSibling.Parent
 			if parent != nil && parent.End == prevSibling {
 				prevSibling = parent
 			} else if prevSibling.Chunk != nil {
@@ -682,8 +682,8 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if n.HasChildren() && !n.IsCollapsed() {
 			n.Collapse()
 		} else {
-			if n.Parent() != nil {
-				n = n.Parent()
+			if n.Parent != nil {
+				n = n.Parent
 			}
 		}
 		m.selectNode(n)
@@ -758,7 +758,7 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			DropWrapAll(m.top)
 		}
 		if at.Chunk != nil && at.Value == nil {
-			at = at.Parent()
+			at = at.Parent
 		}
 		m.redoSearch()
 		m.selectNode(at)
@@ -897,7 +897,7 @@ func (m *model) recordHistory() {
 	}
 	if at.Chunk != nil && at.Value == nil {
 		// We at the wrapped string, save the location of the original string node.
-		at = at.Parent()
+		at = at.Parent
 	}
 	if len(m.locationHistory) > 0 && m.locationHistory[len(m.locationHistory)-1].node == at {
 		return
@@ -1237,10 +1237,10 @@ func (m *model) selectNode(n *Node) {
 		m.head = n
 		m.scrollIntoView()
 	}
-	parent := n.Parent()
+	parent := n.Parent
 	for parent != nil {
 		parent.Expand()
-		parent = parent.Parent()
+		parent = parent.Parent
 	}
 }
 
@@ -1250,7 +1250,7 @@ func (m *model) cursorPath() string {
 	for at != nil {
 		if at.Prev != nil {
 			if at.Chunk != nil && at.Value == nil {
-				at = at.Parent()
+				at = at.Parent
 			}
 			if at.Key != nil {
 				quoted := string(at.Key)
@@ -1264,7 +1264,7 @@ func (m *model) cursorPath() string {
 				path = "[" + strconv.Itoa(at.Index) + "]" + path
 			}
 		}
-		at = at.Parent()
+		at = at.Parent
 	}
 	return path
 }
@@ -1274,7 +1274,7 @@ func (m *model) cursorValue() string {
 	if at == nil {
 		return ""
 	}
-	parent := at.Parent()
+	parent := at.Parent
 	if parent != nil {
 		// wrapped string part
 		if at.Chunk != nil && at.Value == nil {
@@ -1335,7 +1335,7 @@ func (m *model) cursorKey() string {
 		return ""
 	}
 	if at.IsWrap() {
-		at = at.Parent()
+		at = at.Parent
 	}
 	if at.Key != nil {
 		var v string
@@ -1356,8 +1356,8 @@ func (m *model) currentTopNode() *Node {
 	if at == nil {
 		return nil
 	}
-	for at.Parent() != nil {
-		at = at.Parent()
+	for at.Parent != nil {
+		at = at.Parent
 	}
 	return at
 }
