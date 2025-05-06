@@ -196,6 +196,11 @@ func main() {
 		collapsed = true
 	}
 
+	showLineNumbers := false
+	if _, ok := os.LookupEnv("FX_LINE_NUMBERS"); ok {
+		showLineNumbers = true
+	}
+
 	showSizes := false
 	showSizesValue, ok := os.LookupEnv("FX_SHOW_SIZE")
 	if ok {
@@ -208,6 +213,7 @@ func main() {
 		wrap:            true,
 		collapsed:       collapsed,
 		showSizes:       showSizes,
+		showLineNumbers: showLineNumbers,
 		fileName:        fileName,
 		digInput:        digInput,
 		gotoSymbolInput: gotoSymbolInput,
@@ -262,6 +268,7 @@ type model struct {
 	wrap                  bool
 	collapsed             bool
 	showSizes             bool
+	showLineNumbers       bool
 	margin                int
 	fileName              string
 	digInput              textinput.Model
@@ -961,12 +968,26 @@ func (m *model) View() string {
 	var screen []byte
 	printedLines := 0
 	n := m.head
+
+	var lineNumbersWidth int
+	if m.showLineNumbers {
+		lineNumbersWidth = m.calcLineNumberWidth()
+	}
+
 	for lineNumber := 0; lineNumber < m.viewHeight(); lineNumber++ {
 		if n == nil {
 			break
 		}
 
-		screen = append(screen, []byte(fmt.Sprintf("%d ", n.LineNumber))...)
+		if m.showLineNumbers {
+			if n.LineNumber == 0 {
+				screen = append(screen, bytes.Repeat([]byte{' '}, lineNumbersWidth)...)
+			} else {
+				lineNumStr := fmt.Sprintf("%*d", lineNumbersWidth, n.LineNumber)
+				screen = append(screen, theme.CurrentTheme.LineNumber(lineNumStr)...)
+			}
+			screen = append(screen, ' ', ' ')
+		}
 
 		for ident := 0; ident < int(n.Depth); ident++ {
 			screen = append(screen, ' ', ' ')
@@ -1108,6 +1129,19 @@ func (m *model) View() string {
 	}
 
 	return string(screen)
+}
+
+func (m *model) calcLineNumberWidth() int {
+	n := m.head
+	width := 0
+	for i := 0; i < m.viewHeight(); i++ {
+		if n == nil {
+			break
+		}
+		width = max(width, len(fmt.Sprintf("%d", n.LineNumber)))
+		n = n.Next
+	}
+	return width
 }
 
 func (m *model) prettyKey(node *Node, selected bool) []byte {

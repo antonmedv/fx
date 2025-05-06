@@ -18,7 +18,7 @@ type JsonParser struct {
 	end        int
 	eof        bool
 	char       byte
-	lineNumber uint
+	lineNumber int
 	depth      uint8
 }
 
@@ -124,7 +124,7 @@ func (p *JsonParser) next() {
 	p.end++
 }
 
-func (p *JsonParser) nextLineNumber() uint {
+func (p *JsonParser) nextLineNumber() int {
 	n := p.lineNumber
 	p.lineNumber++
 	return n
