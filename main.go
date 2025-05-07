@@ -311,7 +311,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.help.Height = m.termHeight - 1
 		m.preview.Width = m.termWidth
 		m.preview.Height = m.termHeight - 1
-		Wrap(m.top, m.termWidth)
+		Wrap(m.top, m.viewWidth())
 		m.redoSearch()
 	}
 
@@ -326,7 +326,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case nodeMsg:
 		if m.wrap {
-			Wrap(msg.node, m.termWidth)
+			Wrap(msg.node, m.viewWidth())
 		}
 		if m.collapsed {
 			msg.node.CollapseRecursively()
@@ -602,6 +602,7 @@ func (m *model) handleShowSelectorKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.showSizes = !m.showSizes
 	case key.Matches(msg, showLineNumbers):
 		m.showLineNumbers = !m.showLineNumbers
+		Wrap(m.top, m.viewWidth())
 	}
 	m.showShowSelector = false
 	return m, nil
@@ -776,7 +777,7 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		at := m.cursorPointsTo()
 		m.wrap = !m.wrap
 		if m.wrap {
-			Wrap(m.top, m.termWidth)
+			Wrap(m.top, m.viewWidth())
 		} else {
 			DropWrapAll(m.top)
 		}
@@ -985,11 +986,7 @@ func (m *model) View() string {
 	printedLines := 0
 	n := m.head
 
-	var lineNumbersWidth int
 	var cursorLineNumber int
-	if m.showLineNumbers {
-		lineNumbersWidth = m.calcLineNumberWidth()
-	}
 
 	for lineNumber := 0; lineNumber < m.viewHeight(); lineNumber++ {
 		if n == nil {
@@ -997,6 +994,7 @@ func (m *model) View() string {
 		}
 
 		if m.showLineNumbers {
+			lineNumbersWidth := len(strconv.Itoa(m.totalLines))
 			if n.LineNumber == 0 {
 				screen = append(screen, bytes.Repeat([]byte{' '}, lineNumbersWidth)...)
 			} else {
@@ -1162,19 +1160,6 @@ func (m *model) View() string {
 	return string(screen)
 }
 
-func (m *model) calcLineNumberWidth() int {
-	n := m.head
-	width := 0
-	for i := 0; i < m.viewHeight(); i++ {
-		if n == nil {
-			break
-		}
-		width = max(width, len(fmt.Sprintf("%d", n.LineNumber)))
-		n = n.Next
-	}
-	return width
-}
-
 func (m *model) prettyKey(node *Node, selected bool) []byte {
 	b := node.Key
 
@@ -1233,6 +1218,15 @@ func (m *model) prettyPrint(node *Node, selected bool) string {
 	} else {
 		return style(s)
 	}
+}
+
+func (m *model) viewWidth() int {
+	width := m.termWidth
+	if m.showLineNumbers {
+		width -= len(strconv.Itoa(m.totalLines))
+		width -= 2 // For margin between line numbers and JSON.
+	}
+	return width
 }
 
 func (m *model) viewHeight() int {
