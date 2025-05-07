@@ -267,6 +267,7 @@ type model struct {
 	showCursor            bool
 	wrap                  bool
 	collapsed             bool
+	showShowSelector      bool
 	showSizes             bool
 	showLineNumbers       bool
 	totalLines            int
@@ -409,6 +410,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.yank {
 			return m.handleYankKey(msg)
+		}
+		if m.showShowSelector {
+			return m.handleShowSelectorKey(msg)
 		}
 		return m.handleKey(msg)
 	}
@@ -592,6 +596,17 @@ func (m *model) handleYankKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m *model) handleShowSelectorKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch {
+	case key.Matches(msg, showSizes):
+		m.showSizes = !m.showSizes
+	case key.Matches(msg, showLineNumbers):
+		m.showLineNumbers = !m.showLineNumbers
+	}
+	m.showShowSelector = false
+	return m, nil
+}
+
 func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, keyMap.Quit):
@@ -771,8 +786,8 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.redoSearch()
 		m.selectNode(at)
 
-	case key.Matches(msg, keyMap.ShowSizes):
-		m.showSizes = !m.showSizes
+	case key.Matches(msg, keyMap.ShowSelector):
+		m.showShowSelector = true
 
 	case key.Matches(msg, keyMap.Yank):
 		m.yank = true
@@ -1118,6 +1133,9 @@ func (m *model) View() string {
 	if m.yank {
 		screen = append(screen, '\n')
 		screen = append(screen, []byte("(y)value  (p)path  (k)key")...)
+	} else if m.showShowSelector {
+		screen = append(screen, '\n')
+		screen = append(screen, []byte("(s)sizes  (l)line numbers")...)
 	} else if m.gotoSymbolInput.Focused() {
 		screen = append(screen, '\n')
 		screen = append(screen, m.gotoSymbolInput.View()...)
@@ -1225,6 +1243,9 @@ func (m *model) viewHeight() int {
 		return m.termHeight - 2
 	}
 	if m.yank {
+		return m.termHeight - 2
+	}
+	if m.showShowSelector {
 		return m.termHeight - 2
 	}
 	return m.termHeight - 1

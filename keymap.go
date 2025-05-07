@@ -25,7 +25,7 @@ type KeyMap struct {
 	NextSibling         key.Binding
 	PrevSibling         key.Binding
 	ToggleWrap          key.Binding
-	ShowSizes           key.Binding
+	ShowSelector        key.Binding
 	Yank                key.Binding
 	Search              key.Binding
 	SearchNext          key.Binding
@@ -129,9 +129,9 @@ func init() {
 			key.WithKeys("z"),
 			key.WithHelp("", "toggle strings wrap"),
 		),
-		ShowSizes: key.NewBinding(
+		ShowSelector: key.NewBinding(
 			key.WithKeys("s"),
-			key.WithHelp("", "show array/object sizes"),
+			key.WithHelp("", "show sizes/line numbers"),
 		),
 		Yank: key.NewBinding(
 			key.WithKeys("y"),
@@ -173,10 +173,12 @@ func init() {
 }
 
 var (
-	yankValueY = key.NewBinding(key.WithKeys("y"))
-	yankValueV = key.NewBinding(key.WithKeys("v"))
-	yankKey    = key.NewBinding(key.WithKeys("k"))
-	yankPath   = key.NewBinding(key.WithKeys("p"))
-	arrowUp    = key.NewBinding(key.WithKeys("up"))
-	arrowDown  = key.NewBinding(key.WithKeys("down"))
+	yankValueY      = key.NewBinding(key.WithKeys("y"))
+	yankValueV      = key.NewBinding(key.WithKeys("v"))
+	yankKey         = key.NewBinding(key.WithKeys("k"))
+	yankPath        = key.NewBinding(key.WithKeys("p"))
+	arrowUp         = key.NewBinding(key.WithKeys("up"))
+	arrowDown       = key.NewBinding(key.WithKeys("down"))
+	showSizes       = key.NewBinding(key.WithKeys("s"))
+	showLineNumbers = key.NewBinding(key.WithKeys("l"))
 )
