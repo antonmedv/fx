@@ -28,6 +28,7 @@ import (
 
 	"github.com/antonmedv/fx/internal/complete"
 	"github.com/antonmedv/fx/internal/engine"
+	algo "github.com/antonmedv/fx/internal/fuzzy"
 	"github.com/antonmedv/fx/internal/jsonpath"
 	. "github.com/antonmedv/fx/internal/jsonx"
 	"github.com/antonmedv/fx/internal/theme"
@@ -287,7 +288,8 @@ type model struct {
 	locationIndex         int // position in locationHistory
 	keysIndex             []string
 	keysIndexNodes        []*Node
-	fuzzyMatch            *fuzzy.Match
+	fuzzyMatchString      string
+	fuzzyMatchPos         []int
 }
 
 type location struct {
@@ -563,12 +565,23 @@ func (m *model) handleGotoSymbolKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	default:
 		m.gotoSymbolInput, cmd = m.gotoSymbolInput.Update(msg)
-		matches := fuzzy.Find(m.gotoSymbolInput.Value(), m.keysIndex)
-		if len(matches) > 0 {
-			x := matches[0]
-			node := m.keysIndexNodes[x.Index]
-			m.fuzzyMatch = &x
-			m.selectNode(node)
+		pattern := []rune(m.gotoSymbolInput.Value())
+		var result algo.Result
+		var pos *[]int
+		foundIndex := -1
+		for i := range m.keysIndex {
+			input := utils.ToChars([]byte(m.keysIndex[i]))
+			r, p := algo.FuzzyMatchV2(false, false, true, &input, pattern, true, nil)
+			if r.Score > result.Score {
+				result = r
+				pos = p
+				foundIndex = i
+			}
+		}
+		if foundIndex >= 0 && pos != nil {
+			m.fuzzyMatchPos = *pos
+			m.fuzzyMatchString = m.keysIndex[foundIndex]
+			m.selectNode(m.keysIndexNodes[foundIndex])
 		}
 	}
 
@@ -1094,11 +1107,11 @@ func (m *model) View() string {
 		screen = append(screen, '\n')
 	}
 
-	if m.gotoSymbolInput.Focused() && m.fuzzyMatch != nil {
+	if m.gotoSymbolInput.Focused() && m.fuzzyMatchPos != nil {
 		var matchedStr []byte
-		str := m.fuzzyMatch.Str
+		str := m.fuzzyMatchString
 		for i := 0; i < len(str); i++ {
-			if utils.Contains(i, m.fuzzyMatch.MatchedIndexes) {
+			if utils.Contains(i, m.fuzzyMatchPos) {
 				matchedStr = append(matchedStr, theme.CurrentTheme.Search(string(str[i]))...)
 			} else {
 				matchedStr = append(matchedStr, theme.CurrentTheme.StatusBar(string(str[i]))...)
@@ -1539,7 +1552,8 @@ func (m *model) createKeysIndex() {
 
 	m.keysIndex = paths
 	m.keysIndexNodes = nodes
-	m.fuzzyMatch = nil
+	m.fuzzyMatchString = ""
+	m.fuzzyMatchPos = nil
 }
 
 func (m *model) dig(v string) *Node {
