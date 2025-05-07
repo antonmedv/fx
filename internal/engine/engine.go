@@ -34,10 +34,18 @@ func Start(
 	slurp bool,
 	writeOut, writeErr func(string),
 ) int {
+	if slurp {
+		var ok bool
+		parser, ok = Slurp(parser, writeErr)
+		if !ok {
+			return 1
+		}
+	}
+
 	isPrettyPrintArg := len(args) == 1 && (args[0] == "." || args[0] == "this" || args[0] == "x")
 
 	// Fast path.
-	if isPrettyPrintArg && !slurp {
+	if isPrettyPrintArg {
 		for {
 			node, err := parser.Parse()
 			if err != nil {
@@ -108,57 +116,27 @@ func Start(
 		}
 	}
 
-	if slurp {
-		var arr []any
-
-		for {
-			node, err := parser.Parse()
-			if err != nil {
-				if err == io.EOF {
-					break
-				}
-				writeErr(err.Error())
-				return 1
-			}
-
-			arr = append(arr, node.ToValue(vm))
-		}
-
-		input := vm.NewArray(arr...)
-		output, err := main(goja.Undefined(), input)
+	for {
+		node, err := parser.Parse()
 		if err != nil {
+			if err == io.EOF {
+				break
+			}
 			writeErr(err.Error())
 			return 1
 		}
 
+		input := node.ToValue(vm)
+		output, err := main(goja.Undefined(), input)
+		if err != nil {
+			writeErr(errorToString(err))
+			return 1
+		}
+
 		if output.StrictEquals(skip) {
-			return 0
+			continue
 		}
 		echo(output)
-
-	} else {
-		for {
-			node, err := parser.Parse()
-			if err != nil {
-				if err == io.EOF {
-					break
-				}
-				writeErr(err.Error())
-				return 1
-			}
-
-			input := node.ToValue(vm)
-			output, err := main(goja.Undefined(), input)
-			if err != nil {
-				writeErr(errorToString(err))
-				return 1
-			}
-
-			if output.StrictEquals(skip) {
-				continue
-			}
-			echo(output)
-		}
 	}
 
 	return 0
