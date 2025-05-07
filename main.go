@@ -570,8 +570,8 @@ func (m *model) handleGotoSymbolKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		var pos *[]int
 		foundIndex := -1
 		for i := range m.keysIndex {
-			input := utils.ToChars([]byte(m.keysIndex[i]))
-			r, p := algo.FuzzyMatchV2(false, false, true, &input, pattern, true, nil)
+			input := algo.ToChars([]byte(m.keysIndex[i]))
+			r, p := algo.Match(&input, pattern)
 			if r.Score > result.Score {
 				result = r
 				pos = p

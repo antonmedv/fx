@@ -1,8 +1,7 @@
-package utils
+package fuzzy
 
 import (
 	"bytes"
-	"fmt"
 	"unicode"
 	"unicode/utf8"
 	"unsafe"
@@ -123,11 +122,6 @@ func (chars *Chars) Length() int {
 		return len(runes)
 	}
 	return len(chars.slice)
-}
-
-// String returns the string representation of a Chars object.
-func (chars *Chars) String() string {
-	return fmt.Sprintf("Chars{slice: []byte(%q), inBytes: %v, trimLengthKnown: %v, trimLength: %d, Index: %d}", chars.slice, chars.inBytes, chars.trimLengthKnown, chars.trimLength, chars.Index)
 }
 
 // TrimLength returns the length after trimming leading and trailing whitespaces

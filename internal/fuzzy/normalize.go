@@ -1,7 +1,7 @@
 // Normalization of latin script letters
 // Reference: http://www.unicode.org/Public/UCD/latest/ucd/Index.txt
 
-package algo
+package fuzzy
 
 var normalized = map[rune]rune{
 	0x00E1: 'a', //  WITH ACUTE, LATIN SMALL LETTER

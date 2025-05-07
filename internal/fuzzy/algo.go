@@ -1,109 +1,17 @@
-package algo
-
-/*
-
-Algorithm
----------
-
-FuzzyMatchV1 finds the first "fuzzy" occurrence of the pattern within the given
-text in O(n) time where n is the length of the text. Once the position of the
-last character is located, it traverses backwards to see if there's a shorter
-substring that matches the pattern.
-
-    a_____b___abc__  To find "abc"
-    *-----*-----*>   1. Forward scan
-             <***    2. Backward scan
-
-The algorithm is simple and fast, but as it only sees the first occurrence,
-it is not guaranteed to find the occurrence with the highest score.
-
-    a_____b__c__abc
-    *-----*--*  ***
-
-FuzzyMatchV2 implements a modified version of Smith-Waterman algorithm to find
-the optimal solution (highest score) according to the scoring criteria. Unlike
-the original algorithm, omission or mismatch of a character in the pattern is
-not allowed.
-
-Performance
------------
-
-The new V2 algorithm is slower than V1 as it examines all occurrences of the
-pattern instead of stopping immediately after finding the first one. The time
-complexity of the algorithm is O(nm) if a match is found and O(n) otherwise
-where n is the length of the item and m is the length of the pattern. Thus, the
-performance overhead may not be noticeable for a query with high selectivity.
-However, if the performance is more important than the quality of the result,
-you can still choose v1 algorithm with --algo=v1.
-
-Scoring criteria
-----------------
-
-- We prefer matches at special positions, such as the start of a word, or
-  uppercase character in camelCase words.
-
-- That is, we prefer an occurrence of the pattern with more characters
-  matching at special positions, even if the total match length is longer.
-    e.g. "fuzzyfinder" vs. "fuzzy-finder" on "ff"
-                            ````````````
-- Also, if the first character in the pattern appears at one of the special
-  positions, the bonus point for the position is multiplied by a constant
-  as it is extremely likely that the first character in the typed pattern
-  has more significance than the rest.
-    e.g. "fo-bar" vs. "foob-r" on "br"
-          ``````
-- But since fzf is still a fuzzy finder, not an acronym finder, we should also
-  consider the total length of the matched substring. This is why we have the
-  gap penalty. The gap penalty increases as the length of the gap (distance
-  between the matching characters) increases, so the effect of the bonus is
-  eventually cancelled at some point.
-    e.g. "fuzzyfinder" vs. "fuzzy-blurry-finder" on "ff"
-          ```````````
-- Consequently, it is crucial to find the right balance between the bonus
-  and the gap penalty. The parameters were chosen that the bonus is cancelled
-  when the gap size increases beyond 8 characters.
-
-- The bonus mechanism can have the undesirable side effect where consecutive
-  matches are ranked lower than the ones with gaps.
-    e.g. "foobar" vs. "foo-bar" on "foob"
-                       ```````
-- To correct this anomaly, we also give extra bonus point to each character
-  in a consecutive matching chunk.
-    e.g. "foobar" vs. "foo-bar" on "foob"
-          ``````
-- The amount of consecutive bonus is primarily determined by the bonus of the
-  first character in the chunk.
-    e.g. "foobar" vs. "out-of-bound" on "oob"
-                       ````````````
-*/
+package fuzzy
 
 import (
 	"bytes"
-	"fmt"
-	"os"
 	"strings"
 	"unicode"
 	"unicode/utf8"
-
-	"github.com/antonmedv/fx/internal/utils"
 )
 
-var DEBUG bool
-
-var delimiterChars = "/,:;|"
+var delimiterChars = "."
 
 const whiteChars = " \t\n\v\f\r\x85\xA0"
 
-func indexAt(index int, max int, forward bool) int {
-	if forward {
-		return index
-	}
-	return max - index - 1
-}
-
-// Result contains the results of running a match function.
 type Result struct {
-	// TODO int32 should suffice
 	Start int
 	End   int
 	Score int
@@ -147,12 +55,12 @@ const (
 
 var (
 	// Extra bonus for word boundary after whitespace character or beginning of the string
-	bonusBoundaryWhite int16 = bonusBoundary + 2
+	bonusBoundaryWhite int16 = bonusBoundary
 
 	// Extra bonus for word boundary after slash, colon, semi-colon, and comma
 	bonusBoundaryDelimiter int16 = bonusBoundary + 1
 
-	initialCharClass = charWhite
+	initialCharClass = charDelimiter
 
 	// A minor optimization that can give 15%+ performance boost
 	asciiCharClasses [unicode.MaxASCII + 1]charClass
@@ -173,26 +81,7 @@ const (
 	charNumber
 )
 
-func Init(scheme string) bool {
-	switch scheme {
-	case "default":
-		bonusBoundaryWhite = bonusBoundary + 2
-		bonusBoundaryDelimiter = bonusBoundary + 1
-	case "path":
-		bonusBoundaryWhite = bonusBoundary
-		bonusBoundaryDelimiter = bonusBoundary + 1
-		if os.PathSeparator == '/' {
-			delimiterChars = "/"
-		} else {
-			delimiterChars = string([]rune{os.PathSeparator, '/'})
-		}
-		initialCharClass = charDelimiter
-	case "history":
-		bonusBoundaryWhite = bonusBoundary
-		bonusBoundaryDelimiter = bonusBoundary
-	default:
-		return false
-	}
+func init() {
 	for i := 0; i <= unicode.MaxASCII; i++ {
 		char := rune(i)
 		c := charNonWord
@@ -214,7 +103,6 @@ func Init(scheme string) bool {
 			bonusMatrix[i][j] = bonusFor(charClass(i), charClass(j))
 		}
 	}
-	return true
 }
 
 func posArray(withPos bool, len int) *[]int {
@@ -225,7 +113,7 @@ func posArray(withPos bool, len int) *[]int {
 	return nil
 }
 
-func alloc16(offset int, slab *utils.Slab, size int) (int, []int16) {
+func alloc16(offset int, slab *Slab, size int) (int, []int16) {
 	if slab != nil && cap(slab.I16) > offset+size {
 		slice := slab.I16[offset : offset+size]
 		return offset + size, slice
@@ -233,7 +121,7 @@ func alloc16(offset int, slab *utils.Slab, size int) (int, []int16) {
 	return offset, make([]int16, size)
 }
 
-func alloc32(offset int, slab *utils.Slab, size int) (int, []int32) {
+func alloc32(offset int, slab *Slab, size int) (int, []int32) {
 	if slab != nil && cap(slab.I32) > offset+size {
 		slice := slab.I32[offset : offset+size]
 		return offset + size, slice
@@ -295,13 +183,6 @@ func bonusFor(prevClass charClass, class charClass) int16 {
 	return 0
 }
 
-func bonusAt(input *utils.Chars, idx int) int16 {
-	if idx == 0 {
-		return bonusBoundaryWhite
-	}
-	return bonusMatrix[charClassOf(input.Get(idx-1))][charClassOf(input.Get(idx))]
-}
-
 func normalizeRune(r rune) rune {
 	if r < 0x00C0 || r > 0x2184 {
 		return r
@@ -314,12 +195,7 @@ func normalizeRune(r rune) rune {
 	return r
 }
 
-// Algo functions make two assumptions
-// 1. "pattern" is given in lowercase if "caseSensitive" is false
-// 2. "pattern" is already normalized if "normalize" is true
-type Algo func(caseSensitive bool, normalize bool, forward bool, input *utils.Chars, pattern []rune, withPos bool, slab *utils.Slab) (Result, *[]int)
-
-func trySkip(input *utils.Chars, caseSensitive bool, b byte, from int) int {
+func trySkip(input *Chars, caseSensitive bool, b byte, from int) int {
 	byteArray := input.Bytes()[from:]
 	idx := bytes.IndexByte(byteArray, b)
 	if idx == 0 {
@@ -352,7 +228,7 @@ func isAscii(runes []rune) bool {
 	return true
 }
 
-func asciiFuzzyIndex(input *utils.Chars, pattern []rune, caseSensitive bool) (int, int) {
+func asciiFuzzyIndex(input *Chars, pattern []rune, caseSensitive bool) (int, int) {
 	// Can't determine
 	if !input.IsBytes() {
 		return 0, input.Length()
@@ -393,60 +269,28 @@ func asciiFuzzyIndex(input *utils.Chars, pattern []rune, caseSensitive bool) (in
 	return firstIdx, lastIdx + 1
 }
 
-func debugV2(T []rune, pattern []rune, F []int32, lastIdx int, H []int16, C []int16) {
-	width := lastIdx - int(F[0]) + 1
-
-	for i, f := range F {
-		I := i * width
-		if i == 0 {
-			fmt.Print("  ")
-			for j := int(f); j <= lastIdx; j++ {
-				fmt.Print(" " + string(T[j]) + " ")
-			}
-			fmt.Println()
-		}
-		fmt.Print(string(pattern[i]) + " ")
-		for idx := int(F[0]); idx < int(f); idx++ {
-			fmt.Print(" 0 ")
-		}
-		for idx := int(f); idx <= lastIdx; idx++ {
-			fmt.Printf("%2d ", H[i*width+idx-int(F[0])])
-		}
-		fmt.Println()
-
-		fmt.Print("  ")
-		for idx, p := range C[I : I+width] {
-			if idx+int(F[0]) < int(F[i]) {
-				p = 0
-			}
-			if p > 0 {
-				fmt.Printf("%2d ", p)
-			} else {
-				fmt.Print("   ")
-			}
-		}
-		fmt.Println()
-	}
+type Slab struct {
+	I16 []int16
+	I32 []int32
 }
 
-func FuzzyMatchV2(caseSensitive bool, normalize bool, forward bool, input *utils.Chars, pattern []rune, withPos bool, slab *utils.Slab) (Result, *[]int) {
+func Match(input *Chars, pattern []rune) (Result, *[]int) {
+	caseSensitive := false
+	normalize := true
+	forward := true
+
+	var slab *Slab
 	// Assume that pattern is given in lowercase if case-insensitive.
 	// First check if there's a match and calculate bonus for each position.
 	// If the input string is too long, consider finding the matching chars in
 	// this phase as well (non-optimal alignment).
 	M := len(pattern)
 	if M == 0 {
-		return Result{0, 0, 0}, posArray(withPos, M)
+		return Result{0, 0, 0}, posArray(true, M)
 	}
 	N := input.Length()
 	if M > N {
 		return Result{-1, -1, 0}, nil
-	}
-
-	// Since O(nm) algorithm can be prohibitively expensive for large input,
-	// we fall back to the greedy algorithm.
-	if slab != nil && N*M > cap(slab.I16) {
-		return FuzzyMatchV1(caseSensitive, normalize, forward, input, pattern, withPos, slab)
 	}
 
 	// Phase 1. Optimized search for ASCII string
@@ -533,9 +377,6 @@ func FuzzyMatchV2(caseSensitive bool, normalize bool, forward bool, input *utils
 	}
 	if M == 1 {
 		result := Result{minIdx + maxScorePos, minIdx + maxScorePos + 1, int(maxScore)}
-		if !withPos {
-			return result, nil
-		}
 		pos := []int{minIdx + maxScorePos}
 		return result, &pos
 	}
@@ -608,416 +449,37 @@ func FuzzyMatchV2(caseSensitive bool, normalize bool, forward bool, input *utils
 		}
 	}
 
-	if DEBUG {
-		debugV2(T, pattern, F, lastIdx, H, C)
-	}
-
 	// Phase 4. (Optional) Backtrace to find character positions
-	pos := posArray(withPos, M)
+	pos := posArray(true, M)
 	j := f0
-	if withPos {
-		i := M - 1
-		j = maxScorePos
-		preferMatch := true
-		for {
-			I := i * width
-			j0 := j - f0
-			s := H[I+j0]
+	i := M - 1
+	j = maxScorePos
+	preferMatch := true
+	for {
+		I := i * width
+		j0 := j - f0
+		s := H[I+j0]
 
-			var s1, s2 int16
-			if i > 0 && j >= int(F[i]) {
-				s1 = H[I-width+j0-1]
-			}
-			if j > int(F[i]) {
-				s2 = H[I+j0-1]
-			}
-
-			if s > s1 && (s > s2 || s == s2 && preferMatch) {
-				*pos = append(*pos, j+minIdx)
-				if i == 0 {
-					break
-				}
-				i--
-			}
-			preferMatch = C[I+j0] > 1 || I+width+j0+1 < len(C) && C[I+width+j0+1] > 0
-			j--
+		var s1, s2 int16
+		if i > 0 && j >= int(F[i]) {
+			s1 = H[I-width+j0-1]
 		}
+		if j > int(F[i]) {
+			s2 = H[I+j0-1]
+		}
+
+		if s > s1 && (s > s2 || s == s2 && preferMatch) {
+			*pos = append(*pos, j+minIdx)
+			if i == 0 {
+				break
+			}
+			i--
+		}
+		preferMatch = C[I+j0] > 1 || I+width+j0+1 < len(C) && C[I+width+j0+1] > 0
+		j--
 	}
 	// Start offset we return here is only relevant when begin tiebreak is used.
 	// However finding the accurate offset requires backtracking, and we don't
 	// want to pay extra cost for the option that has lost its importance.
 	return Result{minIdx + j, minIdx + maxScorePos + 1, int(maxScore)}, pos
-}
-
-// Implement the same sorting criteria as V2
-func calculateScore(caseSensitive bool, normalize bool, text *utils.Chars, pattern []rune, sidx int, eidx int, withPos bool) (int, *[]int) {
-	pidx, score, inGap, consecutive, firstBonus := 0, 0, false, 0, int16(0)
-	pos := posArray(withPos, len(pattern))
-	prevClass := initialCharClass
-	if sidx > 0 {
-		prevClass = charClassOf(text.Get(sidx - 1))
-	}
-	for idx := sidx; idx < eidx; idx++ {
-		char := text.Get(idx)
-		class := charClassOf(char)
-		if !caseSensitive {
-			if char >= 'A' && char <= 'Z' {
-				char += 32
-			} else if char > unicode.MaxASCII {
-				char = unicode.To(unicode.LowerCase, char)
-			}
-		}
-		// pattern is already normalized
-		if normalize {
-			char = normalizeRune(char)
-		}
-		if char == pattern[pidx] {
-			if withPos {
-				*pos = append(*pos, idx)
-			}
-			score += scoreMatch
-			bonus := bonusMatrix[prevClass][class]
-			if consecutive == 0 {
-				firstBonus = bonus
-			} else {
-				// Break consecutive chunk
-				if bonus >= bonusBoundary && bonus > firstBonus {
-					firstBonus = bonus
-				}
-				bonus = max(max(bonus, firstBonus), bonusConsecutive)
-			}
-			if pidx == 0 {
-				score += int(bonus * bonusFirstCharMultiplier)
-			} else {
-				score += int(bonus)
-			}
-			inGap = false
-			consecutive++
-			pidx++
-		} else {
-			if inGap {
-				score += scoreGapExtension
-			} else {
-				score += scoreGapStart
-			}
-			inGap = true
-			consecutive = 0
-			firstBonus = 0
-		}
-		prevClass = class
-	}
-	return score, pos
-}
-
-// FuzzyMatchV1 performs fuzzy-match
-func FuzzyMatchV1(caseSensitive bool, normalize bool, forward bool, text *utils.Chars, pattern []rune, withPos bool, slab *utils.Slab) (Result, *[]int) {
-	if len(pattern) == 0 {
-		return Result{0, 0, 0}, nil
-	}
-	idx, _ := asciiFuzzyIndex(text, pattern, caseSensitive)
-	if idx < 0 {
-		return Result{-1, -1, 0}, nil
-	}
-
-	pidx := 0
-	sidx := -1
-	eidx := -1
-
-	lenRunes := text.Length()
-	lenPattern := len(pattern)
-
-	for index := 0; index < lenRunes; index++ {
-		char := text.Get(indexAt(index, lenRunes, forward))
-		// This is considerably faster than blindly applying strings.ToLower to the
-		// whole string
-		if !caseSensitive {
-			// Partially inlining `unicode.ToLower`. Ugly, but makes a noticeable
-			// difference in CPU cost. (Measured on Go 1.4.1. Also note that the Go
-			// compiler as of now does not inline non-leaf functions.)
-			if char >= 'A' && char <= 'Z' {
-				char += 32
-			} else if char > unicode.MaxASCII {
-				char = unicode.To(unicode.LowerCase, char)
-			}
-		}
-		if normalize {
-			char = normalizeRune(char)
-		}
-		pchar := pattern[indexAt(pidx, lenPattern, forward)]
-		if char == pchar {
-			if sidx < 0 {
-				sidx = index
-			}
-			if pidx++; pidx == lenPattern {
-				eidx = index + 1
-				break
-			}
-		}
-	}
-
-	if sidx >= 0 && eidx >= 0 {
-		pidx--
-		for index := eidx - 1; index >= sidx; index-- {
-			tidx := indexAt(index, lenRunes, forward)
-			char := text.Get(tidx)
-			if !caseSensitive {
-				if char >= 'A' && char <= 'Z' {
-					char += 32
-				} else if char > unicode.MaxASCII {
-					char = unicode.To(unicode.LowerCase, char)
-				}
-			}
-			if normalize {
-				char = normalizeRune(char)
-			}
-
-			pidx_ := indexAt(pidx, lenPattern, forward)
-			pchar := pattern[pidx_]
-			if char == pchar {
-				if pidx--; pidx < 0 {
-					sidx = index
-					break
-				}
-			}
-		}
-
-		if !forward {
-			sidx, eidx = lenRunes-eidx, lenRunes-sidx
-		}
-
-		score, pos := calculateScore(caseSensitive, normalize, text, pattern, sidx, eidx, withPos)
-		return Result{sidx, eidx, score}, pos
-	}
-	return Result{-1, -1, 0}, nil
-}
-
-// ExactMatchNaive is a basic string searching algorithm that handles case
-// sensitivity. Although naive, it still performs better than the combination
-// of strings.ToLower + strings.Index for typical fzf use cases where input
-// strings and patterns are not very long.
-//
-// Since 0.15.0, this function searches for the match with the highest
-// bonus point, instead of stopping immediately after finding the first match.
-// The solution is much cheaper since there is only one possible alignment of
-// the pattern.
-func ExactMatchNaive(caseSensitive bool, normalize bool, forward bool, text *utils.Chars, pattern []rune, withPos bool, slab *utils.Slab) (Result, *[]int) {
-	return exactMatchNaive(caseSensitive, normalize, forward, false, text, pattern, withPos, slab)
-}
-
-func ExactMatchBoundary(caseSensitive bool, normalize bool, forward bool, text *utils.Chars, pattern []rune, withPos bool, slab *utils.Slab) (Result, *[]int) {
-	return exactMatchNaive(caseSensitive, normalize, forward, true, text, pattern, withPos, slab)
-}
-
-func exactMatchNaive(caseSensitive bool, normalize bool, forward bool, boundaryCheck bool, text *utils.Chars, pattern []rune, withPos bool, slab *utils.Slab) (Result, *[]int) {
-	if len(pattern) == 0 {
-		return Result{0, 0, 0}, nil
-	}
-
-	lenRunes := text.Length()
-	lenPattern := len(pattern)
-
-	if lenRunes < lenPattern {
-		return Result{-1, -1, 0}, nil
-	}
-
-	idx, _ := asciiFuzzyIndex(text, pattern, caseSensitive)
-	if idx < 0 {
-		return Result{-1, -1, 0}, nil
-	}
-
-	// For simplicity, only look at the bonus at the first character position
-	pidx := 0
-	bestPos, bonus, bestBonus := -1, int16(0), int16(-1)
-	for index := 0; index < lenRunes; index++ {
-		index_ := indexAt(index, lenRunes, forward)
-		char := text.Get(index_)
-		if !caseSensitive {
-			if char >= 'A' && char <= 'Z' {
-				char += 32
-			} else if char > unicode.MaxASCII {
-				char = unicode.To(unicode.LowerCase, char)
-			}
-		}
-		if normalize {
-			char = normalizeRune(char)
-		}
-		pidx_ := indexAt(pidx, lenPattern, forward)
-		pchar := pattern[pidx_]
-		ok := pchar == char
-		if ok {
-			if pidx_ == 0 {
-				bonus = bonusAt(text, index_)
-			}
-			if boundaryCheck {
-				ok = bonus >= bonusBoundary
-				if ok && pidx_ == 0 {
-					ok = index_ == 0 || charClassOf(text.Get(index_-1)) <= charDelimiter
-				}
-				if ok && pidx_ == len(pattern)-1 {
-					ok = index_ == lenRunes-1 || charClassOf(text.Get(index_+1)) <= charDelimiter
-				}
-			}
-		}
-		if ok {
-			pidx++
-			if pidx == lenPattern {
-				if bonus > bestBonus {
-					bestPos, bestBonus = index, bonus
-				}
-				if bonus >= bonusBoundary {
-					break
-				}
-				index -= pidx - 1
-				pidx, bonus = 0, 0
-			}
-		} else {
-			index -= pidx
-			pidx, bonus = 0, 0
-		}
-	}
-	if bestPos >= 0 {
-		var sidx, eidx int
-		if forward {
-			sidx = bestPos - lenPattern + 1
-			eidx = bestPos + 1
-		} else {
-			sidx = lenRunes - (bestPos + 1)
-			eidx = lenRunes - (bestPos - lenPattern + 1)
-		}
-		var score int
-		if boundaryCheck {
-			// Underscore boundaries should be ranked lower than the other types of boundaries
-			score = int(bonus)
-			deduct := int(bonus-bonusBoundary) + 1
-			if sidx > 0 && text.Get(sidx-1) == '_' {
-				score -= deduct + 1
-				deduct = 1
-			}
-			if eidx < lenRunes && text.Get(eidx) == '_' {
-				score -= deduct
-			}
-			// Add base score so that this can compete with other match types e.g. 'foo' | bar
-			score += scoreMatch*lenPattern + int(bonusBoundaryWhite)*(lenPattern+1)
-		} else {
-			score, _ = calculateScore(caseSensitive, normalize, text, pattern, sidx, eidx, false)
-		}
-		return Result{sidx, eidx, score}, nil
-	}
-	return Result{-1, -1, 0}, nil
-}
-
-// PrefixMatch performs prefix-match
-func PrefixMatch(caseSensitive bool, normalize bool, forward bool, text *utils.Chars, pattern []rune, withPos bool, slab *utils.Slab) (Result, *[]int) {
-	if len(pattern) == 0 {
-		return Result{0, 0, 0}, nil
-	}
-
-	trimmedLen := 0
-	if !unicode.IsSpace(pattern[0]) {
-		trimmedLen = text.LeadingWhitespaces()
-	}
-
-	if text.Length()-trimmedLen < len(pattern) {
-		return Result{-1, -1, 0}, nil
-	}
-
-	for index, r := range pattern {
-		char := text.Get(trimmedLen + index)
-		if !caseSensitive {
-			char = unicode.ToLower(char)
-		}
-		if normalize {
-			char = normalizeRune(char)
-		}
-		if char != r {
-			return Result{-1, -1, 0}, nil
-		}
-	}
-	lenPattern := len(pattern)
-	score, _ := calculateScore(caseSensitive, normalize, text, pattern, trimmedLen, trimmedLen+lenPattern, false)
-	return Result{trimmedLen, trimmedLen + lenPattern, score}, nil
-}
-
-// SuffixMatch performs suffix-match
-func SuffixMatch(caseSensitive bool, normalize bool, forward bool, text *utils.Chars, pattern []rune, withPos bool, slab *utils.Slab) (Result, *[]int) {
-	lenRunes := text.Length()
-	trimmedLen := lenRunes
-	if len(pattern) == 0 || !unicode.IsSpace(pattern[len(pattern)-1]) {
-		trimmedLen -= text.TrailingWhitespaces()
-	}
-	if len(pattern) == 0 {
-		return Result{trimmedLen, trimmedLen, 0}, nil
-	}
-	diff := trimmedLen - len(pattern)
-	if diff < 0 {
-		return Result{-1, -1, 0}, nil
-	}
-
-	for index, r := range pattern {
-		char := text.Get(index + diff)
-		if !caseSensitive {
-			char = unicode.ToLower(char)
-		}
-		if normalize {
-			char = normalizeRune(char)
-		}
-		if char != r {
-			return Result{-1, -1, 0}, nil
-		}
-	}
-	lenPattern := len(pattern)
-	sidx := trimmedLen - lenPattern
-	eidx := trimmedLen
-	score, _ := calculateScore(caseSensitive, normalize, text, pattern, sidx, eidx, false)
-	return Result{sidx, eidx, score}, nil
-}
-
-// EqualMatch performs equal-match
-func EqualMatch(caseSensitive bool, normalize bool, forward bool, text *utils.Chars, pattern []rune, withPos bool, slab *utils.Slab) (Result, *[]int) {
-	lenPattern := len(pattern)
-	if lenPattern == 0 {
-		return Result{-1, -1, 0}, nil
-	}
-
-	// Strip leading whitespaces
-	trimmedLen := 0
-	if !unicode.IsSpace(pattern[0]) {
-		trimmedLen = text.LeadingWhitespaces()
-	}
-
-	// Strip trailing whitespaces
-	trimmedEndLen := 0
-	if !unicode.IsSpace(pattern[lenPattern-1]) {
-		trimmedEndLen = text.TrailingWhitespaces()
-	}
-
-	if text.Length()-trimmedLen-trimmedEndLen != lenPattern {
-		return Result{-1, -1, 0}, nil
-	}
-	match := true
-	if normalize {
-		runes := text.ToRunes()
-		for idx, pchar := range pattern {
-			char := runes[trimmedLen+idx]
-			if !caseSensitive {
-				char = unicode.To(unicode.LowerCase, char)
-			}
-			if normalizeRune(pchar) != normalizeRune(char) {
-				match = false
-				break
-			}
-		}
-	} else {
-		runes := text.ToRunes()
-		runesStr := string(runes[trimmedLen : len(runes)-trimmedEndLen])
-		if !caseSensitive {
-			runesStr = strings.ToLower(runesStr)
-		}
-		match = runesStr == string(pattern)
-	}
-	if match {
-		return Result{trimmedLen, trimmedLen + lenPattern, (scoreMatch+int(bonusBoundaryWhite))*lenPattern +
-			(bonusFirstCharMultiplier-1)*int(bonusBoundaryWhite)}, nil
-	}
-	return Result{-1, -1, 0}, nil
 }
