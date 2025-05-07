@@ -27,7 +27,7 @@ import (
 
 	"github.com/antonmedv/fx/internal/complete"
 	"github.com/antonmedv/fx/internal/engine"
-	algo "github.com/antonmedv/fx/internal/fuzzy"
+	"github.com/antonmedv/fx/internal/fuzzy"
 	"github.com/antonmedv/fx/internal/jsonpath"
 	. "github.com/antonmedv/fx/internal/jsonx"
 	"github.com/antonmedv/fx/internal/theme"
@@ -287,7 +287,7 @@ type model struct {
 	locationIndex         int // position in locationHistory
 	keysIndex             []string
 	keysIndexNodes        []*Node
-	fuzzyMatch            *algo.Match
+	fuzzyMatch            *fuzzy.Match
 }
 
 type location struct {
@@ -564,7 +564,7 @@ func (m *model) handleGotoSymbolKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	default:
 		m.gotoSymbolInput, cmd = m.gotoSymbolInput.Update(msg)
 		pattern := []rune(m.gotoSymbolInput.Value())
-		found := algo.Find(pattern, m.keysIndex)
+		found := fuzzy.Find(pattern, m.keysIndex)
 		if found != nil {
 			m.fuzzyMatch = found
 			m.selectNode(m.keysIndexNodes[found.Index])
@@ -1565,7 +1565,7 @@ func (m *model) dig(v string) *Node {
 
 	keys, nodes := at.Children()
 
-	found := algo.Find([]rune(searchTerm), keys)
+	found := fuzzy.Find([]rune(searchTerm), keys)
 	if found == nil {
 		return nil
 	}
