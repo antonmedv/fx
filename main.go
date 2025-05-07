@@ -24,10 +24,10 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mattn/go-isatty"
-	"github.com/sahilm/fuzzy"
 
 	"github.com/antonmedv/fx/internal/complete"
 	"github.com/antonmedv/fx/internal/engine"
+	"github.com/antonmedv/fx/internal/fuzzy"
 	"github.com/antonmedv/fx/internal/jsonpath"
 	. "github.com/antonmedv/fx/internal/jsonx"
 	"github.com/antonmedv/fx/internal/theme"
@@ -563,12 +563,11 @@ func (m *model) handleGotoSymbolKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	default:
 		m.gotoSymbolInput, cmd = m.gotoSymbolInput.Update(msg)
-		matches := fuzzy.Find(m.gotoSymbolInput.Value(), m.keysIndex)
-		if len(matches) > 0 {
-			x := matches[0]
-			node := m.keysIndexNodes[x.Index]
-			m.fuzzyMatch = &x
-			m.selectNode(node)
+		pattern := []rune(m.gotoSymbolInput.Value())
+		found := fuzzy.Find(pattern, m.keysIndex)
+		if found != nil {
+			m.fuzzyMatch = found
+			m.selectNode(m.keysIndexNodes[found.Index])
 		}
 	}
 
@@ -1098,7 +1097,7 @@ func (m *model) View() string {
 		var matchedStr []byte
 		str := m.fuzzyMatch.Str
 		for i := 0; i < len(str); i++ {
-			if utils.Contains(i, m.fuzzyMatch.MatchedIndexes) {
+			if utils.Contains(i, m.fuzzyMatch.Pos) {
 				matchedStr = append(matchedStr, theme.CurrentTheme.Search(string(str[i]))...)
 			} else {
 				matchedStr = append(matchedStr, theme.CurrentTheme.StatusBar(string(str[i]))...)
@@ -1532,8 +1531,8 @@ func (m *model) createKeysIndex() {
 	if root == nil {
 		return
 	}
-	paths := make([]string, 0, 10_000)
-	nodes := make([]*Node, 0, 10_000)
+	paths := make([]string, 0, 100_000)
+	nodes := make([]*Node, 0, 100_000)
 
 	root.Paths(&paths, &nodes)
 
@@ -1566,12 +1565,12 @@ func (m *model) dig(v string) *Node {
 
 	keys, nodes := at.Children()
 
-	matches := fuzzy.Find(searchTerm, keys)
-	if len(matches) == 0 {
+	found := fuzzy.Find([]rune(searchTerm), keys)
+	if found == nil {
 		return nil
 	}
 
-	return nodes[matches[0].Index]
+	return nodes[found.Index]
 }
 
 func (m *model) print() tea.Cmd {
