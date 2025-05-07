@@ -274,11 +274,13 @@ type Slab struct {
 	I32 []int32
 }
 
-func Match(input *Chars, pattern []rune) (Result, *[]int) {
-	caseSensitive := false
-	normalize := true
-	forward := true
+const (
+	caseSensitive = false
+	normalize     = true
+	forward       = true
+)
 
+func fuzzyMatch(input *Chars, pattern []rune) (Result, *[]int) {
 	var slab *Slab
 	// Assume that pattern is given in lowercase if case-insensitive.
 	// First check if there's a match and calculate bonus for each position.

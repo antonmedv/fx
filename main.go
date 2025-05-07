@@ -24,7 +24,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mattn/go-isatty"
-	"github.com/sahilm/fuzzy"
 
 	"github.com/antonmedv/fx/internal/complete"
 	"github.com/antonmedv/fx/internal/engine"
@@ -288,8 +287,7 @@ type model struct {
 	locationIndex         int // position in locationHistory
 	keysIndex             []string
 	keysIndexNodes        []*Node
-	fuzzyMatchString      string
-	fuzzyMatchPos         []int
+	fuzzyMatch            *algo.Match
 }
 
 type location struct {
@@ -566,22 +564,10 @@ func (m *model) handleGotoSymbolKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	default:
 		m.gotoSymbolInput, cmd = m.gotoSymbolInput.Update(msg)
 		pattern := []rune(m.gotoSymbolInput.Value())
-		var result algo.Result
-		var pos *[]int
-		foundIndex := -1
-		for i := range m.keysIndex {
-			input := algo.ToChars([]byte(m.keysIndex[i]))
-			r, p := algo.Match(&input, pattern)
-			if r.Score > result.Score {
-				result = r
-				pos = p
-				foundIndex = i
-			}
-		}
-		if foundIndex >= 0 && pos != nil {
-			m.fuzzyMatchPos = *pos
-			m.fuzzyMatchString = m.keysIndex[foundIndex]
-			m.selectNode(m.keysIndexNodes[foundIndex])
+		found := algo.Find(pattern, m.keysIndex)
+		if found != nil {
+			m.fuzzyMatch = found
+			m.selectNode(m.keysIndexNodes[found.Index])
 		}
 	}
 
@@ -1107,11 +1093,11 @@ func (m *model) View() string {
 		screen = append(screen, '\n')
 	}
 
-	if m.gotoSymbolInput.Focused() && m.fuzzyMatchPos != nil {
+	if m.gotoSymbolInput.Focused() && m.fuzzyMatch != nil {
 		var matchedStr []byte
-		str := m.fuzzyMatchString
+		str := m.fuzzyMatch.Str
 		for i := 0; i < len(str); i++ {
-			if utils.Contains(i, m.fuzzyMatchPos) {
+			if utils.Contains(i, m.fuzzyMatch.Pos) {
 				matchedStr = append(matchedStr, theme.CurrentTheme.Search(string(str[i]))...)
 			} else {
 				matchedStr = append(matchedStr, theme.CurrentTheme.StatusBar(string(str[i]))...)
@@ -1552,8 +1538,7 @@ func (m *model) createKeysIndex() {
 
 	m.keysIndex = paths
 	m.keysIndexNodes = nodes
-	m.fuzzyMatchString = ""
-	m.fuzzyMatchPos = nil
+	m.fuzzyMatch = nil
 }
 
 func (m *model) dig(v string) *Node {
@@ -1580,12 +1565,12 @@ func (m *model) dig(v string) *Node {
 
 	keys, nodes := at.Children()
 
-	matches := fuzzy.Find(searchTerm, keys)
-	if len(matches) == 0 {
+	found := algo.Find([]rune(searchTerm), keys)
+	if found == nil {
 		return nil
 	}
 
-	return nodes[matches[0].Index]
+	return nodes[found.Index]
 }
 
 func (m *model) print() tea.Cmd {
