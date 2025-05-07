@@ -3,22 +3,23 @@ package engine
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
 func Transpile(args []string, i int) string {
 	jsCode := transpile(args[i])
 	snippet := formatErr(args, i, jsCode)
-	return fmt.Sprintf(`  json = apply((function () {
-    const x = this
-    try {
+	return fmt.Sprintf(`  try {
+    json = apply((function () {
+      const x = this
       return %s
-    } catch (e) {
-      throw %s
-    }
-  }).call(json), json)
+    }).call(json), json)
+  } catch (e) {
+    throw %s
+  }
 
-`, jsCode, "`"+snippet+"${e}`")
+`, jsCode, strconv.Quote(snippet)+" + e.toString()")
 }
 
 var (

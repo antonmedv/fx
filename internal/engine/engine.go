@@ -15,6 +15,14 @@ import (
 //go:embed stdlib.js
 var Stdlib string
 
+func init() {
+	fxrc, err := readFxrc()
+	if err != nil {
+		panic(err)
+	}
+	Stdlib += fxrc
+}
+
 type Parser interface {
 	Parse() (*jsonx.Node, error)
 	Recover() *jsonx.Node
