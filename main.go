@@ -1531,8 +1531,8 @@ func (m *model) createKeysIndex() {
 	if root == nil {
 		return
 	}
-	paths := make([]string, 0, 10_000)
-	nodes := make([]*Node, 0, 10_000)
+	paths := make([]string, 0, 100_000)
+	nodes := make([]*Node, 0, 100_000)
 
 	root.Paths(&paths, &nodes)
 
