@@ -16,7 +16,7 @@ cat file.json | npx fx .field
 Or use **deno**:
 
 ```sh
-cat file.json | deno run -A https://fx.wtf .field
+cat file.json | deno run -A npm:fx .field
 ```
 
 ## Usage
@@ -79,12 +79,6 @@ Fx comes with a set of useful functions: **uniq**, **sort**, **groupBy**, **chun
 
 ```sh
 cat file.json | fx 'uniq' 'sort' 'groupBy(x => x.name)'
-```
-
-Fx works with promises.
-
-```sh
-echo '"https://medv.io/*"' | fx 'fetch' '.text()'
 ```
 
 ### Syntactic Sugar
