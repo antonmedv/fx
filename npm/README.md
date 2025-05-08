@@ -95,10 +95,10 @@ echo '[{"name": "world"}]' | fx 'map(`Hello, ${x.name}!`)'
 ```
 
 Fx has a special syntax for the flatMap function. Fox example,
-`.flatMap(x => x.labels.flatMap(x => x.name))` can be rewritten in the next way.
+`.issues.flatMap(x => x.labels.flatMap(x => x))` can be rewritten in the next way.
 
 ```sh
-curl https://api.github.com/repos/kubernetes/kubernetes/issues | fx '.[].labels[].name'
+curl https://fx.wtf/example.json | fx '.issues[].labels[]'
 ```
 
 ### .fxrc.js
@@ -108,7 +108,9 @@ Fx supports `.fxrc.js` file in the current directory or in the home directory.
 Put the next code in the `.fxrc.js` file to make `myFunction` available in the fx.
 
 ```js
-global.myFunction = x => x + 1
+function addOne(x) {
+  return x + 1
+}
 ```
 
 Now you can use `myFunction` in the fx.
