@@ -9,12 +9,6 @@
     <p align="center"><b>Visit warp.dev to learn more.</b></p>
 </a>
 
-## Install
-
-```sh
-brew install fx
-```
-
 ## Documentation
 
 See full documentation at [fx.wtf](https://fx.wtf).
