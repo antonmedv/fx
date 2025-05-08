@@ -9,7 +9,7 @@ import (
 	"io"
 	"math"
 	"os"
-	"path"
+	"path/filepath"
 	"regexp"
 	"runtime/debug"
 	"runtime/pprof"
@@ -134,7 +134,7 @@ func main() {
 		} else {
 			// $ fx file.json arg*
 			src = open(args[0], &flagYaml)
-			fileName = path.Base(args[0])
+			fileName = filepath.Base(args[0])
 			args = args[1:]
 		}
 	} else {
