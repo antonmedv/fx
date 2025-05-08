@@ -113,11 +113,13 @@ function addOne(x) {
 }
 ```
 
-Now you can use `myFunction` in the fx.
+Now you can use `addOne` in the fx.
 
 ```sh
-echo '1' | fx 'myFunction'
+echo '1' | fx addOne
 ```
+
+If you would like to create global variables use `var` instead of `let` or `const`.
 
 ## License
 

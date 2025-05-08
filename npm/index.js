@@ -4,6 +4,7 @@
 void async function main() {
   const os = await import('node:os')
   const fs = await import('node:fs')
+  const path = await import('node:path')
   const process = await import('node:process')
 
   let flagHelp = false
@@ -26,8 +27,7 @@ void async function main() {
 
   const theme = themes(process.stdout.isTTY ? (process.env.FX_THEME || '1') : '0')
 
-  await importFxrc(process.cwd())
-  await importFxrc(os.homedir())
+  loadFxrc(os, fs, path, process)
 
   let fd = 0 // stdin
   if (args.length > 0) {
@@ -681,6 +681,37 @@ async function importFxrc(path) {
   } catch (err) {
     if (err.code !== 'ERR_MODULE_NOT_FOUND') throw err
   }
+}
+
+function loadFxrc(os, fs, path, process) {
+  let script = ''
+
+  const cwd = process.cwd()
+  const home = os.homedir()
+  const xdgHome = process.env.XDG_CONFIG_HOME || path.join(home, '.config')
+  const xdgDirsEnv = process.env.XDG_CONFIG_DIRS || '/etc/xdg'
+
+  const paths = [path.join(cwd, '.fxrc.js')]
+  paths.push(path.join(home, '.fxrc.js'))
+  paths.push(path.join(xdgHome, 'fx', '.fxrc.js'))
+  for (const dir of xdgDirsEnv.split(':')) {
+    paths.push(path.join(dir, 'fx', '.fxrc.js'))
+  }
+
+  for (const filePath of paths) {
+    try {
+      const stat = fs.statSync(filePath)
+      if (stat.isDirectory()) continue
+
+      const data = fs.readFileSync(filePath, 'utf8')
+      script += data + '\n'
+    } catch (err) {
+      if (err.code === 'ENOENT') continue
+      throw new Error(`read ${filePath}: ${err.message}`)
+    }
+  }
+
+  eval?.(script)
 }
 
 function printUsage() {
