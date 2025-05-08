@@ -356,14 +356,14 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tea.MouseMsg:
-		switch msg.Type {
-		case tea.MouseWheelUp:
+		switch {
+		case msg.Button == tea.MouseButtonWheelUp:
 			m.up()
 
-		case tea.MouseWheelDown:
+		case msg.Button == tea.MouseButtonWheelDown:
 			m.down()
 
-		case tea.MouseLeft:
+		case msg.Button == tea.MouseButtonLeft && msg.Action == tea.MouseActionPress:
 			m.digInput.Blur()
 			m.showCursor = true
 			if msg.Y < m.viewHeight() {
