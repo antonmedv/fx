@@ -636,18 +636,15 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.recordHistory()
 
 	case key.Matches(msg, keyMap.HalfPageUp):
-		m.cursor = 0
-		for i := 0; i < m.viewHeight()/2; i++ {
-			m.up()
-		}
+		m.showCursor = true
+		m.scrollBackward(m.viewHeight() / 2)
+		m.scrollIntoView() // As the cursor stays at the same position, and it may be empty.
 		m.recordHistory()
 
 	case key.Matches(msg, keyMap.HalfPageDown):
-		m.cursor = m.viewHeight() - 1
-		for i := 0; i < m.viewHeight()/2; i++ {
-			m.down()
-		}
-		m.scrollIntoView()
+		m.showCursor = true
+		m.scrollForward(m.viewHeight() / 2)
+		m.scrollIntoView() // As the cursor stays at the same position, and it may be empty.
 		m.recordHistory()
 
 	case key.Matches(msg, keyMap.GotoTop):
