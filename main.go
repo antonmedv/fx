@@ -623,18 +623,16 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.down()
 
 	case key.Matches(msg, keyMap.PageUp):
-		m.cursor = 0
-		for i := 0; i < m.viewHeight(); i++ {
-			m.up()
-		}
+		m.cursor = m.viewHeight() - 1
+		m.showCursor = true
+		m.scrollBackward(max(0, m.viewHeight()-2))
+		m.scrollIntoView() // As the cursor is at the bottom, and it may be empty.
 		m.recordHistory()
 
 	case key.Matches(msg, keyMap.PageDown):
-		m.cursor = m.viewHeight() - 1
-		for i := 0; i < m.viewHeight(); i++ {
-			m.down()
-		}
-		m.scrollIntoView()
+		m.cursor = 0
+		m.showCursor = true
+		m.scrollForward(max(0, m.viewHeight()-2))
 		m.recordHistory()
 
 	case key.Matches(msg, keyMap.HalfPageUp):
@@ -968,6 +966,28 @@ func (m *model) scrollIntoView() {
 		m.cursor++
 		m.head = m.head.Prev
 	}
+}
+
+func (m *model) scrollBackward(lines int) {
+	it := m.head
+	for it.Prev != nil {
+		it = it.Prev
+		if lines--; lines == 0 {
+			break
+		}
+	}
+	m.head = it
+}
+
+func (m *model) scrollForward(lines int) {
+	it := m.head
+	for it.Next != nil {
+		it = it.Next
+		if lines--; lines == 0 {
+			break
+		}
+	}
+	m.head = it
 }
 
 func (m *model) View() string {

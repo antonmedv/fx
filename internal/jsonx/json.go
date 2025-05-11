@@ -481,7 +481,7 @@ func (p *JsonParser) errorSnippet(message string) error {
 
 	tail := strings.TrimRight(string(buf), "\t \n")
 	lines := strings.Split(tail, "\n")
-	lastLineLen := utf8.RuneCountInString(lines[len(lines)-1])
+	lastLineLen := max(1, utf8.RuneCountInString(lines[len(lines)-1]))
 	pointer := strings.Repeat(".", lastLineLen-1) + "^"
 	lines = append(lines, pointer)
 
