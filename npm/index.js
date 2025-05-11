@@ -35,6 +35,7 @@ void async function main() {
       isFile(fs, args[0]) ? args.shift() :
         isFile(fs, args.at(-1)) ? args.pop() : false
     if (filename) {
+      globalThis.__file__ = filename
       fd = fs.openSync(filename, 'r')
       if (!flagYaml) flagYaml = /\.ya?ml$/i.test(filename)
     }
@@ -138,6 +139,7 @@ function transpile(code) {
 }
 
 async function run(json, code) {
+  const fs = await import('node:fs')
   const fn = eval(code).call(json)
 
   return apply(fn, json)
@@ -240,6 +242,12 @@ async function run(json, code) {
       return skip
     }
     throw new Error(`Cannot list ${typeof x}`)
+  }
+
+  function save(x) {
+    if (!globalThis.__file__) throw new Error('Specify a file as the first argument to be able to save: fx file.json ...')
+    fs.writeFileSync(globalThis.__file__, JSON.stringify(x, null, 2))
+    return x
   }
 }
 

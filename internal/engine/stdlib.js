@@ -117,3 +117,8 @@ function list(x) {
   }
   throw new Error(`Cannot list ${typeof x}`)
 }
+
+function save(x) {
+  __write__(JSON.stringify(x, null, 2))
+  return x
+}

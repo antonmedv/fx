@@ -2,7 +2,9 @@ package engine
 
 import (
 	_ "embed"
+	"fmt"
 	"io"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -14,6 +16,9 @@ import (
 
 //go:embed stdlib.js
 var Stdlib string
+
+// FilePath is the path to the file being processed, empty if stdin.
+var FilePath string
 
 func init() {
 	fxrc, err := readFxrc()
@@ -95,7 +100,17 @@ func Start(
 	}); err != nil {
 		panic(err)
 	}
-
+	if err := vm.Set("__write__", func(json string) error {
+		if FilePath == "" {
+			return fmt.Errorf("Specify a file as the first argument to be able to save: fx file.json ...")
+		}
+		if err := os.WriteFile(FilePath, []byte(json), 0644); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		panic(err)
+	}
 	if _, err := vm.RunString(code.String()); err != nil {
 		writeErr(errorToString(err))
 		return 1

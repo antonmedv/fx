@@ -133,8 +133,10 @@ func main() {
 			return
 		} else {
 			// $ fx file.json arg*
-			src = open(args[0], &flagYaml)
-			fileName = filepath.Base(args[0])
+			filePath := args[0]
+			src = open(filePath, &flagYaml)
+			engine.FilePath = filePath
+			fileName = filepath.Base(filePath)
 			args = args[1:]
 		}
 	} else {

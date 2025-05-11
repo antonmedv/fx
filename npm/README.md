@@ -42,7 +42,7 @@ Use other JS functions to process the data.
 echo '{"name": "world"}' | fx 'Object.keys'
 ```
 
-## Advanced Usage
+### Stream processing
 
 Fx can process a stream of json objects. Fx will apply arguments to each object.
 
@@ -56,6 +56,8 @@ use the **--slurp** or **-s** flag.
 ```sh
 echo '{"name": "hello"}\n{"name": "world"}' | fx --slurp '.map(x => x.name)' '.join(", ")'
 ```
+
+### Raw input
 
 If you want to process non-JSON data, use the **--raw** or **-r** flag.
 
@@ -75,11 +77,23 @@ Fx has a special symbol **skip** for skipping the printing of the result.
 ls | fx -r '.includes(".md") ? this : skip'
 ```
 
+### Built-in functions
+
 Fx comes with a set of useful functions: **uniq**, **sort**, **groupBy**, **chunk**, **zip**.
 
 ```sh
 cat file.json | fx 'uniq' 'sort' 'groupBy(x => x.name)'
 ```
+
+### Edit-in-place
+
+You can use special function **save** to edit-in-place the input data.
+
+```sh
+fx file.json 'x.name = x.name.toUpperCase(), x' 'save'
+```
+
+The edited data will be saved to the same `file.json` file.
 
 ### Syntactic Sugar
 
@@ -103,7 +117,7 @@ curl https://fx.wtf/example.json | fx '.issues[].labels[]'
 
 ### .fxrc.js
 
-Fx supports `.fxrc.js` file in the current directory or in the home directory.
+Fx supports `.fxrc.js` file in the current directory, or in the home directory, or in XDG config directory.
 
 Put the next code in the `.fxrc.js` file to make `myFunction` available in the fx.
 
