@@ -34,7 +34,10 @@ func usage(keyMap KeyMap) string {
 %v
 
   %v
-    [https://fx.wtf]
+    https://fx.wtf
+
+  %v
+    Anton Medvedev <anton@medv.io>
 `,
 		title.Render("fx "+version),
 		title.Render("Usage"),
@@ -42,6 +45,7 @@ func usage(keyMap KeyMap) string {
 		title.Render("Key Bindings"),
 		strings.Join(keyMapInfo(keyMap, pad), "\n"),
 		title.Render("More info"),
+		title.Render("Author"),
 	)
 }
 
