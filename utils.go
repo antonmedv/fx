@@ -95,7 +95,7 @@ func parseYAML(b []byte) ([]byte, error) {
 
 func isRefNode(n *jsonx.Node) (string, bool) {
 	if n.Kind == jsonx.String && len(n.Key) == 6 && string(n.Key) == `"$ref"` {
-		value, err := strconv.Unquote(string(n.Value))
+		value, err := strconv.Unquote(n.Value)
 		if err == nil {
 			_, ok := jsonpath.ParseSchemaRef(value)
 			if ok {
