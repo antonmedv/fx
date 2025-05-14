@@ -12,8 +12,6 @@ RUN go build -o fx .
 
 FROM alpine
 
-RUN apk add --update nodejs
-
 COPY --from=builder /go/fx /bin/fx
 
 WORKDIR /data
