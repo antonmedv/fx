@@ -1,5 +1,9 @@
 package utils
 
+import (
+	"encoding/json"
+)
+
 func IsHexDigit(ch byte) bool {
 	return (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F')
 }
@@ -15,4 +19,10 @@ func Contains(needle int, haystack []int) bool {
 		}
 	}
 	return false
+}
+
+func Unquote(s string) (string, error) {
+	var unquoted string
+	err := json.Unmarshal([]byte(s), &unquoted)
+	return unquoted, err
 }
