@@ -37,6 +37,9 @@ func readFxrc() (string, error) {
 		paths = append(paths, filepath.Join(dir, "fx", ".fxrc.js"))
 	}
 
+	// If we in a home directory already)
+	paths = uniq(paths)
+
 	// Read and combine
 	for _, path := range paths {
 		info, err := os.Stat(path)
@@ -52,4 +55,16 @@ func readFxrc() (string, error) {
 	}
 
 	return builder.String(), nil
+}
+
+func uniq(paths []string) []string {
+	seen := make(map[string]bool)
+	result := []string{}
+	for _, path := range paths {
+		if !seen[path] {
+			seen[path] = true
+			result = append(result, path)
+		}
+	}
+	return result
 }
