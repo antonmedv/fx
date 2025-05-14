@@ -1,3 +1,5 @@
+$.verbose = true
+
 const goos = [
   'linux',
   'darwin',
