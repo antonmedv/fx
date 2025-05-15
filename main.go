@@ -109,11 +109,11 @@ func main() {
 		flag.Parse()
 		switch *shell {
 		case "bash":
-			fmt.Print(complete.Bash())
+			fmt.Print(complete.Bash)
 		case "zsh":
-			fmt.Print(complete.Zsh())
+			fmt.Print(complete.Zsh)
 		case "fish":
-			fmt.Print(complete.Fish())
+			fmt.Print(complete.Fish)
 		default:
 			fmt.Println("unknown shell type")
 		}

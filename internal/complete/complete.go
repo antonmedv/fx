@@ -15,44 +15,57 @@ import (
 	"github.com/antonmedv/fx/internal/shlex"
 )
 
-var flags = []string{
-	"--help",
-	"--raw",
-	"--slurp",
-	"--themes",
-	"--version",
-	"--yaml",
+type pair struct {
+	display string
+	value   string
 }
+
+var flags = []pair{
+	{"--help", "--help"},
+	{"--raw", "--raw"},
+	{"--slurp", "--slurp"},
+	{"--themes", "--themes"},
+	{"--version", "--version"},
+	{"--yaml", "--yaml"},
+}
+
+//go:embed complete.bash
+var Bash string
+
+//go:embed complete.zsh
+var Zsh string
+
+//go:embed complete.fish
+var Fish string
 
 //go:embed prelude.js
 var prelude string
 
 func Complete() bool {
 	compLine, ok := os.LookupEnv("COMP_LINE")
-
 	if ok && len(os.Args) >= 3 {
-		doComplete(compLine, os.Args[2])
+		doComplete(compLine, os.Args[2], false)
 		return true
 	}
 
 	compZsh, ok := os.LookupEnv("COMP_ZSH")
 	if ok {
-		doComplete(compZsh, lastWord(compZsh))
+		doComplete(compZsh, lastWord(compZsh), true)
 		return true
 	}
 
 	compFish, ok := os.LookupEnv("COMP_FISH")
 	if ok {
-		doComplete(compFish, lastWord(compFish))
+		doComplete(compFish, lastWord(compFish), false)
 		return true
 	}
 
 	return false
 }
 
-func doComplete(compLine string, compWord string) {
+func doComplete(compLine string, compWord string, withDisplay bool) {
 	if strings.HasPrefix(compWord, "-") {
-		compReply(filterReply(flags, compWord))
+		compReply(filterReply(flags, compWord), withDisplay)
 		return
 	}
 
@@ -78,19 +91,21 @@ func doComplete(compLine string, compWord string) {
 	if len(args) == 0 {
 		return
 	} else if len(args) == 1 {
-		fileComplete(compWord)
+		reply := fileComplete(compWord)
+		compReply(reply, withDisplay)
 		return
 	} else if len(args) == 2 {
 		isSecondArgIsFile = isFile(args[1])
 		if !isSecondArgIsFile {
-			fileComplete(compWord)
+			reply := fileComplete(compWord)
+			compReply(reply, withDisplay)
 			return
 		}
 	} else {
 		isSecondArgIsFile = isFile(args[1])
 	}
 
-	var reply []string
+	var reply []pair
 
 	if isSecondArgIsFile {
 		file := args[1]
@@ -131,18 +146,18 @@ func doComplete(compLine string, compWord string) {
 
 	reply = filterReply(reply, compWord)
 	if len(reply) > 0 {
-		compReply(reply)
+		compReply(reply, withDisplay)
 		return
 	}
 
 	if len(compWord) > 0 {
 		// Only show globals if compWord is not empty,
 		// as we do not want to be very verbose and show all globals.
-		compReply(filterReply(globalsComplete(), compWord))
+		compReply(filterReply(globalsComplete(), compWord), withDisplay)
 	}
 }
 
-func globalsComplete() []string {
+func globalsComplete() []pair {
 	var code strings.Builder
 	code.WriteString(prelude)
 	code.WriteString(engine.Stdlib)
@@ -155,16 +170,19 @@ func globalsComplete() []string {
 	}
 
 	if array, ok := value.Export().([]any); ok {
-		var reply []string
+		var reply []pair
 		for _, key := range array {
-			reply = append(reply, key.(string))
+			reply = append(reply, pair{
+				display: key.(string),
+				value:   key.(string),
+			})
 		}
 		return reply
 	}
 	return nil
 }
 
-func keysComplete(input []byte, args []string, compWord string) []string {
+func keysComplete(input []byte, args []string, compWord string) []pair {
 	args = args[2:] // Drop binary & file from the args.
 
 	if compWord == "" {
@@ -200,16 +218,19 @@ func keysComplete(input []byte, args []string, compWord string) []string {
 
 	if array, ok := value.Export().([]interface{}); ok {
 		prefix := dropTail(compWord)
-		var reply []string
+		var reply []pair
 		for _, key := range array {
-			reply = append(reply, join(prefix, key.(string)))
+			reply = append(reply, pair{
+				display: "." + key.(string),
+				value:   join(prefix, key.(string)),
+			})
 		}
 		return reply
 	}
 	return nil
 }
 
-var alphaRe = regexp.MustCompile(`^\w+$`)
+var alphaRe = regexp.MustCompile(`^[\w$]+$`)
 
 func join(prefix, key string) string {
 	if alphaRe.MatchString(key) {
@@ -227,7 +248,7 @@ func filterArgs(args []string) []string {
 	for _, arg := range args {
 		found := false
 		for _, flag := range flags {
-			if arg == flag {
+			if arg == flag.value {
 				found = true
 				break
 			}
@@ -239,8 +260,7 @@ func filterArgs(args []string) []string {
 	return filtered
 }
 
-func fileComplete(compWord string) {
-	var matches []string
+func fileComplete(compWord string) []pair {
 	original := compWord
 
 	// Step 1: Expand ~ to home directory
@@ -252,7 +272,7 @@ func fileComplete(compWord string) {
 			}
 		} else {
 			// We don't support ~username completion
-			return
+			return nil
 		}
 	}
 
@@ -268,10 +288,11 @@ func fileComplete(compWord string) {
 	// Step 3: Perform globbing
 	files, err := filepath.Glob(compWord)
 	if err != nil {
-		return
+		return nil
 	}
 
 	// Step 4: Format matches
+	var matches []pair
 	for _, match := range files {
 		if match == "." || match == ".." {
 			continue
@@ -295,8 +316,8 @@ func fileComplete(compWord string) {
 			suggestion = rel
 		}
 
-		matches = append(matches, suggestion)
+		matches = append(matches, pair{display: filepath.Base(suggestion), value: suggestion})
 	}
 
-	compReply(matches)
+	return matches
 }
