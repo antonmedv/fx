@@ -114,22 +114,24 @@ var (
 	CloseSquareBracket string
 )
 
+var NoColor = Theme{
+	Cursor:     defaultCursor,
+	Syntax:     noColor,
+	Preview:    noColor,
+	StatusBar:  noColor,
+	Search:     defaultSearch,
+	Key:        noColor,
+	String:     noColor,
+	Null:       noColor,
+	Boolean:    noColor,
+	Number:     noColor,
+	Size:       noColor,
+	Ref:        noColor,
+	LineNumber: defaultLineNumber,
+}
+
 var themes = map[string]Theme{
-	"0": {
-		Cursor:     defaultCursor,
-		Syntax:     noColor,
-		Preview:    noColor,
-		StatusBar:  noColor,
-		Search:     defaultSearch,
-		Key:        noColor,
-		String:     noColor,
-		Null:       noColor,
-		Boolean:    noColor,
-		Number:     noColor,
-		Size:       noColor,
-		Ref:        noColor,
-		LineNumber: defaultLineNumber,
-	},
+	"0": NoColor,
 	"1": {
 		Cursor:     defaultCursor,
 		Syntax:     noColor,

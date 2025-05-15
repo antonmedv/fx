@@ -8,50 +8,51 @@ import (
 	"strings"
 	"time"
 
-	. "github.com/antonmedv/fx/internal/theme"
 	"github.com/dop251/goja"
+
+	. "github.com/antonmedv/fx/internal/theme"
 )
 
-func Stringify(value goja.Value, vm *goja.Runtime, depth int) string {
+func Stringify(value goja.Value, vm *goja.Runtime, theme Theme, depth int) string {
 	rtype := value.ExportType()
 	if rtype == nil {
-		return CurrentTheme.Null("null")
+		return theme.Null("null")
 	}
 
 	switch rtype {
 	case bigIntType:
 		bi := value.Export().(*big.Int)
-		return CurrentTheme.Number(bi.String())
+		return theme.Number(bi.String())
 	case timeTimeType:
 		t := value.Export().(time.Time)
 		quoted := strconv.Quote(t.String())
-		return CurrentTheme.String(quoted)
+		return theme.String(quoted)
 	}
 
 	switch rtype.Kind() {
 	case reflect.Bool:
 		if value.ToBoolean() {
-			return CurrentTheme.Boolean("true")
+			return theme.Boolean("true")
 		} else {
-			return CurrentTheme.Boolean("false")
+			return theme.Boolean("false")
 		}
 
 	case reflect.Int64, reflect.Float64:
-		return CurrentTheme.Number(value.String())
+		return theme.Number(value.String())
 
 	case reflect.String:
-		return CurrentTheme.String(strconv.Quote(value.String()))
+		return theme.String(strconv.Quote(value.String()))
 
 	case reflect.Map:
 		obj := value.ToObject(vm)
 		keys := obj.Keys()
 
 		if len(keys) == 0 {
-			return CurrentTheme.Syntax("{}")
+			return theme.Syntax("{}")
 		}
 
 		var out strings.Builder
-		out.WriteString(CurrentTheme.Syntax("{"))
+		out.WriteString(theme.Syntax("{"))
 		out.WriteString("\n")
 
 		ident := strings.Repeat("  ", depth)
@@ -59,19 +60,19 @@ func Stringify(value goja.Value, vm *goja.Runtime, depth int) string {
 
 		for i, key := range keys {
 			out.WriteString(identKey)
-			out.WriteString(CurrentTheme.Key(strconv.Quote(key)))
-			out.WriteString(CurrentTheme.Syntax(":"))
+			out.WriteString(theme.Key(strconv.Quote(key)))
+			out.WriteString(theme.Syntax(":"))
 			out.WriteString(" ")
-			out.WriteString(Stringify(obj.Get(key), vm, depth+1))
+			out.WriteString(Stringify(obj.Get(key), vm, theme, depth+1))
 			if i < len(keys)-1 {
-				out.WriteString(CurrentTheme.Syntax(","))
+				out.WriteString(theme.Syntax(","))
 			}
 			out.WriteString("\n")
 
 		}
 
 		out.WriteString(ident)
-		out.WriteString(CurrentTheme.Syntax("}"))
+		out.WriteString(theme.Syntax("}"))
 		return out.String()
 
 	case reflect.Slice:
@@ -79,25 +80,25 @@ func Stringify(value goja.Value, vm *goja.Runtime, depth int) string {
 		keys := arr.Keys()
 
 		if len(keys) == 0 {
-			return CurrentTheme.Syntax("[]")
+			return theme.Syntax("[]")
 		}
 
 		var out strings.Builder
-		out.WriteString(CurrentTheme.Syntax("["))
+		out.WriteString(theme.Syntax("["))
 		out.WriteString("\n")
 
 		for i, key := range keys {
 			item := arr.Get(key)
 			out.WriteString(strings.Repeat("  ", depth+1))
-			out.WriteString(Stringify(item, vm, depth+1))
+			out.WriteString(Stringify(item, vm, theme, depth+1))
 			if i < len(keys)-1 {
-				out.WriteString(CurrentTheme.Syntax(","))
+				out.WriteString(theme.Syntax(","))
 			}
 			out.WriteString("\n")
 		}
 
 		out.WriteString(strings.Repeat("  ", depth))
-		out.WriteString(CurrentTheme.Syntax("]"))
+		out.WriteString(theme.Syntax("]"))
 		return out.String()
 	}
 	panic(fmt.Sprintf("Unsupported value type: %v", rtype.Kind()))

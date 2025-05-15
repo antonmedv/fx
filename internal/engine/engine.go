@@ -2,9 +2,7 @@ package engine
 
 import (
 	_ "embed"
-	"fmt"
 	"io"
-	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -12,13 +10,11 @@ import (
 	"github.com/dop251/goja"
 
 	"github.com/antonmedv/fx/internal/jsonx"
+	"github.com/antonmedv/fx/internal/theme"
 )
 
 //go:embed stdlib.js
 var Stdlib string
-
-// FilePath is the path to the file being processed, empty if stdin.
-var FilePath string
 
 func init() {
 	fxrc, err := readFxrc()
@@ -93,24 +89,7 @@ func Start(
 	}
 	code.WriteString("  return json\n}\n")
 
-	vm := goja.New()
-	if err := vm.Set("println", func(s string) any {
-		writeOut(s)
-		return nil
-	}); err != nil {
-		panic(err)
-	}
-	if err := vm.Set("__write__", func(json string) error {
-		if FilePath == "" {
-			return fmt.Errorf("Specify a file as the first argument to be able to save: fx file.json ...")
-		}
-		if err := os.WriteFile(FilePath, []byte(json), 0644); err != nil {
-			return err
-		}
-		return nil
-	}); err != nil {
-		panic(err)
-	}
+	vm := NewVM(writeOut)
 	if _, err := vm.RunString(code.String()); err != nil {
 		writeErr(errorToString(err))
 		return 1
@@ -127,7 +106,7 @@ func Start(
 		} else if rtype != nil && rtype.Kind() == reflect.String {
 			writeOut(output.String())
 		} else {
-			writeOut(Stringify(output, vm, 0))
+			writeOut(Stringify(output, vm, theme.CurrentTheme, 0))
 		}
 	}
 

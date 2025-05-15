@@ -119,6 +119,6 @@ function list(x) {
 }
 
 function save(x) {
-  __write__(JSON.stringify(x, null, 2))
+  __save__(__stringify__(x, null, 2))
   return x
 }
