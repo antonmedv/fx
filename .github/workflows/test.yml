@@ -10,20 +10,26 @@ jobs:
   go:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 1.21
+      - name: Test
+        run: go test ./...
 
-    - name: Set up Go
-      uses: actions/setup-go@v3
-      with:
-        go-version: 1.21
-
-    - name: Test
-      run: go test ./...
+  go-arm:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 1.21
+      - name: Test on ARM
+        run: go test ./...
 
   node:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-
-    - name: Test
-      run: cd npm && node test.js
+      - uses: actions/checkout@v3
+      - name: Test NPM version
+        run: cd npm && node test.js
