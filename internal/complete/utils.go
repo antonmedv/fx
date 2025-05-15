@@ -3,6 +3,7 @@ package complete
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -21,6 +22,12 @@ func filterReply(reply []string, compWord string) []string {
 }
 
 func isFile(path string) bool {
+	if strings.HasPrefix(path, "~") {
+		home, err := os.UserHomeDir()
+		if err == nil {
+			path = filepath.Join(home, path[1:])
+		}
+	}
 	info, err := os.Stat(path)
 	if err != nil {
 		return false

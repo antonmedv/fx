@@ -16,6 +16,11 @@ const console = {
   },
 }
 
+const YAML = {
+  stringify: x => __yaml_stringify__(x),
+  parse: x => JSON.parse(__yaml_parse__(x)),
+}
+
 const skip = Symbol('skip')
 
 function apply(fn, ...args) {
@@ -119,6 +124,15 @@ function list(x) {
 }
 
 function save(x) {
+  if (typeof x === 'undefined') throw new Error('Cannot save undefined')
   __save__(__stringify__(x, null, 2))
   return x
+}
+
+function toBase64(x) {
+  return __toBase64__(x)
+}
+
+function fromBase64(x) {
+  return __fromBase64__(x)
 }
