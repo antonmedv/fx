@@ -249,6 +249,14 @@ async function run(json, code) {
     fs.writeFileSync(globalThis.__file__, JSON.stringify(x, null, 2))
     return x
   }
+
+  function toBase64(x) {
+    return Buffer.from(x).toString('base64')
+  }
+
+  function fromBase64(x) {
+    return Buffer.from(x, 'base64').toString()
+  }
 }
 
 async function read(fd = 0) {
