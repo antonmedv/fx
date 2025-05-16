@@ -316,7 +316,18 @@ func fileComplete(compWord string) []pair {
 			suggestion = rel
 		}
 
-		matches = append(matches, pair{display: filepath.Base(suggestion), value: suggestion})
+		dirSuffix := ""
+		info, err := os.Stat(match)
+		if err == nil {
+			if info.IsDir() {
+				dirSuffix = "/"
+			}
+		}
+
+		matches = append(matches, pair{
+			display: filepath.Base(suggestion) + dirSuffix,
+			value:   suggestion,
+		})
 	}
 
 	return matches
