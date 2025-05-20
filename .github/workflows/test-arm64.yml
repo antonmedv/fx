@@ -15,5 +15,4 @@ jobs:
       - uses: actions/setup-go@v3
         with:
           go-version: 1.21
-      - run: go build .
-      - run: echo 42 | fx .
+      - run: go build -o fx . && echo 42 | fx .
