@@ -3,6 +3,7 @@ package main
 import "github.com/charmbracelet/bubbles/key"
 
 type KeyMap struct {
+	Suspend             key.Binding
 	Quit                key.Binding
 	PageDown            key.Binding
 	PageUp              key.Binding
@@ -41,6 +42,10 @@ var keyMap KeyMap
 
 func init() {
 	keyMap = KeyMap{
+		Suspend: key.NewBinding(
+			key.WithKeys("ctrl+z"),
+			key.WithHelp("", "suspend program"),
+		),
 		Quit: key.NewBinding(
 			key.WithKeys("q", "ctrl+c", "esc"),
 			key.WithHelp("", "exit program"),
