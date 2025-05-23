@@ -211,6 +211,7 @@ func main() {
 	}
 
 	m := &model{
+		suspending:      false,
 		showCursor:      true,
 		wrap:            true,
 		collapsed:       collapsed,
@@ -266,6 +267,7 @@ type model struct {
 	termWidth, termHeight int
 	head, top, bottom     *Node
 	cursor                int // cursor position [0, termHeight)
+	suspending            bool
 	showCursor            bool
 	wrap                  bool
 	collapsed             bool
@@ -399,6 +401,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.recordHistory()
 			}
 		}
+
+	case tea.ResumeMsg:
+		m.suspending = false
+		return m, nil
 
 	case tea.KeyMsg:
 		if m.digInput.Focused() {
@@ -611,6 +617,10 @@ func (m *model) handleShowSelectorKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
+	case key.Matches(msg, keyMap.Suspend):
+		m.suspending = true
+		return m, tea.Suspend
+
 	case key.Matches(msg, keyMap.Quit):
 		return m, tea.Quit
 
@@ -990,6 +1000,10 @@ func (m *model) scrollForward(lines int) {
 }
 
 func (m *model) View() string {
+	if m.suspending {
+		return ""
+	}
+
 	if m.showHelp {
 		statusBar := flex(m.termWidth, ": press q or ? to close help", "")
 		return m.help.View() + "\n" + theme.CurrentTheme.StatusBar(statusBar)
