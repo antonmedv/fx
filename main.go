@@ -9,6 +9,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime/debug"
@@ -818,6 +819,9 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keyMap.Print):
 		return m, m.print()
 
+	case key.Matches(msg, keyMap.Open):
+		return m, m.open()
+
 	case key.Matches(msg, keyMap.Dig):
 		at := m.cursorPointsTo()
 		if at.Kind == Err {
@@ -1609,5 +1613,26 @@ func (m *model) dig(v string) *Node {
 func (m *model) print() tea.Cmd {
 	m.printOnExit = true
 	return tea.Quit
+}
 
+func (m *model) open() tea.Cmd {
+	if engine.FilePath == "" {
+		return nil
+	}
+	command := append(
+		strings.Split(lookup([]string{"FX_EDITOR", "EDITOR"}, "vim"), " "),
+		engine.FilePath,
+	)
+	if command[0] == "vi" || command[0] == "vim" {
+		at := m.cursorPointsTo()
+		if at != nil {
+			tail := command[1:]
+			command = append([]string{command[0]}, fmt.Sprintf("+%d", at.LineNumber))
+			command = append(command, tail...)
+		}
+	}
+	execCmd := exec.Command(command[0], command[1:]...)
+	return tea.ExecProcess(execCmd, func(err error) tea.Msg {
+		return nil
+	})
 }

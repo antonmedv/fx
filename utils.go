@@ -17,6 +17,16 @@ import (
 	"github.com/antonmedv/fx/internal/jsonx"
 )
 
+func lookup(names []string, defaultEditor string) string {
+	for _, name := range names {
+		env, ok := os.LookupEnv(name)
+		if ok && env != "" {
+			return env
+		}
+	}
+	return defaultEditor
+}
+
 func open(filePath string, flagYaml *bool) *os.File {
 	f, err := os.Open(filePath)
 	if err != nil {
