@@ -9,6 +9,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime/debug"
@@ -883,6 +884,8 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.selectNode(loc.node)
 		}
 
+	case key.Matches(msg, keyMap.ExtEditor):
+		return m, m.openInExternalEditor()
 	}
 	return m, nil
 }
@@ -1610,4 +1613,25 @@ func (m *model) print() tea.Cmd {
 	m.printOnExit = true
 	return tea.Quit
 
+}
+
+func (m *model) openInExternalEditor() tea.Cmd {
+	val, ok := os.LookupEnv("EDITOR")
+	if !ok || val == "" {
+		return nil
+	}
+
+	var cmd *exec.Cmd
+	if engine.FilePath != "" {
+		// Open editor with the given file path
+		cmd = exec.Command(val, engine.FilePath)
+	} else {
+		// Open editor reading from stdin
+		cmd = exec.Command(val, "-")
+		cmd.Stdin = strings.NewReader(m.top.String())
+	}
+
+	return tea.ExecProcess(cmd, func(err error) tea.Msg {
+		return nil
+	})
 }

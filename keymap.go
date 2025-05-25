@@ -36,6 +36,7 @@ type KeyMap struct {
 	GoBack              key.Binding
 	GoForward           key.Binding
 	Dig                 key.Binding
+	ExtEditor           key.Binding
 }
 
 var keyMap KeyMap
@@ -173,6 +174,10 @@ func init() {
 		Dig: key.NewBinding(
 			key.WithKeys("."),
 			key.WithHelp("", "dig"),
+		),
+		ExtEditor: key.NewBinding(
+			key.WithKeys("v"),
+			key.WithHelp("", "open in external editor"),
 		),
 	}
 }
