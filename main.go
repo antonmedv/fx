@@ -183,6 +183,9 @@ func main() {
 		Background(lipgloss.Color("15")).
 		Foreground(lipgloss.Color("0"))
 
+	gotoLineInput := textinput.New()
+	gotoLineInput.Prompt = ":"
+
 	searchInput := textinput.New()
 	searchInput.Prompt = "/"
 
@@ -219,6 +222,7 @@ func main() {
 		fileName:        fileName,
 		digInput:        digInput,
 		gotoSymbolInput: gotoSymbolInput,
+		gotoLineInput:   gotoLineInput,
 		searchInput:     searchInput,
 		search:          newSearch(),
 		spinner:         spinnerModel,
@@ -279,6 +283,7 @@ type model struct {
 	fileName              string
 	digInput              textinput.Model
 	gotoSymbolInput       textinput.Model
+	gotoLineInput         textinput.Model
 	searchInput           textinput.Model
 	search                *search
 	yank                  bool
@@ -417,6 +422,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.digInput.Focused() {
 			return m.handleDigKey(msg)
 		}
+		if m.gotoLineInput.Focused() {
+			return m.handleGotoLineKey(msg)
+		}
 		if m.searchInput.Focused() {
 			return m.handleSearchKey(msg)
 		}
@@ -545,6 +553,24 @@ func (m *model) handlePreviewKey(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	m.preview, cmd = m.preview.Update(msg)
+	return m, cmd
+}
+
+func (m *model) handleGotoLineKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	switch {
+	case msg.Type == tea.KeyEscape:
+		m.gotoLineInput.Blur()
+		m.gotoLineInput.SetValue("")
+		m.showCursor = true
+
+	case msg.Type == tea.KeyEnter:
+		m.gotoLineInput.Blur()
+		m.doGotoLine(m.gotoLineInput.Value())
+
+	default:
+		m.gotoLineInput, cmd = m.gotoLineInput.Update(msg)
+	}
 	return m, cmd
 }
 
@@ -858,6 +884,11 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+	case key.Matches(msg, keyMap.GotoLine):
+		m.gotoLineInput.CursorEnd()
+		m.gotoLineInput.Width = m.termWidth - 2 // -1 for the prompt, -1 for the cursor
+		m.gotoLineInput.Focus()
+
 	case key.Matches(msg, keyMap.Search):
 		m.searchInput.CursorEnd()
 		m.searchInput.Width = m.termWidth - 2 // -1 for the prompt, -1 for the cursor
@@ -1080,6 +1111,9 @@ func (m *model) viewWidth() int {
 
 func (m *model) viewHeight() int {
 	if m.gotoSymbolInput.Focused() {
+		return m.termHeight - 2
+	}
+	if m.gotoLineInput.Focused() {
 		return m.termHeight - 2
 	}
 	if m.searchInput.Focused() || m.searchInput.Value() != "" {
