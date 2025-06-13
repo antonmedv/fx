@@ -22,7 +22,8 @@ func init() {
 }
 
 type options struct {
-	showSizes bool
+	showSizes       bool
+	showLineNumbers bool
 }
 
 func prepare(t *testing.T, opts ...options) *teatest.TestModel {
@@ -36,20 +37,22 @@ func prepare(t *testing.T, opts ...options) *teatest.TestModel {
 	require.NoError(t, err)
 
 	m := &model{
-		top:         head,
-		head:        head,
-		bottom:      head,
-		totalLines:  head.Bottom().LineNumber,
-		eof:         true,
-		wrap:        true,
-		showCursor:  true,
-		digInput:    textinput.New(),
-		searchInput: textinput.New(),
-		search:      newSearch(),
+		top:           head,
+		head:          head,
+		bottom:        head,
+		totalLines:    head.Bottom().LineNumber,
+		eof:           true,
+		wrap:          true,
+		showCursor:    true,
+		digInput:      textinput.New(),
+		searchInput:   textinput.New(),
+		search:        newSearch(),
+		gotoLineInput: textinput.New(),
 	}
 
 	if len(opts) > 0 {
 		m.showSizes = opts[0].showSizes
+		m.showLineNumbers = opts[0].showLineNumbers
 	}
 
 	tm := teatest.NewTestModel(
