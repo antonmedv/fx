@@ -340,6 +340,13 @@ func ThemeTester() {
 			colon,
 			t.Null("null"),
 			comma)
+		fmt.Printf("  %v%v %v%v%v\n",
+			t.Key("\"collapsed\""),
+			colon,
+			t.Syntax("{"),
+			t.Preview("…"),
+			t.Syntax("}"),
+		)
 		fmt.Println(t.Syntax("}"))
 		println()
 	}
