@@ -244,6 +244,7 @@ func main() {
 			node, err := parser.Parse()
 			if err != nil {
 				if err == io.EOF {
+					p.Send(eofMsg{})
 					break
 				}
 				textNode := parser.Recover()
@@ -267,6 +268,7 @@ func main() {
 type model struct {
 	termWidth, termHeight int
 	head, top, bottom     *Node
+	eof                   bool
 	cursor                int // cursor position [0, termHeight)
 	suspending            bool
 	showCursor            bool
@@ -304,6 +306,8 @@ type nodeMsg struct {
 	node *Node
 }
 
+type eofMsg struct{}
+
 func (m *model) Init() tea.Cmd {
 	return m.spinner.Tick
 }
@@ -329,6 +333,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
+	case eofMsg:
+		m.eof = true
+		return m, nil
+
 	case nodeMsg:
 		if m.wrap {
 			Wrap(msg.node, m.viewWidth())
@@ -1001,199 +1009,6 @@ func (m *model) scrollForward(lines int) {
 		}
 	}
 	m.head = it
-}
-
-func (m *model) View() string {
-	if m.suspending {
-		return ""
-	}
-
-	if m.showHelp {
-		statusBar := flex(m.termWidth, ": press q or ? to close help", "")
-		return m.help.View() + "\n" + theme.CurrentTheme.StatusBar(statusBar)
-	}
-
-	if m.showPreview {
-		statusBar := flex(m.termWidth, m.cursorPath(), m.fileName)
-		return m.preview.View() + "\n" + theme.CurrentTheme.StatusBar(statusBar)
-	}
-
-	var screen []byte
-	printedLines := 0
-	n := m.head
-
-	var cursorLineNumber int
-
-	for lineNumber := 0; lineNumber < m.viewHeight(); lineNumber++ {
-		if n == nil {
-			break
-		}
-
-		if m.showLineNumbers {
-			lineNumbersWidth := len(strconv.Itoa(m.totalLines))
-			if n.LineNumber == 0 {
-				screen = append(screen, bytes.Repeat([]byte{' '}, lineNumbersWidth)...)
-			} else {
-				lineNumStr := fmt.Sprintf("%*d", lineNumbersWidth, n.LineNumber)
-				screen = append(screen, theme.CurrentTheme.LineNumber(lineNumStr)...)
-			}
-			screen = append(screen, ' ', ' ')
-		}
-
-		for ident := 0; ident < int(n.Depth); ident++ {
-			screen = append(screen, ' ', ' ')
-		}
-
-		isSelected := m.cursor == lineNumber
-		if isSelected {
-			if n.LineNumber == 0 {
-				cursorLineNumber = n.Parent.LineNumber
-			} else {
-				cursorLineNumber = n.LineNumber
-			}
-		}
-		if !m.showCursor {
-			isSelected = false // don't highlight the cursor while iterating search results
-		}
-
-		isRef := false
-		isRefSelected := false
-		var isRefValue string
-
-		if n.Key != "" {
-			screen = append(screen, m.prettyKey(n, isSelected)...)
-			screen = append(screen, theme.Colon...)
-
-			isRefValue, isRef = isRefNode(n)
-			isRefSelected = isRef && isSelected
-			isSelected = false // don't highlight the key's value
-		}
-
-		if isRef {
-			screen = append(screen, theme.CurrentTheme.String("\"")...)
-			screen = append(screen, theme.CurrentTheme.Ref(isRefValue)...)
-			screen = append(screen, theme.CurrentTheme.String("\"")...)
-		} else {
-			screen = append(screen, m.prettyPrint(n, isSelected)...)
-		}
-
-		if n.IsCollapsed() {
-			if n.Kind == Object {
-				if n.Collapsed.Key != "" {
-					screen = append(screen, theme.CurrentTheme.Preview(n.Collapsed.Key)...)
-					screen = append(screen, theme.ColonPreview...)
-					if len(n.Collapsed.Value) > 0 &&
-						len(n.Collapsed.Value) < 42 &&
-						n.Collapsed.Kind != Object &&
-						n.Collapsed.Kind != Array {
-						screen = append(screen, theme.CurrentTheme.Preview(n.Collapsed.Value)...)
-						if n.Size > 1 {
-							screen = append(screen, theme.CommaPreview...)
-							screen = append(screen, theme.Dot3...)
-						}
-					} else {
-						screen = append(screen, theme.Dot3...)
-					}
-				}
-				screen = append(screen, theme.CloseCurlyBracket...)
-			} else if n.Kind == Array {
-				screen = append(screen, theme.Dot3...)
-				screen = append(screen, theme.CloseSquareBracket...)
-			}
-			if n.End != nil && n.End.Comma {
-				screen = append(screen, theme.Comma...)
-			}
-		}
-		if n.Comma {
-			screen = append(screen, theme.Comma...)
-		}
-
-		if m.showSizes && (n.Kind == Array || n.Kind == Object) {
-			if n.IsCollapsed() || n.Size > 1 {
-				screen = append(screen, theme.CurrentTheme.Size(fmt.Sprintf(" |%d|", n.Size))...)
-			}
-		}
-
-		if isRefSelected {
-			screen = append(screen, theme.CurrentTheme.Preview("  ctrl+g goto")...)
-		}
-
-		screen = append(screen, '\n')
-		printedLines++
-		n = n.Next
-	}
-
-	for i := printedLines; i < m.viewHeight(); i++ {
-		if m.head != nil {
-			screen = append(screen, theme.Empty...)
-		}
-		screen = append(screen, '\n')
-	}
-
-	if m.gotoSymbolInput.Focused() && m.fuzzyMatch != nil {
-		var matchedStr []byte
-		str := m.fuzzyMatch.Str
-		for i := 0; i < len(str); i++ {
-			if utils.Contains(i, m.fuzzyMatch.Pos) {
-				matchedStr = append(matchedStr, theme.CurrentTheme.Search(string(str[i]))...)
-			} else {
-				matchedStr = append(matchedStr, theme.CurrentTheme.StatusBar(string(str[i]))...)
-			}
-		}
-		repeatCount := m.termWidth - len(str)
-		if repeatCount > 0 {
-			matchedStr = append(matchedStr, theme.CurrentTheme.StatusBar(strings.Repeat(" ", repeatCount))...)
-		}
-		screen = append(screen, matchedStr...)
-	} else if m.digInput.Focused() {
-		screen = append(screen, m.digInput.View()...)
-	} else {
-		if m.head == nil {
-			indicator := fmt.Sprintf(" indexing %s ", m.spinner.View())
-			statusBar := flex(m.termWidth+2, indicator, m.fileName)
-			screen = append(screen, theme.CurrentTheme.StatusBar(statusBar)...)
-		} else {
-			currentPath := m.cursorPath()
-			percent := int(float64(cursorLineNumber) / float64(m.totalLines) * 100)
-			if cursorLineNumber == 1 {
-				percent = min(1, percent)
-			}
-			info := fmt.Sprintf("%d%% %s", percent, m.fileName)
-			statusBar := flex(m.termWidth, currentPath, info)
-			screen = append(screen, theme.CurrentTheme.StatusBar(statusBar)...)
-		}
-	}
-
-	if m.yank {
-		screen = append(screen, '\n')
-		screen = append(screen, []byte("(y)value  (p)path  (k)key")...)
-	} else if m.showShowSelector {
-		screen = append(screen, '\n')
-		screen = append(screen, []byte("(s)sizes  (l)line numbers")...)
-	} else if m.gotoSymbolInput.Focused() {
-		screen = append(screen, '\n')
-		screen = append(screen, m.gotoSymbolInput.View()...)
-	} else if m.searchInput.Focused() {
-		screen = append(screen, '\n')
-		screen = append(screen, m.searchInput.View()...)
-	} else if m.searchInput.Value() != "" {
-		screen = append(screen, '\n')
-		re, ci := regexCase(m.searchInput.Value())
-		re = "/" + re + "/"
-		if ci {
-			re += "i"
-		}
-		if m.search.err != nil {
-			screen = append(screen, flex(m.termWidth, re, m.search.err.Error())...)
-		} else if len(m.search.results) == 0 {
-			screen = append(screen, flex(m.termWidth, re, "not found")...)
-		} else {
-			cursor := fmt.Sprintf("found: [%v/%v]", m.search.cursor+1, len(m.search.results))
-			screen = append(screen, flex(m.termWidth, re, cursor)...)
-		}
-	}
-
-	return string(screen)
 }
 
 func (m *model) prettyKey(node *Node, selected bool) []byte {
