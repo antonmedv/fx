@@ -12,7 +12,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"runtime/debug"
 	"runtime/pprof"
 	"strconv"
 	"strings"
@@ -166,7 +165,6 @@ func main() {
 	}
 
 	if len(args) > 0 || flagSlurp {
-		debug.SetGCPercent(-1)
 		writeOut := func(s string) { fmt.Println(s) }
 		writeErr := func(s string) { fmt.Fprintln(os.Stderr, s) }
 		exitCode := engine.Start(parser, args, flagSlurp, writeOut, writeErr)
