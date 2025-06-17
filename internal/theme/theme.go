@@ -344,7 +344,7 @@ func ThemeTester() {
 			t.Key("\"collapsed\""),
 			colon,
 			t.Syntax("{"),
-			t.Preview("…"),
+			t.Preview("\"preview\":…"),
 			t.Syntax("}"),
 		)
 		fmt.Println(t.Syntax("}"))
