@@ -84,7 +84,7 @@ func (p *JsonParser) Recover() *Node {
 		Kind:       Err,
 		Value:      lines[0],
 		Index:      -1,
-		LineNumber: p.nextLineNumber(),
+		LineNumber: p.lineNumberPlusPlus(),
 	}
 	for i := 1; i < len(lines); i++ {
 		textNode.Append(&Node{
@@ -92,7 +92,7 @@ func (p *JsonParser) Recover() *Node {
 			Value:      lines[i],
 			Index:      -1,
 			Parent:     textNode,
-			LineNumber: p.nextLineNumber(),
+			LineNumber: p.lineNumberPlusPlus(),
 		})
 	}
 	return textNode
@@ -124,7 +124,7 @@ func (p *JsonParser) next() {
 	p.end++
 }
 
-func (p *JsonParser) nextLineNumber() int {
+func (p *JsonParser) lineNumberPlusPlus() int {
 	n := p.lineNumber
 	p.lineNumber++
 	return n
@@ -144,11 +144,11 @@ func (p *JsonParser) parseValue() *Node {
 	case '[':
 		l = p.parseArray()
 	case 't':
-		l = p.parseKeyword(trueValue, Bool)
+		l = p.parseKeyword(trueValue, Bool, 1)
 	case 'f':
-		l = p.parseKeyword(falseValue, Bool)
-	case 'n':
-		l = p.parseKeyword(nullValue, Null)
+		l = p.parseKeyword(falseValue, Bool, 1)
+	case 'n', 'N', 'i', 'I':
+		l = p.parseCornerCases()
 	default:
 		panic(fmt.Sprintf("Unexpected character %q", p.char))
 	}
@@ -162,7 +162,7 @@ func (p *JsonParser) parseString() *Node {
 		Kind:       String,
 		Depth:      p.depth,
 		Value:      p.scanString(),
-		LineNumber: p.nextLineNumber(),
+		LineNumber: p.lineNumberPlusPlus(),
 	}
 }
 
@@ -213,7 +213,7 @@ func (p *JsonParser) parseNumber() *Node {
 	num := &Node{
 		Kind:       Number,
 		Depth:      p.depth,
-		LineNumber: p.nextLineNumber(),
+		LineNumber: p.lineNumberPlusPlus(),
 	}
 	start := p.end - 1
 
@@ -267,7 +267,7 @@ func (p *JsonParser) parseObject() *Node {
 	object := &Node{
 		Kind:       Object,
 		Depth:      p.depth,
-		LineNumber: p.nextLineNumber(),
+		LineNumber: p.lineNumberPlusPlus(),
 	}
 	object.Value = curlyBracketOpen
 
@@ -324,7 +324,7 @@ func (p *JsonParser) parseObject() *Node {
 			closeBracket := &Node{
 				Kind:       Object,
 				Depth:      p.depth,
-				LineNumber: p.nextLineNumber(),
+				LineNumber: p.lineNumberPlusPlus(),
 			}
 			closeBracket.Value = curlyBracketClose
 			closeBracket.Parent = object
@@ -342,7 +342,7 @@ func (p *JsonParser) parseArray() *Node {
 	arr := &Node{
 		Kind:       Array,
 		Depth:      p.depth,
-		LineNumber: p.nextLineNumber(),
+		LineNumber: p.lineNumberPlusPlus(),
 	}
 	arr.Value = squareBracketOpen
 
@@ -381,7 +381,7 @@ func (p *JsonParser) parseArray() *Node {
 			closeBracket := &Node{
 				Kind:       Array,
 				Depth:      p.depth,
-				LineNumber: p.nextLineNumber(),
+				LineNumber: p.lineNumberPlusPlus(),
 			}
 			closeBracket.Value = squareBracketClose
 			closeBracket.Parent = arr
@@ -395,27 +395,53 @@ func (p *JsonParser) parseArray() *Node {
 	}
 }
 
-func (p *JsonParser) parseKeyword(name string, kind Kind) *Node {
-	for i := 1; i < len(name); i++ {
+func (p *JsonParser) parseKeyword(name string, kind Kind, start int) *Node {
+	for i := start; i < len(name); i++ {
 		p.next()
 		if p.char != name[i] {
 			panic(fmt.Sprintf("Unexpected character %q in keyword", p.char))
 		}
 	}
-	p.next()
 
-	nextCharIsSpecial := isWhitespace(p.char) || p.char == ',' || p.char == '}' || p.char == ']' || p.char == 0
-	if nextCharIsSpecial {
+	p.next()
+	if isEndOfValue(p.char) {
 		keyword := &Node{
 			Kind:       kind,
 			Depth:      p.depth,
-			LineNumber: p.nextLineNumber(),
+			LineNumber: p.lineNumberPlusPlus(),
 		}
 		keyword.Value = name
 		return keyword
 	}
 
 	panic(fmt.Sprintf("Unexpected character %q in keyword", p.char))
+}
+
+func (p *JsonParser) parseCornerCases() *Node {
+	start := p.end - 1
+	p.next()
+	switch p.char {
+	case 'u': // null (normal case)
+		return p.parseKeyword(nullValue, Null, 2)
+	case 'a': // NaN
+		p.next()
+		if p.char == 'n' || p.char == 'N' {
+			p.next()
+			if isEndOfValue(p.char) {
+				return &Node{
+					Kind:       NaN,
+					Depth:      p.depth,
+					Value:      string(p.data[start:p.end]),
+					LineNumber: p.lineNumberPlusPlus(),
+				}
+			}
+		}
+	}
+	panic(fmt.Sprintf("Unexpected character %q", p.char))
+}
+
+func isEndOfValue(ch byte) bool {
+	return isWhitespace(ch) || ch == ',' || ch == '}' || ch == ']' || ch == 0 // 0 is EOF
 }
 
 func isWhitespace(ch byte) bool {
