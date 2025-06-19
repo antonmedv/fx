@@ -426,7 +426,7 @@ func (p *JsonParser) parseCornerCases() *Node {
 	}
 
 	switch p.char {
-	case 'a': // NaN
+	case 'a', 'A': // NaN, nan
 		p.next()
 		if p.char == 'n' || p.char == 'N' {
 			p.next()
@@ -439,8 +439,21 @@ func (p *JsonParser) parseCornerCases() *Node {
 				}
 			}
 		}
-	case 'n': // Infinity
-		return p.parseKeyword("Infinity", 2, Infinity)
+	case 'n', 'N': // Infinity, infinity, inf, INF
+		p.next()
+		if p.char == 'f' || p.char == 'F' {
+			p.next()
+			if isEndOfValue(p.char) {
+				return &Node{
+					Kind:       Infinity,
+					Depth:      p.depth,
+					Value:      string(p.data[start : p.end-1]),
+					LineNumber: p.lineNumberPlusPlus(),
+				}
+			} else {
+				return p.parseKeyword("Infinity", 4, Infinity)
+			}
+		}
 	}
 	panic(fmt.Sprintf("Unexpected character %q", p.char))
 }
