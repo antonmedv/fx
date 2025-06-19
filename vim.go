@@ -3,35 +3,20 @@ package main
 import (
 	"strconv"
 
+	tea "github.com/charmbracelet/bubbletea"
+
 	. "github.com/antonmedv/fx/internal/jsonx"
 )
 
-type CommandType int
-
-const (
-	GotoLine CommandType = iota
-	Unsupported
-)
-
-func (m *model) runCommand(s string) {
+func (m *model) runCommand(s string) (tea.Model, tea.Cmd) {
 	num, err := strconv.Atoi(s)
-	var commandType CommandType
-
-	if err != nil {
-		commandType = Unsupported
-		m.commandInput.SetValue("")
-		return
-	}
-
-	commandType = GotoLine
-
-	switch commandType {
-	case GotoLine:
+	if err == nil {
 		gotoLine(m, num)
-		return
-	case Unsupported:
-		return
+		return m, nil
+	} else if s == "q" {
+		return m, tea.Quit
 	}
+	return m, nil
 }
 
 func gotoLine(m *model, num int) {
