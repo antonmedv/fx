@@ -37,17 +37,17 @@ func prepare(t *testing.T, opts ...options) *teatest.TestModel {
 	require.NoError(t, err)
 
 	m := &model{
-		top:           head,
-		head:          head,
-		bottom:        head,
-		totalLines:    head.Bottom().LineNumber,
-		eof:           true,
-		wrap:          true,
-		showCursor:    true,
-		digInput:      textinput.New(),
-		searchInput:   textinput.New(),
-		search:        newSearch(),
-		gotoLineInput: textinput.New(),
+		top:          head,
+		head:         head,
+		bottom:       head,
+		totalLines:   head.Bottom().LineNumber,
+		eof:          true,
+		wrap:         true,
+		showCursor:   true,
+		digInput:     textinput.New(),
+		searchInput:  textinput.New(),
+		search:       newSearch(),
+		commandInput: textinput.New(),
 	}
 
 	if len(opts) > 0 {
