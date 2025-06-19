@@ -6,13 +6,35 @@ import (
 	. "github.com/antonmedv/fx/internal/jsonx"
 )
 
-func (m *model) doGotoLine(s string) {
+type CommandType int
+
+const (
+	GotoLine CommandType = iota
+	Unsupported
+)
+
+func (m *model) runCommand(s string) {
 	num, err := strconv.Atoi(s)
+	var commandType CommandType
+
 	if err != nil {
+		commandType = Unsupported
 		m.commandInput.SetValue("")
 		return
 	}
 
+	commandType = GotoLine
+
+	switch commandType {
+	case GotoLine:
+		gotoLine(m, num)
+		return
+	case Unsupported:
+		return
+	}
+}
+
+func gotoLine(m *model, num int) {
 	m.selectNode(findNode(m, num))
 
 	m.commandInput.SetValue("")

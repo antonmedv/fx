@@ -566,7 +566,7 @@ func (m *model) handleGotoLineKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case msg.Type == tea.KeyEnter:
 		m.commandInput.Blur()
-		m.doGotoLine(m.commandInput.Value())
+		m.runCommand(m.commandInput.Value())
 
 	default:
 		m.commandInput, cmd = m.commandInput.Update(msg)
