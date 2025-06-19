@@ -46,6 +46,10 @@ func findNode(m *model, line int) *Node {
 		return m.top.Bottom()
 	}
 
+	if line <= 1 {
+		return m.top
+	}
+
 	node := m.top
 
 	for {
