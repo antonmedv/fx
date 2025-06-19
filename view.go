@@ -183,9 +183,9 @@ func (m *model) View() string {
 	} else if m.gotoSymbolInput.Focused() {
 		screen = append(screen, '\n')
 		screen = append(screen, m.gotoSymbolInput.View()...)
-	} else if m.gotoLineInput.Focused() {
+	} else if m.commandInput.Focused() {
 		screen = append(screen, '\n')
-		screen = append(screen, m.gotoLineInput.View()...)
+		screen = append(screen, m.commandInput.View()...)
 	} else if m.searchInput.Focused() {
 		screen = append(screen, '\n')
 		screen = append(screen, m.searchInput.View()...)

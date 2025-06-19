@@ -9,13 +9,13 @@ import (
 func (m *model) doGotoLine(s string) {
 	num, err := strconv.Atoi(s)
 	if err != nil {
-		m.gotoLineInput.SetValue("")
+		m.commandInput.SetValue("")
 		return
 	}
 
 	m.selectNode(findNode(m, num))
 
-	m.gotoLineInput.SetValue("")
+	m.commandInput.SetValue("")
 	m.recordHistory()
 }
 
