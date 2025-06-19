@@ -40,6 +40,7 @@ func prepare(t *testing.T, opts ...options) *teatest.TestModel {
 		head:        head,
 		bottom:      head,
 		totalLines:  head.Bottom().LineNumber,
+		eof:         true,
 		wrap:        true,
 		showCursor:  true,
 		digInput:    textinput.New(),
