@@ -884,7 +884,7 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-	case key.Matches(msg, keyMap.GotoLine):
+	case key.Matches(msg, keyMap.CommandLine):
 		m.commandInput.CursorEnd()
 		m.commandInput.Width = m.termWidth - 2 // -1 for the prompt, -1 for the cursor
 		m.commandInput.Focus()

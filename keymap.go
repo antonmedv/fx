@@ -28,7 +28,7 @@ type KeyMap struct {
 	ToggleWrap          key.Binding
 	ShowSelector        key.Binding
 	Yank                key.Binding
-	GotoLine            key.Binding
+	CommandLine         key.Binding
 	Search              key.Binding
 	SearchNext          key.Binding
 	SearchPrev          key.Binding
@@ -144,9 +144,9 @@ func init() {
 			key.WithKeys("y"),
 			key.WithHelp("", "yank/copy"),
 		),
-		GotoLine: key.NewBinding(
+		CommandLine: key.NewBinding(
 			key.WithKeys(":"),
-			key.WithHelp("", "go to line"),
+			key.WithHelp("", "open command line"),
 		),
 		Search: key.NewBinding(
 			key.WithKeys("/"),
