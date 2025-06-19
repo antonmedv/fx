@@ -2,6 +2,7 @@ package jsonx
 
 import (
 	"fmt"
+	"math"
 	"math/big"
 	"strconv"
 
@@ -95,6 +96,15 @@ func (n *Node) ToValue(vm *goja.Runtime) goja.Value {
 		}
 
 		return vm.NewArray(arr...)
+
+	case NaN:
+		return vm.ToValue(math.NaN())
+
+	case Infinity:
+		if n.Value[0] == '-' {
+			return vm.ToValue(math.Inf(-1))
+		}
+		return vm.ToValue(math.Inf(1))
 	}
 	panic(fmt.Sprintf("unsupported node kind %d", n.Kind))
 }

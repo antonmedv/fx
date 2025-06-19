@@ -2,6 +2,7 @@ package engine
 
 import (
 	"fmt"
+	"math"
 	"math/big"
 	"reflect"
 	"strconv"
@@ -37,7 +38,16 @@ func Stringify(value goja.Value, vm *goja.Runtime, theme Theme, depth int) strin
 			return theme.Boolean("false")
 		}
 
-	case reflect.Int64, reflect.Float64:
+	case reflect.Int64:
+		return theme.Number(value.String())
+
+	case reflect.Float64:
+		f := value.ToFloat()
+		if math.IsInf(f, 0) {
+			return theme.Error(value.String())
+		} else if math.IsNaN(f) {
+			return theme.Error(value.String())
+		}
 		return theme.Number(value.String())
 
 	case reflect.String:
