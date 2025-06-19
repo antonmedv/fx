@@ -26,7 +26,7 @@ func findNode(m *model, line int) *Node {
 
 	node := m.top
 
-	for range line - 1 {
+	for {
 		if node.ChunkEnd != nil {
 			node = node.ChunkEnd.Next
 		} else if node.Collapsed != nil {
@@ -38,7 +38,9 @@ func findNode(m *model, line int) *Node {
 		if node == nil {
 			return nil
 		}
-	}
 
-	return node
+		if node.LineNumber == line {
+			return node
+		}
+	}
 }
