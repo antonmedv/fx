@@ -137,8 +137,10 @@ func (p *JsonParser) parseValue() *Node {
 	switch p.char {
 	case '"':
 		l = p.parseString()
-	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-':
-		l = p.parseNumber()
+	case '-':
+		l = p.parseMinus()
+	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+		l = p.parseNumber(p.end - 1)
 	case '{':
 		l = p.parseObject()
 	case '[':
@@ -148,7 +150,7 @@ func (p *JsonParser) parseValue() *Node {
 	case 'f':
 		l = p.parseKeyword("false", 1, Bool)
 	case 'n', 'N', 'i', 'I':
-		l = p.parseCornerCases()
+		l = p.parseCornerCases(p.end - 1)
 	default:
 		panic(fmt.Sprintf("Unexpected character %q", p.char))
 	}
@@ -209,20 +211,22 @@ func (p *JsonParser) scanString() string {
 	return str
 }
 
-func (p *JsonParser) parseNumber() *Node {
+func (p *JsonParser) parseMinus() *Node {
+	p.next()
+	switch p.char {
+	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+		return p.parseNumber(p.end - 2)
+	case 'n', 'N', 'i', 'I':
+		return p.parseCornerCases(p.end - 2)
+	}
+	panic(fmt.Sprintf("Invalid character %q in number", p.char))
+}
+
+func (p *JsonParser) parseNumber(start int) *Node {
 	num := &Node{
 		Kind:       Number,
 		Depth:      p.depth,
 		LineNumber: p.lineNumberPlusPlus(),
-	}
-	start := p.end - 1
-
-	// Handle negative numbers
-	if p.char == '-' {
-		p.next()
-		if !utils.IsDigit(p.char) {
-			panic(fmt.Sprintf("Invalid character %q in number", p.char))
-		}
 	}
 
 	// Leading zero
@@ -417,8 +421,7 @@ func (p *JsonParser) parseKeyword(name string, from int, kind Kind) *Node {
 	panic(fmt.Sprintf("Unexpected character %q in keyword", p.char))
 }
 
-func (p *JsonParser) parseCornerCases() *Node {
-	start := p.end - 1
+func (p *JsonParser) parseCornerCases(start int) *Node {
 	p.next()
 	if p.char == 'u' {
 		// null (normal case)
