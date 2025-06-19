@@ -144,9 +144,9 @@ func (p *JsonParser) parseValue() *Node {
 	case '[':
 		l = p.parseArray()
 	case 't':
-		l = p.parseKeyword(trueValue, Bool, 1)
+		l = p.parseKeyword("true", 1, Bool)
 	case 'f':
-		l = p.parseKeyword(falseValue, Bool, 1)
+		l = p.parseKeyword("false", 1, Bool)
 	case 'n', 'N', 'i', 'I':
 		l = p.parseCornerCases()
 	default:
@@ -395,22 +395,22 @@ func (p *JsonParser) parseArray() *Node {
 	}
 }
 
-func (p *JsonParser) parseKeyword(name string, kind Kind, start int) *Node {
-	for i := start; i < len(name); i++ {
+func (p *JsonParser) parseKeyword(name string, from int, kind Kind) *Node {
+	start := p.end - from
+	for i := from; i < len(name); i++ {
 		p.next()
 		if p.char != name[i] {
 			panic(fmt.Sprintf("Unexpected character %q in keyword", p.char))
 		}
 	}
-
 	p.next()
 	if isEndOfValue(p.char) {
 		keyword := &Node{
 			Kind:       kind,
 			Depth:      p.depth,
+			Value:      string(p.data[start : p.end-1]),
 			LineNumber: p.lineNumberPlusPlus(),
 		}
-		keyword.Value = name
 		return keyword
 	}
 
@@ -420,9 +420,12 @@ func (p *JsonParser) parseKeyword(name string, kind Kind, start int) *Node {
 func (p *JsonParser) parseCornerCases() *Node {
 	start := p.end - 1
 	p.next()
+	if p.char == 'u' {
+		// null (normal case)
+		return p.parseKeyword("null", 2, Null)
+	}
+
 	switch p.char {
-	case 'u': // null (normal case)
-		return p.parseKeyword(nullValue, Null, 2)
 	case 'a': // NaN
 		p.next()
 		if p.char == 'n' || p.char == 'N' {
@@ -431,11 +434,13 @@ func (p *JsonParser) parseCornerCases() *Node {
 				return &Node{
 					Kind:       NaN,
 					Depth:      p.depth,
-					Value:      string(p.data[start:p.end]),
+					Value:      string(p.data[start : p.end-1]),
 					LineNumber: p.lineNumberPlusPlus(),
 				}
 			}
 		}
+	case 'n': // Infinity
+		return p.parseKeyword("Infinity", 2, Infinity)
 	}
 	panic(fmt.Sprintf("Unexpected character %q", p.char))
 }
