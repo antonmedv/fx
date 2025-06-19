@@ -106,7 +106,7 @@ var (
 	defaultNull       = fg("243")
 	defaultSize       = toColor(lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render)
 	defaultLineNumber = toColor(lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render)
-	defaultError      = toColor(lipgloss.NewStyle().Background(lipgloss.Color("9")).Foreground(lipgloss.Color("15")).Render)
+	defaultError      = toColor(lipgloss.NewStyle().Background(lipgloss.Color("196")).Foreground(lipgloss.Color("255")).Render)
 )
 
 var (
