@@ -11,9 +11,6 @@ const (
 	squareBracketOpen  = "["
 	squareBracketClose = "]"
 	squareBracketPair  = "[]"
-	nullValue          = "null"
-	trueValue          = "true"
-	falseValue         = "false"
 )
 
 func (n *Node) String() string {

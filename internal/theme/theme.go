@@ -27,6 +27,7 @@ type Theme struct {
 	Size       Color
 	Ref        Color
 	LineNumber Color
+	Error      Color
 }
 
 type Color func(s string) string
@@ -46,6 +47,10 @@ func Value(kind jsonx.Kind, selected bool) Color {
 			return CurrentTheme.Syntax
 		case jsonx.Number:
 			return CurrentTheme.Number
+		case jsonx.NaN:
+			return CurrentTheme.Error
+		case jsonx.Infinity:
+			return CurrentTheme.Error
 		default:
 			return noColor
 		}
@@ -101,6 +106,7 @@ var (
 	defaultNull       = fg("243")
 	defaultSize       = toColor(lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render)
 	defaultLineNumber = toColor(lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render)
+	defaultError      = toColor(lipgloss.NewStyle().Background(lipgloss.Color("9")).Foreground(lipgloss.Color("15")).Render)
 )
 
 var (
@@ -128,6 +134,7 @@ var NoColor = Theme{
 	Size:       noColor,
 	Ref:        noColor,
 	LineNumber: defaultLineNumber,
+	Error:      defaultError,
 }
 
 var themes = map[string]Theme{
@@ -146,6 +153,7 @@ var themes = map[string]Theme{
 		Size:       defaultSize,
 		Ref:        underlineFg("2"),
 		LineNumber: defaultLineNumber,
+		Error:      defaultError,
 	},
 	"2": {
 		Cursor:     defaultCursor,
@@ -161,6 +169,7 @@ var themes = map[string]Theme{
 		Size:       defaultSize,
 		Ref:        underlineFg("4"),
 		LineNumber: defaultLineNumber,
+		Error:      defaultError,
 	},
 	"3": {
 		Cursor:     defaultCursor,
@@ -176,6 +185,7 @@ var themes = map[string]Theme{
 		Size:       defaultSize,
 		Ref:        underlineFg("11"),
 		LineNumber: defaultLineNumber,
+		Error:      defaultError,
 	},
 	"4": {
 		Cursor:     defaultCursor,
@@ -191,6 +201,7 @@ var themes = map[string]Theme{
 		Size:       defaultSize,
 		Ref:        underlineFg("#00BBF9"),
 		LineNumber: defaultLineNumber,
+		Error:      defaultError,
 	},
 	"5": {
 		Cursor:     defaultCursor,
@@ -206,6 +217,7 @@ var themes = map[string]Theme{
 		Size:       defaultSize,
 		Ref:        underlineFg("#f4d35e"),
 		LineNumber: defaultLineNumber,
+		Error:      defaultError,
 	},
 	"6": {
 		Cursor:     defaultCursor,
@@ -221,6 +233,7 @@ var themes = map[string]Theme{
 		Size:       defaultSize,
 		Ref:        underlineFg("#6BCB77"),
 		LineNumber: defaultLineNumber,
+		Error:      defaultError,
 	},
 	"7": {
 		Cursor:     defaultCursor,
@@ -236,6 +249,7 @@ var themes = map[string]Theme{
 		Size:       defaultSize,
 		Ref:        underlineFg("213"),
 		LineNumber: defaultLineNumber,
+		Error:      defaultError,
 	},
 	"8": {
 		Cursor:     defaultCursor,
@@ -251,6 +265,7 @@ var themes = map[string]Theme{
 		Size:       defaultSize,
 		Ref:        underlineFg("195"),
 		LineNumber: defaultLineNumber,
+		Error:      defaultError,
 	},
 	"🔵": {
 		Cursor: toColor(lipgloss.NewStyle().
@@ -269,6 +284,7 @@ var themes = map[string]Theme{
 		Size:       defaultSize,
 		Ref:        underline,
 		LineNumber: defaultLineNumber,
+		Error:      defaultError,
 	},
 	"🥝": {
 		Cursor:     defaultCursor,
@@ -284,6 +300,7 @@ var themes = map[string]Theme{
 		Size:       defaultSize,
 		Ref:        underlineFg("82"),
 		LineNumber: defaultLineNumber,
+		Error:      defaultError,
 	},
 }
 

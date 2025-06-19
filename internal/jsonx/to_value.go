@@ -16,7 +16,7 @@ func (n *Node) ToValue(vm *goja.Runtime) goja.Value {
 		return goja.Null()
 
 	case Bool:
-		if n.Value == trueValue {
+		if n.Value == "true" {
 			return vm.ToValue(true)
 		} else {
 			return vm.ToValue(false)
