@@ -252,6 +252,10 @@ func main() {
 					p.Send(eofMsg{})
 					break
 				}
+				if flagStrict {
+					p.Send(errorMsg{err: err})
+					break
+				}
 				textNode := parser.Recover()
 				p.Send(nodeMsg{node: textNode})
 			} else {
@@ -267,6 +271,10 @@ func main() {
 
 	if m.printOnExit {
 		fmt.Println(m.cursorValue())
+	}
+
+	if m.printErrorOnExit != nil {
+		fmt.Println(m.printErrorOnExit.Error())
 	}
 }
 
@@ -295,6 +303,7 @@ type model struct {
 	showPreview           bool
 	preview               viewport.Model
 	printOnExit           bool
+	printErrorOnExit      error
 	spinner               spinner.Model
 	locationHistory       []location
 	locationIndex         int // position in locationHistory
@@ -310,6 +319,10 @@ type location struct {
 
 type nodeMsg struct {
 	node *Node
+}
+
+type errorMsg struct {
+	err error
 }
 
 type eofMsg struct{}
@@ -342,6 +355,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case eofMsg:
 		m.eof = true
 		return m, nil
+
+	case errorMsg:
+		m.printErrorOnExit = msg.err
+		return m, tea.Quit
 
 	case nodeMsg:
 		if m.wrap {
