@@ -1229,7 +1229,7 @@ func (m *model) cursorValue() string {
 		if at.Chunk != "" && at.Value == "" {
 			at = parent
 		}
-		if at.Kind == Object || at.Kind == Array {
+		if len(at.Value) >= 1 && at.Value[0] == '}' || at.Value[0] == ']' {
 			at = parent
 		}
 	}
