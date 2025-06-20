@@ -13,56 +13,65 @@ func TestJsonParser_Parse(t *testing.T) {
 	tests := []struct {
 		input    string
 		wantKind jsonx.Kind
-		wantErr  bool
 	}{
-		{`"hello"`, jsonx.String, false},
-		{`42`, jsonx.Number, false},
-		{`-123.45`, jsonx.Number, false},
-		{`true`, jsonx.Bool, false},
-		{`false`, jsonx.Bool, false},
-		{`null`, jsonx.Null, false},
-		{`{}`, jsonx.Object, false},
-		{`[]`, jsonx.Array, false},
-		{`{"key":"value"}`, jsonx.Object, false},
-		{`[1, 2, 3]`, jsonx.Array, false},
-		{`   "test"   `, jsonx.String, false},
+		{`"hello"`, jsonx.String},
+		{`42`, jsonx.Number},
+		{`-123.45`, jsonx.Number},
+		{`true`, jsonx.Bool},
+		{`false`, jsonx.Bool},
+		{`null`, jsonx.Null},
+		{`{}`, jsonx.Object},
+		{`[]`, jsonx.Array},
+		{`{"key":"value"}`, jsonx.Object},
+		{`[1, 2, 3]`, jsonx.Array},
+		{`   "test"   `, jsonx.String},
 		{`// comment
-		"test"`, jsonx.String, false},
-		{`/* comment */"test"`, jsonx.String, false},
-		{`{"a":1,}`, jsonx.Object, false},
-		{`[1,2,]`, jsonx.Array, false},
-		{`"abc`, jsonx.Err, true},
-		{`"ab\q"`, jsonx.Err, true},
-		{`truth`, jsonx.Err, true},
-		{`1e`, jsonx.Err, true},
-		{`[1, 2`, jsonx.Err, true},
-		{`/* test`, jsonx.Err, true},
-		{`[,]`, jsonx.Err, true},
-		{`{,}`, jsonx.Err, true},
-		{`[1,,]`, jsonx.Err, true},
-		{`{"a":1,,}`, jsonx.Err, true},
-		{`-null`, jsonx.Err, true},
-		{`Null`, jsonx.Err, true},
-		{`-Null`, jsonx.Err, true},
-		{`NaN`, jsonx.NaN, false},
-		{`-NaN`, jsonx.NaN, false},
-		{`nan`, jsonx.NaN, false},
-		{`Infinity`, jsonx.Infinity, false},
-		{`-Infinity`, jsonx.Infinity, false},
-		{`infinity`, jsonx.Infinity, false},
-		{`inf`, jsonx.Infinity, false},
-		{`INF`, jsonx.Infinity, false},
+		"test"`, jsonx.String},
+		{`/* comment */"test"`, jsonx.String},
+		{`{"a":1,}`, jsonx.Object},
+		{`[1,2,]`, jsonx.Array},
+		{`NaN`, jsonx.NaN},
+		{`-NaN`, jsonx.NaN},
+		{`nan`, jsonx.NaN},
+		{`Infinity`, jsonx.Infinity},
+		{`-Infinity`, jsonx.Infinity},
+		{`infinity`, jsonx.Infinity},
+		{`inf`, jsonx.Infinity},
+		{`INF`, jsonx.Infinity},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
 			node, err := jsonx.Parse([]byte(tt.input))
-			if tt.wantErr {
-				assert.Error(t, err, "expected error for input: %s", tt.input)
-			} else {
-				assert.NoError(t, err, "unexpected error for input: %s", tt.input)
-				assert.Equal(t, tt.wantKind, node.Kind, "unexpected kind for input: %s", tt.input)
-			}
+			assert.NoError(t, err, "unexpected error for input: %s", tt.input)
+			assert.Equal(t, tt.wantKind, node.Kind, "unexpected kind for input: %s", tt.input)
+		})
+	}
+}
+
+func TestJsonParser_Parse_error(t *testing.T) {
+	tests := []struct {
+		input string
+	}{
+		{`"abc`},
+		{`"ab\q"`},
+		{`truth`},
+		{`1e`},
+		{`[1, 2`},
+		{`/* test`},
+		{`[,]`},
+		{`{,}`},
+		{`[1,,]`},
+		{`{"a":1,,}`},
+		{`-null`},
+		{`Null`},
+		{`-Null`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			_, err := jsonx.Parse([]byte(tt.input))
+			assert.Error(t, err, "expected error for input: %s", tt.input)
 		})
 	}
 }

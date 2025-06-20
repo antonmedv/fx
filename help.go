@@ -29,6 +29,7 @@ func usage(keyMap KeyMap) string {
     -r, --raw             treat input as a raw string
     -s, --slurp           read all inputs into an array
     --yaml                parse input as YAML
+    --strict              strict mode
 
   %v
 %v

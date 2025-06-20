@@ -27,6 +27,7 @@ var flags = []pair{
 	{"--themes", "--themes"},
 	{"--version", "--version"},
 	{"--yaml", "--yaml"},
+	{"--strict", "--strict"},
 }
 
 //go:embed complete.bash

@@ -153,15 +153,15 @@ func (p *JsonParser) parseValue() *Node {
 	case '[':
 		l = p.parseArray()
 	case 't':
-		l = p.parseKeyword("true", 1, Bool)
+		l = p.parseKeyword("true", Bool)
 	case 'f':
-		l = p.parseKeyword("false", 1, Bool)
+		l = p.parseKeyword("false", Bool)
 	case 'n':
 		l = p.parseNullOrNan()
 	case 'N':
-		l = p.parseNan(0)
+		l = p.parseNan(p.end - 1)
 	case 'i', 'I':
-		l = p.parseInfinity(0)
+		l = p.parseInfinity(p.end - 1)
 	default:
 		panic(fmt.Sprintf("Unexpected character %q", p.char))
 	}
@@ -223,14 +223,15 @@ func (p *JsonParser) scanString() string {
 }
 
 func (p *JsonParser) parseMinus() *Node {
+	start := p.end - 1
 	p.next()
 	switch p.char {
 	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-		return p.parseNumber(p.end - 2)
+		return p.parseNumber(start)
 	case 'n', 'N':
-		return p.parseNan(1)
+		return p.parseNan(start)
 	case 'i', 'I':
-		return p.parseInfinity(1)
+		return p.parseInfinity(start)
 	}
 	panic(fmt.Sprintf("Invalid character %q in number", p.char))
 }
@@ -418,9 +419,9 @@ func (p *JsonParser) parseArray() *Node {
 	}
 }
 
-func (p *JsonParser) parseKeyword(name string, from int, kind Kind) *Node {
-	start := p.end - from
-	for i := from; i < len(name); i++ {
+func (p *JsonParser) parseKeyword(name string, kind Kind) *Node {
+	start := p.end - 1
+	for i := 1; i < len(name); i++ {
 		p.next()
 		if p.char != name[i] {
 			panic(fmt.Sprintf("Unexpected character %q in keyword", p.char))
@@ -443,13 +444,29 @@ func (p *JsonParser) parseKeyword(name string, from int, kind Kind) *Node {
 func (p *JsonParser) parseNullOrNan() *Node {
 	p.next()
 	if p.char == 'u' {
-		return p.parseKeyword("null", 2, Null)
+		p.next()
+		if p.char == 'l' {
+			p.next()
+			if p.char == 'l' {
+				p.next()
+				if isEndOfValue(p.char) {
+					return &Node{
+						Kind:       Null,
+						Depth:      p.depth,
+						Value:      "null",
+						LineNumber: p.lineNumberPlusPlus(),
+					}
+				}
+			}
+		}
+	} else if p.char == 'a' {
+		p.back() // Put back the 'a'.
+		return p.parseNan(p.end - 1)
 	}
-	p.back() // Put back the 'a' or something.
-	return p.parseNan(0)
+	panic(fmt.Sprintf("Unexpected character %q", p.char))
 }
 
-func (p *JsonParser) parseNan(withMinus int) *Node {
+func (p *JsonParser) parseNan(start int) *Node {
 	p.next()
 	if !p.strict {
 		if p.char == 'a' || p.char == 'A' {
@@ -460,7 +477,7 @@ func (p *JsonParser) parseNan(withMinus int) *Node {
 					return &Node{
 						Kind:       NaN,
 						Depth:      p.depth,
-						Value:      string(p.data[p.end-3-withMinus : p.end-1]),
+						Value:      string(p.data[start : p.end-1]),
 						LineNumber: p.lineNumberPlusPlus(),
 					}
 				}
@@ -470,7 +487,7 @@ func (p *JsonParser) parseNan(withMinus int) *Node {
 	panic(fmt.Sprintf("Unexpected character %q", p.char))
 }
 
-func (p *JsonParser) parseInfinity(withMinus int) *Node {
+func (p *JsonParser) parseInfinity(start int) *Node {
 	p.next()
 	if !p.strict {
 		if p.char == 'n' || p.char == 'N' {
@@ -481,11 +498,31 @@ func (p *JsonParser) parseInfinity(withMinus int) *Node {
 					return &Node{
 						Kind:       Infinity,
 						Depth:      p.depth,
-						Value:      string(p.data[p.end-3-withMinus : p.end-1]),
+						Value:      string(p.data[start : p.end-1]),
 						LineNumber: p.lineNumberPlusPlus(),
 					}
-				} else {
-					return p.parseKeyword("Infinity", 4, Infinity)
+				} else if p.char == 'i' {
+					p.next()
+					if p.char == 'n' {
+						p.next()
+						if p.char == 'i' {
+							p.next()
+							if p.char == 't' {
+								p.next()
+								if p.char == 'y' {
+									p.next()
+									if isEndOfValue(p.char) {
+										return &Node{
+											Kind:       Infinity,
+											Depth:      p.depth,
+											Value:      string(p.data[start : p.end-1]),
+											LineNumber: p.lineNumberPlusPlus(),
+										}
+									}
+								}
+							}
+						}
+					}
 				}
 			}
 		}
