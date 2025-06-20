@@ -12,6 +12,7 @@ import (
 )
 
 type JsonParser struct {
+	strict     bool
 	rd         io.Reader
 	buf        []byte
 	data       []byte
@@ -23,7 +24,7 @@ type JsonParser struct {
 }
 
 func Parse(b []byte) (*Node, error) {
-	p := NewJsonParser(bytes.NewReader(b))
+	p := NewJsonParser(bytes.NewReader(b), false)
 	node, err := p.Parse()
 	if err == io.EOF {
 		err = nil
@@ -31,13 +32,14 @@ func Parse(b []byte) (*Node, error) {
 	return node, err
 }
 
-func NewJsonParser(rd io.Reader) *JsonParser {
+func NewJsonParser(rd io.Reader, strict bool) *JsonParser {
 	p := &JsonParser{
+		strict:     strict,
 		rd:         rd,
 		buf:        make([]byte, 4096),
 		lineNumber: 1,
 	}
-	p.next()
+	p.next() // Should be called here, to support streaming.
 	return p
 }
 
@@ -124,6 +126,11 @@ func (p *JsonParser) next() {
 	p.end++
 }
 
+func (p *JsonParser) back() {
+	p.end--
+	p.char = p.data[p.end]
+}
+
 func (p *JsonParser) lineNumberPlusPlus() int {
 	n := p.lineNumber
 	p.lineNumber++
@@ -149,8 +156,12 @@ func (p *JsonParser) parseValue() *Node {
 		l = p.parseKeyword("true", 1, Bool)
 	case 'f':
 		l = p.parseKeyword("false", 1, Bool)
-	case 'n', 'N', 'i', 'I':
-		l = p.parseCornerCases(p.end-1, true)
+	case 'n':
+		l = p.parseNullOrNan()
+	case 'N':
+		l = p.parseNan(0)
+	case 'i', 'I':
+		l = p.parseInfinity(0)
 	default:
 		panic(fmt.Sprintf("Unexpected character %q", p.char))
 	}
@@ -216,8 +227,10 @@ func (p *JsonParser) parseMinus() *Node {
 	switch p.char {
 	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 		return p.parseNumber(p.end - 2)
-	case 'n', 'N', 'i', 'I':
-		return p.parseCornerCases(p.end-2, false)
+	case 'n', 'N':
+		return p.parseNan(1)
+	case 'i', 'I':
+		return p.parseInfinity(1)
 	}
 	panic(fmt.Sprintf("Invalid character %q in number", p.char))
 }
@@ -318,6 +331,9 @@ func (p *JsonParser) parseObject() *Node {
 			p.next()
 			p.skipWhitespace()
 			if p.char == '}' {
+				if p.strict {
+					panic("Trailing comma is not allowed in strict mode")
+				}
 				object.End.Comma = false
 			} else {
 				continue
@@ -375,6 +391,9 @@ func (p *JsonParser) parseArray() *Node {
 			p.next()
 			p.skipWhitespace()
 			if p.char == ']' {
+				if p.strict {
+					panic("Trailing comma is not allowed in strict mode")
+				}
 				arr.End.Comma = false
 			} else {
 				continue
@@ -421,40 +440,53 @@ func (p *JsonParser) parseKeyword(name string, from int, kind Kind) *Node {
 	panic(fmt.Sprintf("Unexpected character %q in keyword", p.char))
 }
 
-func (p *JsonParser) parseCornerCases(start int, null bool) *Node {
+func (p *JsonParser) parseNullOrNan() *Node {
 	p.next()
-	if null && p.char == 'u' {
-		// null (normal case)
+	if p.char == 'u' {
 		return p.parseKeyword("null", 2, Null)
 	}
+	p.back() // Put back the 'a' or something.
+	return p.parseNan(0)
+}
 
-	switch p.char {
-	case 'a', 'A': // NaN, nan
-		p.next()
-		if p.char == 'n' || p.char == 'N' {
+func (p *JsonParser) parseNan(withMinus int) *Node {
+	p.next()
+	if !p.strict {
+		if p.char == 'a' || p.char == 'A' {
 			p.next()
-			if isEndOfValue(p.char) {
-				return &Node{
-					Kind:       NaN,
-					Depth:      p.depth,
-					Value:      string(p.data[start : p.end-1]),
-					LineNumber: p.lineNumberPlusPlus(),
+			if p.char == 'n' || p.char == 'N' {
+				p.next()
+				if isEndOfValue(p.char) {
+					return &Node{
+						Kind:       NaN,
+						Depth:      p.depth,
+						Value:      string(p.data[p.end-3-withMinus : p.end-1]),
+						LineNumber: p.lineNumberPlusPlus(),
+					}
 				}
 			}
 		}
-	case 'n', 'N': // Infinity, infinity, inf, INF
-		p.next()
-		if p.char == 'f' || p.char == 'F' {
+	}
+	panic(fmt.Sprintf("Unexpected character %q", p.char))
+}
+
+func (p *JsonParser) parseInfinity(withMinus int) *Node {
+	p.next()
+	if !p.strict {
+		if p.char == 'n' || p.char == 'N' {
 			p.next()
-			if isEndOfValue(p.char) {
-				return &Node{
-					Kind:       Infinity,
-					Depth:      p.depth,
-					Value:      string(p.data[start : p.end-1]),
-					LineNumber: p.lineNumberPlusPlus(),
+			if p.char == 'f' || p.char == 'F' {
+				p.next()
+				if isEndOfValue(p.char) {
+					return &Node{
+						Kind:       Infinity,
+						Depth:      p.depth,
+						Value:      string(p.data[p.end-3-withMinus : p.end-1]),
+						LineNumber: p.lineNumberPlusPlus(),
+					}
+				} else {
+					return p.parseKeyword("Infinity", 4, Infinity)
 				}
-			} else {
-				return p.parseKeyword("Infinity", 4, Infinity)
 			}
 		}
 	}
@@ -475,6 +507,9 @@ func (p *JsonParser) skipWhitespace() {
 		case ' ', '\t', '\n', '\r':
 			p.next()
 		case '/':
+			if p.strict {
+				panic("Comments are not allowed in strict mode")
+			}
 			p.skipComment()
 		default:
 			return

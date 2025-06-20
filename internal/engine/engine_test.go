@@ -43,7 +43,7 @@ func TestEngine(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			parser := jsonx.NewJsonParser(strings.NewReader(tc.input))
+			parser := jsonx.NewJsonParser(strings.NewReader(tc.input), false)
 
 			var outs, errs []string
 			writeOut := func(s string) { outs = append(outs, s) }
@@ -60,7 +60,7 @@ func TestEngine(t *testing.T) {
 
 func TestStart_InvalidJSON(t *testing.T) {
 	input := `{"unclosed": 1`
-	parser := jsonx.NewJsonParser(strings.NewReader(input))
+	parser := jsonx.NewJsonParser(strings.NewReader(input), false)
 
 	var outs, errs []string
 	writeOut := func(s string) { outs = append(outs, s) }
@@ -74,7 +74,7 @@ func TestStart_InvalidJSON(t *testing.T) {
 
 func TestStart_FastPath_InvalidJSON(t *testing.T) {
 	input := `{"unclosed": 1`
-	parser := jsonx.NewJsonParser(strings.NewReader(input))
+	parser := jsonx.NewJsonParser(strings.NewReader(input), false)
 
 	var outs, errs []string
 	writeOut := func(s string) { outs = append(outs, s) }
@@ -88,7 +88,7 @@ func TestStart_FastPath_InvalidJSON(t *testing.T) {
 
 func TestStart_EscapeSequences(t *testing.T) {
 	input := `{"emoji": "\ud83d\ude80"}`
-	parser := jsonx.NewJsonParser(strings.NewReader(input))
+	parser := jsonx.NewJsonParser(strings.NewReader(input), false)
 
 	var outs, errs []string
 	writeOut := func(s string) { outs = append(outs, s) }
@@ -103,7 +103,7 @@ func TestStart_EscapeSequences(t *testing.T) {
 
 func TestStart_EscapeSequences_in_key(t *testing.T) {
 	input := `{"\ud83d\ude80": "\ud83d\ude80"}`
-	parser := jsonx.NewJsonParser(strings.NewReader(input))
+	parser := jsonx.NewJsonParser(strings.NewReader(input), false)
 
 	var outs, errs []string
 	writeOut := func(s string) { outs = append(outs, s) }

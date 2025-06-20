@@ -35,10 +35,11 @@ import (
 )
 
 var (
-	flagYaml  bool
-	flagRaw   bool
-	flagSlurp bool
-	flagComp  bool // Echo autocomplete integration code.
+	flagYaml   bool
+	flagRaw    bool
+	flagSlurp  bool
+	flagComp   bool
+	flagStrict bool
 )
 
 func main() {
@@ -94,6 +95,8 @@ func main() {
 		case "-rs", "-sr":
 			flagRaw = true
 			flagSlurp = true
+		case "--strict":
+			flagStrict = true
 		default:
 			args = append(args, arg)
 		}
@@ -157,11 +160,11 @@ func main() {
 			os.Exit(1)
 			return
 		}
-		parser = NewJsonParser(bytes.NewReader(jsonBytes))
+		parser = NewJsonParser(bytes.NewReader(jsonBytes), flagStrict)
 	} else if flagRaw {
 		parser = NewLineParser(src)
 	} else {
-		parser = NewJsonParser(src)
+		parser = NewJsonParser(src, flagStrict)
 	}
 
 	if len(args) > 0 || flagSlurp {

@@ -37,6 +37,13 @@ func TestJsonParser_Parse(t *testing.T) {
 		{`1e`, jsonx.Err, true},
 		{`[1, 2`, jsonx.Err, true},
 		{`/* test`, jsonx.Err, true},
+		{`[,]`, jsonx.Err, true},
+		{`{,}`, jsonx.Err, true},
+		{`[1,,]`, jsonx.Err, true},
+		{`{"a":1,,}`, jsonx.Err, true},
+		{`-null`, jsonx.Err, true},
+		{`Null`, jsonx.Err, true},
+		{`-Null`, jsonx.Err, true},
 		{`NaN`, jsonx.NaN, false},
 		{`-NaN`, jsonx.NaN, false},
 		{`nan`, jsonx.NaN, false},
@@ -45,7 +52,6 @@ func TestJsonParser_Parse(t *testing.T) {
 		{`infinity`, jsonx.Infinity, false},
 		{`inf`, jsonx.Infinity, false},
 		{`INF`, jsonx.Infinity, false},
-		{`-null`, jsonx.Err, true},
 	}
 
 	for _, tt := range tests {
@@ -61,10 +67,39 @@ func TestJsonParser_Parse(t *testing.T) {
 	}
 }
 
+func TestJsonParser_Parse_strict(t *testing.T) {
+	tests := []struct {
+		input string
+	}{
+		{`{"a":1,}`},
+		{`[1,2,]`},
+		{`NaN`},
+		{`-NaN`},
+		{`nan`},
+		{`Infinity`},
+		{`-Infinity`},
+		{`infinity`},
+		{`inf`},
+		{`INF`},
+		{`-null`},
+		{`Null`},
+		{`-Null`},
+		{`42 // comment`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			parser := jsonx.NewJsonParser(strings.NewReader(tt.input), true)
+			_, err := parser.Parse()
+			assert.Error(t, err, "expected error for input: %s", tt.input)
+		})
+	}
+}
+
 func TestJsonParser_Recovery(t *testing.T) {
 	brokenJSON := `{ "a": 1 }here goes the text`
 	t.Run("Recover", func(t *testing.T) {
-		p := jsonx.NewJsonParser(strings.NewReader(brokenJSON))
+		p := jsonx.NewJsonParser(strings.NewReader(brokenJSON), false)
 		_, _ = p.Parse() // trigger error
 		node := p.Recover()
 
