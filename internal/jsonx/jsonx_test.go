@@ -45,6 +45,7 @@ func TestJsonParser_Parse(t *testing.T) {
 		{`infinity`, jsonx.Infinity, false},
 		{`inf`, jsonx.Infinity, false},
 		{`INF`, jsonx.Infinity, false},
+		{`-null`, jsonx.Err, true},
 	}
 
 	for _, tt := range tests {

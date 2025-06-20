@@ -150,7 +150,7 @@ func (p *JsonParser) parseValue() *Node {
 	case 'f':
 		l = p.parseKeyword("false", 1, Bool)
 	case 'n', 'N', 'i', 'I':
-		l = p.parseCornerCases(p.end - 1)
+		l = p.parseCornerCases(p.end-1, true)
 	default:
 		panic(fmt.Sprintf("Unexpected character %q", p.char))
 	}
@@ -217,7 +217,7 @@ func (p *JsonParser) parseMinus() *Node {
 	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 		return p.parseNumber(p.end - 2)
 	case 'n', 'N', 'i', 'I':
-		return p.parseCornerCases(p.end - 2)
+		return p.parseCornerCases(p.end-2, false)
 	}
 	panic(fmt.Sprintf("Invalid character %q in number", p.char))
 }
@@ -421,9 +421,9 @@ func (p *JsonParser) parseKeyword(name string, from int, kind Kind) *Node {
 	panic(fmt.Sprintf("Unexpected character %q in keyword", p.char))
 }
 
-func (p *JsonParser) parseCornerCases(start int) *Node {
+func (p *JsonParser) parseCornerCases(start int, null bool) *Node {
 	p.next()
-	if p.char == 'u' {
+	if null && p.char == 'u' {
 		// null (normal case)
 		return p.parseKeyword("null", 2, Null)
 	}
