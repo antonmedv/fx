@@ -501,7 +501,8 @@ func (p *JsonParser) parseInfinity(start int) *Node {
 						Value:      string(p.data[start : p.end-1]),
 						LineNumber: p.lineNumberPlusPlus(),
 					}
-				} else if p.char == 'i' {
+				}
+				if p.char == 'i' {
 					p.next()
 					if p.char == 'n' {
 						p.next()
