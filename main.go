@@ -274,7 +274,7 @@ func main() {
 	}
 
 	if m.printErrorOnExit != nil {
-		fmt.Println(m.printErrorOnExit.Error())
+		fmt.Print(m.printErrorOnExit.Error())
 	}
 }
 
