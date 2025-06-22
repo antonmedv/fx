@@ -30,7 +30,7 @@ func (p *JsonParser) errorSnippet(message string) error {
 	return fmt.Errorf(
 		"%s on line %d.\n\n%s\n\n",
 		message,
-		p.lineNumber,
+		p.realLineNumber,
 		snippet,
 	)
 }

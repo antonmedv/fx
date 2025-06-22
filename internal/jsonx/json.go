@@ -11,15 +11,16 @@ import (
 )
 
 type JsonParser struct {
-	strict     bool
-	rd         io.Reader
-	buf        []byte
-	data       []byte
-	end        int
-	eof        bool
-	char       byte
-	lineNumber int
-	depth      uint8
+	strict         bool
+	rd             io.Reader
+	buf            []byte
+	data           []byte
+	end            int
+	eof            bool
+	char           byte
+	lineNumber     int
+	realLineNumber int
+	depth          uint8
 }
 
 func Parse(b []byte) (*Node, error) {
@@ -33,10 +34,11 @@ func Parse(b []byte) (*Node, error) {
 
 func NewJsonParser(rd io.Reader, strict bool) *JsonParser {
 	p := &JsonParser{
-		strict:     strict,
-		rd:         rd,
-		buf:        make([]byte, 4096),
-		lineNumber: 1,
+		strict:         strict,
+		rd:             rd,
+		buf:            make([]byte, 4096),
+		lineNumber:     1,
+		realLineNumber: 1,
 	}
 	p.next() // Should be called here, to support streaming.
 	return p
@@ -122,6 +124,9 @@ func (p *JsonParser) next() {
 		return
 	}
 	p.char = p.data[p.end]
+	if p.char == '\n' {
+		p.realLineNumber++
+	}
 	p.end++
 }
 
