@@ -25,7 +25,7 @@ func (p *JsonParser) errorSnippet(message string) error {
 	before, width := p.contextBefore(maxWidth / 2)
 	after, _ := p.contextAfter(maxWidth - width)
 	snippet := "  " + before + after
-	snippet += "\n  " + strings.Repeat(".", width-1) + "^"
+	snippet += "\n  " + strings.Repeat(".", max(0, width-1)) + "^"
 
 	return fmt.Errorf(
 		"%s on line %d.\n\n%s\n\n",
@@ -36,7 +36,10 @@ func (p *JsonParser) errorSnippet(message string) error {
 }
 
 func (p *JsonParser) contextBefore(maxWidth int) (s string, width int) {
-	pos := p.end + 1 // +1 to exclude the current character.
+	pos := p.end + 1
+	if pos > len(p.data) {
+		pos = len(p.data)
+	}
 	data := p.data[:pos]
 	for len(data) > 0 {
 		r, size := utf8.DecodeLastRune(data)
@@ -51,7 +54,7 @@ func (p *JsonParser) contextBefore(maxWidth int) (s string, width int) {
 		pos -= size
 		data = data[:pos]
 	}
-	s = string(p.data[pos : p.end+1]) // +1 to include the current character.
+	s = string(p.data[pos:min(p.end+1, len(p.data))])
 	return
 }
 
