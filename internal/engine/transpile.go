@@ -26,7 +26,6 @@ var (
 	reBracket      = regexp.MustCompile(`^(\.\w*)+\[]`)
 	reBracketStart = regexp.MustCompile(`^\.\[`)
 	reDotStart     = regexp.MustCompile(`^\.`)
-	reMap          = regexp.MustCompile(`^map\(.+?\)$`)
 	reAt           = regexp.MustCompile(`^@`)
 )
 
@@ -45,14 +44,6 @@ func transpile(code string) string {
 
 	if reDotStart.MatchString(code) {
 		return "x" + code
-	}
-
-	if reMap.MatchString(code) {
-		s := code[4 : len(code)-1]
-		if s[0] == '.' {
-			s = "x" + s
-		}
-		return fmt.Sprintf(`x.map((x, i) => apply(%s, x, i))`, s)
 	}
 
 	if reAt.MatchString(code) {

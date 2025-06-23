@@ -123,13 +123,6 @@ function transpile(code) {
   if (/^\./.test(code))
     return `x${code}`
 
-  // deprecated
-  if (/^map\(.+?\)$/i.test(code)) {
-    let s = code.substring(4, code.length - 1)
-    if (s[0] === '.') s = 'x' + s
-    return `x.map((x, i) => apply(${s}, x, i))`
-  }
-
   if (/^@/.test(code)) {
     const jsCode = transpile(code.substring(1))
     return `x.map((x, i) => apply(${jsCode}, x, i))`
@@ -166,10 +159,54 @@ async function run(json, code) {
     throw new Error(`Cannot sort ${typeof x}`)
   }
 
+  function filter(fn) {
+    return function (x) {
+      if (Array.isArray(x)) {
+        return x.filter((v, i) => fn(v, i))
+      } else if (x !== null && typeof x === 'object') {
+        const result = {}
+        for (const [k, v] of Object.entries(x)) {
+          if (fn(v, k)) {
+            result[k] = v
+          }
+        }
+        return result
+      } else {
+        throw new Error(`Cannot filter ${typeof x}`)
+      }
+    }
+  }
+
   function map(fn) {
     return function (x) {
-      if (Array.isArray(x)) return x.map((v, i) => fn(v, i))
-      throw new Error(`Cannot map ${typeof x}`)
+      if (Array.isArray(x)) {
+        return x.map((v, i) => fn(v, i))
+      } else if (x !== null && typeof x === 'object') {
+        const result = {}
+        for (const [k, v] of Object.entries(x)) {
+          result[k] = fn(v, k)
+        }
+        return result
+      } else {
+        throw new Error(`Cannot map over ${typeof x}`)
+      }
+    }
+  }
+
+  function walk(fn) {
+    return function recurse(value, key = null) {
+      if (Array.isArray(value)) {
+        const mapped = value.map((v, i) => recurse(v, i))
+        return fn(mapped, key)
+      } else if (value !== null && typeof value === 'object') {
+        const result = {}
+        for (const [k, v] of Object.entries(value)) {
+          result[k] = recurse(v, k)
+        }
+        return fn(result, key)
+      } else {
+        return fn(value, key)
+      }
     }
   }
 
