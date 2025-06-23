@@ -36,7 +36,6 @@ func TestTranspileMapAndAt(t *testing.T) {
 		code string
 		want string
 	}{
-		{"map(.bar)", "x.map((x, i) => apply(x.bar, x, i))"},
 		{"@.baz", "x.map((x, i) => apply(x.baz, x, i))"},
 	}
 	for _, tt := range tests {

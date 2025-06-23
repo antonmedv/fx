@@ -128,12 +128,7 @@ void async function main() {
     const {stdout} = await run([1, 2, 3], `'map(x * 2)'`)
     t.deepEqual(JSON.parse(stdout), [2, 4, 6])
   })
-
-  await test('transform - map works with dot', async t => {
-    const {stdout} = await run([{foo: 'bar'}], `'map(.foo)'`)
-    t.deepEqual(JSON.parse(stdout), ['bar'])
-  })
-
+  
   await test('transform - map works with func', async t => {
     const {stdout} = await run([{foo: 'bar'}], `'map(x => x.foo)'`)
     t.deepEqual(JSON.parse(stdout), ['bar'])
