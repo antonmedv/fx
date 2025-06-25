@@ -13,6 +13,7 @@ import (
 type mob struct {
 	x, y             float64 // exact position
 	targetX, targetY int     // integer cell coords we’re heading toward
+	prevX, prevY     int     // the last cell we came from
 	speed            float64 // base speed
 	color            string
 }
@@ -63,7 +64,7 @@ func createModel(size int) *model {
 	}
 
 	var mobs []mob
-	if size >= 0 {
+	if size >= 6 {
 		// Find all valid walkable positions
 		var positions []struct{ x, y float64 }
 		for y := range lab {
@@ -92,6 +93,8 @@ func createModel(size int) *model {
 				y:       start.y,
 				targetX: gx,
 				targetY: gy,
+				prevX:   gx,
+				prevY:   gy,
 				speed:   0.01 + rand.Float64()*0.01, // vary speeds
 				color:   fmt.Sprintf("%d", i+1),
 			})
@@ -170,6 +173,29 @@ func (m *model) walkableNeighbors(gx, gy int) []struct{ x, y int } {
 	return out
 }
 
+// pick a new target, avoiding immediate back‐tracking unless forced
+func chooseNextTarget(m *model, mb *mob) (nx, ny int) {
+	nbrs := m.walkableNeighbors(mb.targetX, mb.targetY)
+	// dead end?
+	if len(nbrs) == 1 {
+		return nbrs[0].x, nbrs[0].y
+	}
+	// corridor: exactly two neighbors → keep going straight
+	if len(nbrs) == 2 {
+		// pick the neighbor that isn’t prev
+		if nbrs[0].x == mb.prevX && nbrs[0].y == mb.prevY {
+			return nbrs[1].x, nbrs[1].y
+		}
+		if nbrs[1].x == mb.prevX && nbrs[1].y == mb.prevY {
+			return nbrs[0].x, nbrs[0].y
+		}
+		// in rare case neither matches prev, pick one randomly
+	}
+	// junction (3+ exits) or both nbrs != prev—pick random
+	choice := nbrs[rand.IntN(len(nbrs))]
+	return choice.x, choice.y
+}
+
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
@@ -183,44 +209,39 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tickMsg:
-		// Update mob positions with simple bouncing.
 		for i := range m.mobs {
 			mb := &m.mobs[i]
 
-			// If we’re at (or very near) the target cell center, choose a new neighbor:
+			// 1) Check if we’ve reached the target cell center
 			centerX := float64(mb.targetX) + 0.5
 			centerY := float64(mb.targetY) + 0.5
 			if math.Hypot(mb.x-centerX, mb.y-centerY) < 0.1 {
-				nbrs := m.walkableNeighbors(mb.targetX, mb.targetY)
-				if len(nbrs) > 0 {
-					choice := nbrs[rand.IntN(len(nbrs))]
-					mb.targetX, mb.targetY = choice.x, choice.y
-				}
+				// choose a new cell to run toward
+				nx, ny := chooseNextTarget(m, mb)
+				// remember current as “previous”
+				mb.prevX, mb.prevY = mb.targetX, mb.targetY
+				mb.targetX, mb.targetY = nx, ny
 			}
 
-			// Compute velocity toward target (plus a tiny random jitter)
-			dx := centerX - mb.x
-			dy := centerY - mb.y
+			// 2) Compute a velocity toward the new target
+			dx := (float64(mb.targetX) + 0.5) - mb.x
+			dy := (float64(mb.targetY) + 0.5) - mb.y
 			dist := math.Hypot(dx, dy)
 			if dist > 0 {
 				vx := dx / dist * mb.speed
 				vy := dy / dist * mb.speed
-				// stumbling: 2% chance to wiggle speed slightly
-				if rand.Float64() < 0.02 {
-					factor := 0.7 + rand.Float64()*0.6
-					vx *= factor
-					vy *= factor
-				}
-				// attempt move, but bounce‐off triggers a re‐target
-				if m.isWall(mb.x+vx, mb.y) {
-					mb.targetX, mb.targetY = int(mb.x), int(mb.y)
-				} else {
+
+				// 3) Move, but if a wall blocks you, re‐target immediately
+				if !m.isWall(mb.x+vx, mb.y) {
 					mb.x += vx
-				}
-				if m.isWall(mb.x, mb.y+vy) {
-					mb.targetX, mb.targetY = int(mb.x), int(mb.y)
 				} else {
+					// hit a wall in X → pick a new direction next tick
+					mb.targetX, mb.targetY = mb.prevX, mb.prevY
+				}
+				if !m.isWall(mb.x, mb.y+vy) {
 					mb.y += vy
+				} else {
+					mb.targetX, mb.targetY = mb.prevX, mb.prevY
 				}
 			}
 		}
