@@ -251,11 +251,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c", "q":
 			return m, tea.Quit
-		case "left", "a":
+		case "left", "a", "h":
 			m.playerAngle -= 0.1
-		case "right", "d":
+		case "right", "d", "l":
 			m.playerAngle += 0.1
-		case "up", "w":
+		case "up", "w", "j":
 			speed := 0.2
 			dx := math.Cos(m.playerAngle) * speed
 			dy := math.Sin(m.playerAngle) * speed
@@ -265,7 +265,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if !m.isWallNoG(m.playerX, m.playerY+dy) {
 				m.playerY += dy
 			}
-		case "down", "s":
+		case "down", "s", "k":
 			speed := 0.2
 			dx := -math.Cos(m.playerAngle) * speed
 			dy := -math.Sin(m.playerAngle) * speed
