@@ -10,46 +10,49 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// mob represents a moving entity.
 type mob struct {
 	x, y   float64
 	vx, vy float64
 	color  string
 }
 
-// model holds our game state and reusable buffers.
 type model struct {
-	// labyrinth: '#' indicates a wall, ' ' empty space.
+	// Maze size.
+	size int
+
+	// labyrinth: '#', 'S', 'G' indicates a wall, ' ' empty space.
 	labyrinth [][]rune
 
 	// Player state.
 	playerX, playerY float64
 	playerAngle      float64
 
-	// Game board dimensions (cells). Resizable up to max 120x34.
+	// Game board dimensions (cells).
 	width, height int
 
 	// Terminal dimensions.
 	termWidth, termHeight int
 
-	// Mobs in the maze.
 	mobs []mob
 
-	// Reusable buffers:
 	// Virtual canvas (each game cell becomes 2×4 pixels).
 	canvas [][]bool
+
 	// Cells (the final board; dimensions: height x width).
 	cells [][]string
+
 	// Overlay distance per cell (for occlusion).
 	overlayDist [][]float64
+
 	// Wall depth per cell column.
 	wallDepthCell []float64
+
 	// Wall's color.
-	color []rune
+	color []string
 }
 
-func createModel() *model {
-	maze := NewMaze(6, 6)
+func createModel(size int) *model {
+	maze := NewMaze(size, size)
 	maze.Generate()
 
 	lines := strings.Split(maze.String(Default), "\n")
@@ -58,37 +61,40 @@ func createModel() *model {
 		lab[i] = []rune(line)
 	}
 
-	// Find all valid walkable positions
-	var positions []struct{ x, y float64 }
-	for y := range lab {
-		for x := range lab[y] {
-			if lab[y][x] == ' ' {
-				positions = append(positions, struct{ x, y float64 }{
-					x: float64(x) + 0.5,
-					y: float64(y) + 0.5,
-				})
+	var mobs []mob
+	if size >= 6 {
+		// Find all valid walkable positions
+		var positions []struct{ x, y float64 }
+		for y := range lab {
+			for x := range lab[y] {
+				if lab[y][x] == ' ' {
+					positions = append(positions, struct{ x, y float64 }{
+						x: float64(x) + 0.5,
+						y: float64(y) + 0.5,
+					})
+				}
 			}
+		}
+
+		// Shuffle and pick first 5 positions
+		rand.Shuffle(len(positions), func(i, j int) {
+			positions[i], positions[j] = positions[j], positions[i]
+		})
+
+		// Add mobs at random positions with random velocities
+		for i := 0; i < 5 && i < len(positions); i++ {
+			mobs = append(mobs, mob{
+				x:     positions[i].x,
+				y:     positions[i].y,
+				vx:    rand.Float64()*0.06 - 0.03, // random velocity between -0.03 and 0.03
+				vy:    rand.Float64()*0.06 - 0.03,
+				color: fmt.Sprintf("%d", i+1),
+			})
 		}
 	}
 
-	// Shuffle and pick first 5 positions
-	rand.Shuffle(len(positions), func(i, j int) {
-		positions[i], positions[j] = positions[j], positions[i]
-	})
-
-	// Add mobs at random positions with random velocities
-	var mobs []mob
-	for i := 0; i < 5 && i < len(positions); i++ {
-		mobs = append(mobs, mob{
-			x:     positions[i].x,
-			y:     positions[i].y,
-			vx:    rand.Float64()*0.06 - 0.03, // random velocity between -0.03 and 0.03
-			vy:    rand.Float64()*0.06 - 0.03,
-			color: fmt.Sprintf("%d", i+1),
-		})
-	}
-
 	m := &model{
+		size:        size,
 		labyrinth:   lab,
 		playerX:     1.5,
 		playerY:     1.5,
@@ -130,7 +136,7 @@ func (m *model) allocateBuffers() {
 		m.canvas[i] = make([]bool, virtualWidth)
 	}
 
-	m.color = make([]rune, virtualWidth)
+	m.color = make([]string, virtualWidth)
 
 	m.cells = make([][]string, m.height)
 	for i := 0; i < m.height; i++ {
@@ -191,29 +197,39 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			speed := 0.2
 			dx := math.Cos(m.playerAngle) * speed
 			dy := math.Sin(m.playerAngle) * speed
-			if !m.isWall(m.playerX+dx, m.playerY) {
+			if !m.isWallNoG(m.playerX+dx, m.playerY) {
 				m.playerX += dx
 			}
-			if !m.isWall(m.playerX, m.playerY+dy) {
+			if !m.isWallNoG(m.playerX, m.playerY+dy) {
 				m.playerY += dy
 			}
 		case "down":
 			speed := 0.2
 			dx := -math.Cos(m.playerAngle) * speed
 			dy := -math.Sin(m.playerAngle) * speed
-			if !m.isWall(m.playerX+dx, m.playerY) {
+			if !m.isWallNoG(m.playerX+dx, m.playerY) {
 				m.playerX += dx
 			}
-			if !m.isWall(m.playerX, m.playerY+dy) {
+			if !m.isWallNoG(m.playerX, m.playerY+dy) {
 				m.playerY += dy
 			}
+		}
+		ch := m.at(m.playerX, m.playerY)
+		if ch == 'G' {
+			nm := createModel(m.size + 1)
+			nm.termWidth = m.termWidth
+			nm.termHeight = m.termHeight
+			nm.width = m.width
+			nm.height = m.height
+			nm.allocateBuffers()
+			return nm, nil
 		}
 		return m, nil
 	}
 	return m, nil
 }
 
-func (m *model) get(x, y float64) rune {
+func (m *model) at(x, y float64) rune {
 	gridX := int(x)
 	gridY := int(y)
 	if gridY < 0 || gridY >= len(m.labyrinth) || gridX < 0 || gridX >= len(m.labyrinth[0]) {
@@ -232,6 +248,16 @@ func (m *model) isWall(x, y float64) bool {
 	return ch == '#' || ch == 'S' || ch == 'G'
 }
 
+func (m *model) isWallNoG(x, y float64) bool {
+	gridX := int(x)
+	gridY := int(y)
+	if gridY < 0 || gridY >= len(m.labyrinth) || gridX < 0 || gridX >= len(m.labyrinth[0]) {
+		return true
+	}
+	ch := m.labyrinth[gridY][gridX]
+	return ch == '#' || ch == 'S'
+}
+
 func getSphereSymbol(norm float64) string {
 	if norm < 0.33 {
 		return "●"
@@ -241,16 +267,11 @@ func getSphereSymbol(norm float64) string {
 	return "○"
 }
 
-// ansiColor returns an ANSI escape sequence that sets the foreground to of char to the given color.
-func ansiColor(n string, text string) string {
-	return fmt.Sprintf("\033[38;5;%sm%s\033[0m", n, text)
-}
-
-func wallColor(color rune, text string) string {
-	if color == 0 {
+func ansiColor(color string, text string) string {
+	if color == "" {
 		return text
 	}
-	return fmt.Sprintf("\033[38;5;%sm%s\033[0m", string(color), text)
+	return fmt.Sprintf("\033[38;5;%sm%s\033[0m", color, text)
 }
 
 func (m *model) View() string {
@@ -276,13 +297,13 @@ func (m *model) View() string {
 				distance = maxDepth
 			} else if m.isWall(testX, testY) {
 				hitWall = true
-				ch := m.get(testX, testY)
+				ch := m.at(testX, testY)
 				if ch == 'S' {
-					m.color[x] = '2' // green
+					m.color[x] = "2" // green
 				} else if ch == 'G' {
-					m.color[x] = '5' // magenta
+					m.color[x] = "5" // magenta
 				} else {
-					m.color[x] = 0
+					m.color[x] = ""
 				}
 			}
 		}
@@ -332,7 +353,7 @@ func (m *model) View() string {
 				pattern |= 128
 			}
 			dots := string(rune(0x2800 + pattern))
-			m.cells[r][c] = wallColor(m.color[baseX], dots)
+			m.cells[r][c] = ansiColor(m.color[baseX], dots)
 		}
 	}
 
@@ -488,7 +509,7 @@ func (m *model) View() string {
 }
 
 func Run() {
-	m := createModel()
+	m := createModel(3)
 	program := tea.NewProgram(m, tea.WithAltScreen())
 	if _, err := program.Run(); err != nil {
 		panic(err)
