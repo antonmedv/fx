@@ -11,9 +11,10 @@ import (
 )
 
 type mob struct {
-	x, y   float64
-	vx, vy float64
-	color  string
+	x, y             float64 // exact position
+	targetX, targetY int     // integer cell coords we’re heading toward
+	speed            float64 // base speed
+	color            string
 }
 
 type model struct {
@@ -62,7 +63,7 @@ func createModel(size int) *model {
 	}
 
 	var mobs []mob
-	if size >= 6 {
+	if size >= 0 {
 		// Find all valid walkable positions
 		var positions []struct{ x, y float64 }
 		for y := range lab {
@@ -83,12 +84,16 @@ func createModel(size int) *model {
 
 		// Add mobs at random positions with random velocities
 		for i := 0; i < 5 && i < len(positions); i++ {
+			start := positions[i]
+			// pick a random neighbor cell as first target:
+			gx, gy := int(start.x), int(start.y)
 			mobs = append(mobs, mob{
-				x:     positions[i].x,
-				y:     positions[i].y,
-				vx:    rand.Float64()*0.06 - 0.03, // random velocity between -0.03 and 0.03
-				vy:    rand.Float64()*0.06 - 0.03,
-				color: fmt.Sprintf("%d", i+1),
+				x:       start.x,
+				y:       start.y,
+				targetX: gx,
+				targetY: gy,
+				speed:   0.01 + rand.Float64()*0.01, // vary speeds
+				color:   fmt.Sprintf("%d", i+1),
 			})
 		}
 	}
@@ -154,6 +159,17 @@ func (m *model) allocateBuffers() {
 	m.wallDepthCell = make([]float64, m.width)
 }
 
+func (m *model) walkableNeighbors(gx, gy int) []struct{ x, y int } {
+	var out []struct{ x, y int }
+	for _, d := range [][2]int{{1, 0}, {-1, 0}, {0, 1}, {0, -1}} {
+		nx, ny := gx+d[0], gy+d[1]
+		if !m.isWall(float64(nx)+0.5, float64(ny)+0.5) {
+			out = append(out, struct{ x, y int }{nx, ny})
+		}
+	}
+	return out
+}
+
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
@@ -168,20 +184,45 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tickMsg:
 		// Update mob positions with simple bouncing.
-		for i, mb := range m.mobs {
-			newX := mb.x + mb.vx
-			newY := mb.y + mb.vy
-			if m.isWall(newX, mb.y) {
-				mb.vx = -mb.vx
-			} else {
-				mb.x = newX
+		for i := range m.mobs {
+			mb := &m.mobs[i]
+
+			// If we’re at (or very near) the target cell center, choose a new neighbor:
+			centerX := float64(mb.targetX) + 0.5
+			centerY := float64(mb.targetY) + 0.5
+			if math.Hypot(mb.x-centerX, mb.y-centerY) < 0.1 {
+				nbrs := m.walkableNeighbors(mb.targetX, mb.targetY)
+				if len(nbrs) > 0 {
+					choice := nbrs[rand.IntN(len(nbrs))]
+					mb.targetX, mb.targetY = choice.x, choice.y
+				}
 			}
-			if m.isWall(mb.x, newY) {
-				mb.vy = -mb.vy
-			} else {
-				mb.y = newY
+
+			// Compute velocity toward target (plus a tiny random jitter)
+			dx := centerX - mb.x
+			dy := centerY - mb.y
+			dist := math.Hypot(dx, dy)
+			if dist > 0 {
+				vx := dx / dist * mb.speed
+				vy := dy / dist * mb.speed
+				// stumbling: 2% chance to wiggle speed slightly
+				if rand.Float64() < 0.02 {
+					factor := 0.7 + rand.Float64()*0.6
+					vx *= factor
+					vy *= factor
+				}
+				// attempt move, but bounce‐off triggers a re‐target
+				if m.isWall(mb.x+vx, mb.y) {
+					mb.targetX, mb.targetY = int(mb.x), int(mb.y)
+				} else {
+					mb.x += vx
+				}
+				if m.isWall(mb.x, mb.y+vy) {
+					mb.targetX, mb.targetY = int(mb.x), int(mb.y)
+				} else {
+					mb.y += vy
+				}
 			}
-			m.mobs[i] = mb
 		}
 		return m, tickCmd()
 
