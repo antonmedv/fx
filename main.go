@@ -1214,6 +1214,7 @@ func (m *model) selectNode(n *Node) {
 		m.cursor = 0
 		m.head = n
 		m.scrollIntoView()
+		m.centerLine()
 	}
 	parent := n.Parent
 	for parent != nil {

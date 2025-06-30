@@ -208,3 +208,15 @@ func (m *model) View() string {
 
 	return string(screen)
 }
+
+func (m *model) centerLine() {
+	middle := m.visibleLines() / 2
+
+	for range middle {
+		m.up()
+	}
+
+	for range middle {
+		m.down()
+	}
+}
