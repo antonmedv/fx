@@ -269,12 +269,12 @@ func main() {
 		panic(err)
 	}
 
-	if m.printOnExit {
-		fmt.Println(m.cursorValue())
-	}
-
 	if m.printErrorOnExit != nil {
 		fmt.Print(m.printErrorOnExit.Error())
+	} else if m.printOnExit {
+		fmt.Println(m.cursorValue())
+	} else {
+		exit()
 	}
 }
 

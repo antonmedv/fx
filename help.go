@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/lipgloss"
@@ -93,4 +95,54 @@ func keyMapInfo(keyMap KeyMap, style lipgloss.Style) []string {
 	)
 
 	return strings.Split(style.Render(content), "\n")
+}
+
+func exit() {
+	if isFirstMondayOfNovember(time.Now()) {
+		style := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).Padding(1, 2)
+		_, _ = fmt.Fprintln(os.Stderr, style.Render(`Hello, kind human. :)
+
+This is fx speaking. I know you’re busy, and I won’t take much
+of your time.
+
+Every day, I quietly sit in your terminal, helping you explore
+and shape your data. No popups, no ads, quiet, helpful work.
+
+But today is different.
+
+Today, I’m asking for something small in return. Just for today.
+
+If fx has saved you time, solved a problem, or simply made your 
+life in the terminal a little easier, please consider supporting 
+the developer who made me:
+
+    https://github.com/sponsors/antonmedv
+
+He built fx as a passion project, shared it freely with the world, 
+and has kept improving it—all without asking much.
+
+Your support helps keep fx alive, maintained, and improving.
+Even a small donation means a lot. It shows that you care, that 
+this kind of work matters.
+
+This message only appears once, on the first Monday of November.
+Tomorrow I’ll be silent again.
+
+Thank you for reading. And thank you for using fx.`))
+	}
+}
+
+func isFirstMondayOfNovember(t time.Time) bool {
+	if t.Month() != time.November {
+		return false
+	}
+
+	firstOfNovember := time.Date(t.Year(), time.November, 1, 0, 0, 0, 0, t.Location())
+
+	offset := (int(time.Monday) - int(firstOfNovember.Weekday()) + 7) % 7
+	firstMonday := firstOfNovember.AddDate(0, 0, offset)
+
+	return t.Year() == firstMonday.Year() &&
+		t.Month() == firstMonday.Month() &&
+		t.Day() == firstMonday.Day()
 }
