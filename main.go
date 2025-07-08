@@ -30,7 +30,6 @@ import (
 	"github.com/antonmedv/fx/internal/fuzzy"
 	"github.com/antonmedv/fx/internal/jsonpath"
 	. "github.com/antonmedv/fx/internal/jsonx"
-	"github.com/antonmedv/fx/internal/maze"
 	"github.com/antonmedv/fx/internal/theme"
 	"github.com/antonmedv/fx/internal/utils"
 )
@@ -41,7 +40,6 @@ var (
 	flagSlurp  bool
 	flagComp   bool
 	flagStrict bool
-	flagMaze   bool
 )
 
 func main() {
@@ -99,16 +97,9 @@ func main() {
 			flagSlurp = true
 		case "--strict":
 			flagStrict = true
-		case "--maze":
-			flagMaze = true
 		default:
 			args = append(args, arg)
 		}
-	}
-
-	if flagMaze {
-		maze.Run()
-		return
 	}
 
 	if flagYaml && flagRaw {

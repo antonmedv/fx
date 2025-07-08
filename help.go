@@ -30,7 +30,6 @@ func usage(keyMap KeyMap) string {
     -s, --slurp           read all inputs into an array
     --yaml                parse input as YAML
     --strict              strict mode
-    --maze                start maze
 
   %v
 %v
