@@ -98,7 +98,7 @@ func keyMapInfo(keyMap KeyMap, style lipgloss.Style) []string {
 }
 
 func exit() {
-	if isFirstMondayOfNovember(time.Now()) {
+	if showLetter(time.Now()) {
 		style := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).Padding(1, 2)
 		_, _ = fmt.Fprintln(os.Stderr, style.Render(`Hello, kind human. :)
 
@@ -125,24 +125,21 @@ Your support helps keep fx alive, maintained, and improving.
 Even a small donation means a lot. It shows that you care, that 
 this kind of work matters.
 
-This message only appears once, on the first Monday of November.
+This message only appears once, on the first Tuesday of December.
 Tomorrow I’ll be silent again.
 
 Thank you for reading. And thank you for using fx.`))
 	}
 }
 
-func isFirstMondayOfNovember(t time.Time) bool {
-	if t.Month() != time.November {
+func showLetter(t time.Time) bool {
+	if t.Month() != time.December {
 		return false
 	}
-
-	firstOfNovember := time.Date(t.Year(), time.November, 1, 0, 0, 0, 0, t.Location())
-
-	offset := (int(time.Monday) - int(firstOfNovember.Weekday()) + 7) % 7
-	firstMonday := firstOfNovember.AddDate(0, 0, offset)
-
-	return t.Year() == firstMonday.Year() &&
-		t.Month() == firstMonday.Month() &&
-		t.Day() == firstMonday.Day()
+	firstOfDecember := time.Date(t.Year(), time.December, 1, 0, 0, 0, 0, t.Location())
+	offset := (int(time.Tuesday) - int(firstOfDecember.Weekday()) + 7) % 7
+	firstTuesday := firstOfDecember.AddDate(0, 0, offset)
+	return t.Year() == firstTuesday.Year() &&
+		t.Month() == firstTuesday.Month() &&
+		t.Day() == firstTuesday.Day()
 }
