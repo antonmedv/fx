@@ -1,14 +1,14 @@
 [?25l[?2004h[90m 1[0m  {[K
 [90m 2[0m    "title": "Lorem ipsum",[K
 [90m 3[0m    "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do e
-      iusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad mini
+      [7miusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad mini[0m
       m veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea 
       commodo consequat. Duis aute irure dolor in reprehenderit in voluptate vel
       it esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cu
       pidatat non proident, sunt in culpa qui officia deserunt mollit anim id es
       t laborum.",[K
 [90m 4[0m    "tags": [[K
-[90m 5[0m      [7m"lorem"[0m,[K
+[90m 5[0m      "lorem",[K
 [90m 6[0m      "ipsum",[K
 [90m 7[0m      null[K
 [90m 8[0m    ],[K
@@ -37,4 +37,4 @@
 ~[K
 ~[K
 ~[K
-.tags[0]                                                                    33% [80D
+.text                                                                       20% [80D
