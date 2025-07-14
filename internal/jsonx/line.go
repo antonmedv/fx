@@ -4,16 +4,19 @@ import (
 	"bufio"
 	"io"
 	"strconv"
+	"strings"
 )
 
 type LineParser struct {
-	buf *bufio.Reader
-	eof error
+	buf        *bufio.Reader
+	eof        error
+	lineNumber int
 }
 
 func NewLineParser(in io.Reader) *LineParser {
 	p := &LineParser{
-		buf: bufio.NewReader(in),
+		buf:        bufio.NewReader(in),
+		lineNumber: 1,
 	}
 	return p
 }
@@ -33,11 +36,15 @@ func (p *LineParser) Parse() (*Node, error) {
 	if len(b) == 0 {
 		return nil, err
 	}
-	if b[len(b)-1] == '\n' {
-		b = b[:len(b)-1] // Trim "\n" char at the end.
+	s := strings.TrimRight(string(b), "\r\n")
+	quoted := strconv.Quote(s)
+	node := &Node{
+		Kind:       String,
+		Value:      quoted,
+		LineNumber: p.lineNumber,
+		Depth:      0,
 	}
-	quoted := strconv.Quote(string(b))
-	node := &Node{Kind: String, Value: quoted}
+	p.lineNumber++
 	return node, nil
 }
 
