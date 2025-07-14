@@ -245,6 +245,7 @@ func main() {
 	)
 
 	go func() {
+		firstOk := false
 		for {
 			node, err := parser.Parse()
 			if err != nil {
@@ -257,8 +258,13 @@ func main() {
 					break
 				}
 				textNode := parser.Recover()
+				if !firstOk && !strings.HasPrefix(textNode.Value, "HTTP") {
+					p.Send(errorMsg{err: err})
+					break
+				}
 				p.Send(nodeMsg{node: textNode})
 			} else {
+				firstOk = true
 				p.Send(nodeMsg{node: node})
 			}
 		}
