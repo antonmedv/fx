@@ -51,6 +51,8 @@ func Value(kind jsonx.Kind, selected bool) Color {
 			return CurrentTheme.Error
 		case jsonx.Infinity:
 			return CurrentTheme.Error
+		case jsonx.Undefined:
+			return CurrentTheme.Error
 		default:
 			return noColor
 		}

@@ -105,6 +105,10 @@ func (n *Node) ToValue(vm *goja.Runtime) goja.Value {
 			return vm.ToValue(math.Inf(-1))
 		}
 		return vm.ToValue(math.Inf(1))
+
+	case Undefined:
+		return goja.Undefined()
+
 	}
 	panic(fmt.Sprintf("unsupported node kind %d", n.Kind))
 }

@@ -18,6 +18,7 @@ const (
 	Array
 	NaN
 	Infinity
+	Undefined
 )
 
 type Node struct {

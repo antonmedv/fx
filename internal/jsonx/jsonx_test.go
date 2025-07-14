@@ -38,6 +38,7 @@ func TestJsonParser_Parse(t *testing.T) {
 		{`infinity`, jsonx.Infinity},
 		{`inf`, jsonx.Infinity},
 		{`INF`, jsonx.Infinity},
+		{`undefined`, jsonx.Undefined},
 	}
 
 	for _, tt := range tests {
@@ -94,6 +95,7 @@ func TestJsonParser_Parse_strict(t *testing.T) {
 		{`Null`},
 		{`-Null`},
 		{`42 // comment`},
+		{`undefined`},
 	}
 
 	for _, tt := range tests {

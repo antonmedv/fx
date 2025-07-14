@@ -15,6 +15,10 @@ import (
 )
 
 func Stringify(value goja.Value, vm *goja.Runtime, theme Theme, depth int) string {
+	if value.StrictEquals(goja.Undefined()) {
+		return theme.Error("undefined")
+	}
+
 	rtype := value.ExportType()
 	if rtype == nil {
 		return theme.Null("null")

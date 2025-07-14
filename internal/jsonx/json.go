@@ -171,6 +171,11 @@ func (p *JsonParser) parseValue() *Node {
 		l = p.parseNan(p.end - 1)
 	case 'i', 'I':
 		l = p.parseInfinity(p.end - 1)
+	case 'u':
+		if p.strict {
+			panic(fmt.Sprintf("Unexpected character %q", p.char))
+		}
+		l = p.parseKeyword("undefined", Undefined)
 	default:
 		panic(fmt.Sprintf("Unexpected character %q", p.char))
 	}
