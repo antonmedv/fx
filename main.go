@@ -276,7 +276,7 @@ func main() {
 	}
 
 	if m.printErrorOnExit != nil {
-		fmt.Print(m.printErrorOnExit.Error())
+		fmt.Println(m.printErrorOnExit.Error())
 	} else if m.printOnExit {
 		fmt.Println(m.cursorValue())
 	} else {
