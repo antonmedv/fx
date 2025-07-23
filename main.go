@@ -228,6 +228,7 @@ func main() {
 		commandInput:    commandInput,
 		searchInput:     searchInput,
 		search:          newSearch(),
+		searchCache:     newSearchCache(50), // Cache up to 50 search queries
 		spinner:         spinnerModel,
 	}
 
@@ -303,6 +304,7 @@ type model struct {
 	commandInput          textinput.Model
 	searchInput           textinput.Model
 	search                *search
+	searchCache           *searchCache
 	yank                  bool
 	showHelp              bool
 	help                  viewport.Model
@@ -339,6 +341,7 @@ func (m *model) Init() tea.Cmd {
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if msg, ok := msg.(tea.WindowSizeMsg); ok {
+		oldTermWidth := m.termWidth
 		m.termWidth = msg.Width
 		m.termHeight = msg.Height
 		m.help.Width = m.termWidth
@@ -346,6 +349,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.preview.Width = m.termWidth
 		m.preview.Height = m.termHeight - 1
 		Wrap(m.top, m.viewWidth())
+		// Only invalidate cache if terminal width changed and wrapping is enabled
+		if oldTermWidth != m.termWidth && m.wrap {
+			m.searchCache.invalidate()
+		}
 		m.redoSearch()
 	}
 
@@ -367,6 +374,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 
 	case nodeMsg:
+		// Invalidate search cache when new data arrives
+		m.searchCache.invalidate()
+
 		if m.wrap {
 			Wrap(msg.node, m.viewWidth())
 		}
@@ -848,6 +858,7 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		} else {
 			DropWrapAll(m.top)
 		}
+		m.searchCache.invalidate()
 		if at.Chunk != "" && at.Value == "" {
 			at = at.Parent
 		}
@@ -1319,7 +1330,6 @@ func (m *model) cursorKey() string {
 		return v
 	}
 	return strconv.Itoa(at.Index)
-
 }
 
 func (m *model) findByPath(path []any) *Node {
@@ -1339,11 +1349,17 @@ func (m *model) currentTopNode() *Node {
 }
 
 func (m *model) doSearch(s string) {
-	m.search = newSearch()
-
 	if s == "" {
 		return
 	}
+
+	// Check cache first
+	if cachedSearch, _, found := m.searchCache.get(s); found {
+		m.search = cachedSearch
+		return
+	}
+
+	m.search = newSearch()
 
 	code, ci := regexCase(s)
 	if ci {
@@ -1407,6 +1423,8 @@ func (m *model) doSearch(s string) {
 			n = n.Next
 		}
 	}
+
+	m.searchCache.put(s, re, m.search)
 
 	m.selectSearchResult(0)
 }
