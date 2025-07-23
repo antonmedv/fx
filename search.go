@@ -1,6 +1,9 @@
 package main
 
 import (
+	"regexp"
+	"time"
+
 	. "github.com/antonmedv/fx/internal/jsonx"
 )
 
@@ -10,6 +13,29 @@ type search struct {
 	cursor  int
 	values  map[*Node][]match
 	keys    map[*Node][]match
+}
+
+type searchCacheEntry struct {
+	query       string
+	regex       *regexp.Regexp
+	search      *search
+	timestamp   time.Time
+	dataVersion int64 // Version of the data when this cache was created
+}
+
+// searchCache manages cached search results to avoid O(n×m) complexity on repeated searches
+type searchCache struct {
+	entries     map[string]*searchCacheEntry
+	maxEntries  int
+	dataVersion int64
+}
+
+func newSearchCache(maxEntries int) *searchCache {
+	return &searchCache{
+		entries:     make(map[string]*searchCacheEntry),
+		maxEntries:  maxEntries,
+		dataVersion: 0,
+	}
 }
 
 func newSearch() *search {
@@ -71,4 +97,62 @@ func splitIndexesToChunks(chunks []string, indexes [][]int, searchIndex int) (ch
 	}
 
 	return
+}
+
+func (sc *searchCache) get(query string) (*search, *regexp.Regexp, bool) {
+	entry, exists := sc.entries[query]
+	if !exists {
+		return nil, nil, false
+	}
+
+	if entry.dataVersion != sc.dataVersion {
+		delete(sc.entries, query)
+		return nil, nil, false
+	}
+
+	// Update timestamp for LRU
+	entry.timestamp = time.Now()
+	return entry.search, entry.regex, true
+}
+
+func (sc *searchCache) put(query string, regex *regexp.Regexp, searchResult *search) {
+	if len(sc.entries) >= sc.maxEntries {
+		sc.evictOldest()
+	}
+
+	sc.entries[query] = &searchCacheEntry{
+		query:       query,
+		regex:       regex,
+		search:      searchResult,
+		timestamp:   time.Now(),
+		dataVersion: sc.dataVersion,
+	}
+}
+
+// evictOldest removes the oldest cache entry (LRU)
+func (sc *searchCache) evictOldest() {
+	var oldestKey string
+	var oldestTime time.Time
+	first := true
+
+	for key, entry := range sc.entries {
+		if first || entry.timestamp.Before(oldestTime) {
+			oldestKey = key
+			oldestTime = entry.timestamp
+			first = false
+		}
+	}
+
+	if oldestKey != "" {
+		delete(sc.entries, oldestKey)
+	}
+}
+
+func (sc *searchCache) invalidate() {
+	sc.dataVersion++
+}
+
+// size returns the number of cached entries
+func (sc *searchCache) size() int {
+	return len(sc.entries)
 }
