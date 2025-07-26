@@ -1,4 +1,4 @@
-package engine
+package pretty
 
 import (
 	"strings"
@@ -7,9 +7,9 @@ import (
 	"github.com/antonmedv/fx/internal/theme"
 )
 
-// StringifyNode pretty prints a Node. Node must be the top (head),
+// Print pretty prints a Node. Node must be the top (head),
 // as everything will be printed.
-func StringifyNode(n *jsonx.Node) string {
+func Print(n *jsonx.Node) string {
 	var out strings.Builder
 
 	it := n

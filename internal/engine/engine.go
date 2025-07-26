@@ -10,7 +10,7 @@ import (
 	"github.com/dop251/goja"
 
 	"github.com/antonmedv/fx/internal/jsonx"
-	"github.com/antonmedv/fx/internal/theme"
+	"github.com/antonmedv/fx/internal/pretty"
 )
 
 //go:embed stdlib.js
@@ -64,7 +64,7 @@ func Start(
 				}
 				writeOut(unquoted)
 			} else {
-				writeOut(StringifyNode(node))
+				writeOut(pretty.Print(node))
 			}
 		}
 
@@ -106,7 +106,7 @@ func Start(
 		} else if rtype != nil && rtype.Kind() == reflect.String {
 			writeOut(output.String())
 		} else {
-			writeOut(Stringify(output, vm, theme.CurrentTheme, 0))
+			writeOut(Stringify(output, vm, 0))
 		}
 	}
 

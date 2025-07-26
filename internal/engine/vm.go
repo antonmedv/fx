@@ -7,8 +7,6 @@ import (
 
 	"github.com/dop251/goja"
 	"github.com/goccy/go-yaml"
-
-	"github.com/antonmedv/fx/internal/theme"
 )
 
 // FilePath is the file being processed, empty if stdin.
@@ -37,7 +35,7 @@ func NewVM(writeOut func(string)) *goja.Runtime {
 	}
 
 	if err := vm.Set("__stringify__", func(x goja.Value) string {
-		return Stringify(x, vm, theme.NoColor, 0) + "\n"
+		return Stringify(x, vm, 0) + "\n"
 	}); err != nil {
 		panic(err)
 	}
@@ -69,7 +67,7 @@ func NewVM(writeOut func(string)) *goja.Runtime {
 	}
 
 	if err := vm.Set("__yaml_stringify__", func(x goja.Value) string {
-		b, err := yaml.JSONToYAML([]byte(Stringify(x, vm, theme.NoColor, 0)))
+		b, err := yaml.JSONToYAML([]byte(Stringify(x, vm, 0)))
 		if err != nil {
 			return ""
 		}
