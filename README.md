@@ -1,5 +1,7 @@
 # f(x)
 
+[![RepoMapr](https://img.shields.io/badge/RepoMapr-View_Interactive_Diagram-blue?style=flat&logo=github)](https://repomapr.com/antonmedv/fx)
+
 <p align="center"><a href="https://fx.wtf"><img src=".github/images/preview.gif" width="500" alt="fx preview"></a></p>
 
 <p align="center"><sup>Special thanks to:</sup></p>
