@@ -669,6 +669,11 @@ func (m *model) handleYankKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		_ = clipboard.WriteAll(m.cursorKey())
 	case key.Matches(msg, yankValueY, yankValueV):
 		_ = clipboard.WriteAll(m.cursorValue())
+	case key.Matches(msg, yankKeyValue):
+		k := m.cursorKey()
+		v := m.cursorValue()
+		keyValue := k + ": " + v
+		_ = clipboard.WriteAll(keyValue)
 	}
 	m.yank = false
 	return m, nil

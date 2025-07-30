@@ -192,6 +192,7 @@ var (
 	yankValueV      = key.NewBinding(key.WithKeys("v"))
 	yankKey         = key.NewBinding(key.WithKeys("k"))
 	yankPath        = key.NewBinding(key.WithKeys("p"))
+	yankKeyValue    = key.NewBinding(key.WithKeys("b"))
 	arrowUp         = key.NewBinding(key.WithKeys("up"))
 	arrowDown       = key.NewBinding(key.WithKeys("down"))
 	showSizes       = key.NewBinding(key.WithKeys("s"))
