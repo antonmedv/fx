@@ -15,11 +15,7 @@ func Print(n *jsonx.Node) string {
 	it := n
 	for it != nil {
 		if isInlineable(it) {
-			for ident := 0; ident < int(it.Depth); ident++ {
-				out.WriteString("  ")
-			}
 			out.WriteString(inline(it))
-			out.WriteByte('\n')
 			it = it.End.Next
 			continue
 		}
@@ -52,10 +48,20 @@ func Print(n *jsonx.Node) string {
 func inline(n *jsonx.Node) string {
 	var out strings.Builder
 
+	for ident := 0; ident < int(n.Depth); ident++ {
+		out.WriteString("  ")
+	}
+
+	printSpace := false
+
 	it := n
 	end := n.End.Next
 	for it != nil && it != end {
-		out.WriteString(" ")
+		if printSpace {
+			out.WriteString(" ")
+		} else {
+			printSpace = true
+		}
 		if it.Key != "" {
 			out.WriteString(theme.CurrentTheme.Key(it.Key))
 			out.WriteString(theme.Colon)
@@ -72,6 +78,8 @@ func inline(n *jsonx.Node) string {
 			it = it.Next
 		}
 	}
+
+	out.WriteByte('\n')
 
 	return out.String()
 }
