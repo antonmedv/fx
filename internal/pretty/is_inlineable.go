@@ -5,6 +5,9 @@ import (
 )
 
 func isInlineable(n *jsonx.Node) bool {
+	if n.Kind == jsonx.Array && len(n.Key) > 0 {
+		return isSimpleArray(n)
+	}
 	if n.Kind == jsonx.Object && len(n.Key) > 0 {
 		return isSimpleObject(n)
 	}
@@ -44,6 +47,21 @@ func isSimpleObject(n *jsonx.Node) bool {
 			isSimple = false
 		}
 		return isSimple
+	}
+	return false
+}
+
+func isSimpleArray(n *jsonx.Node) bool {
+	if n.Kind == jsonx.Array {
+		isAllNumbers := true
+		count := 0
+		n.ForEach(func(child *jsonx.Node) {
+			count++
+			if child.Kind != jsonx.Number {
+				isAllNumbers = false
+			}
+		})
+		return isAllNumbers && count > 0
 	}
 	return false
 }
