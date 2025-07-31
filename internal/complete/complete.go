@@ -28,6 +28,7 @@ var flags = []pair{
 	{"--version", "--version"},
 	{"--yaml", "--yaml"},
 	{"--strict", "--strict"},
+	{"--no-inline", "--no-inline"},
 }
 
 //go:embed complete.bash

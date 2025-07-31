@@ -9,12 +9,12 @@ import (
 
 // Print pretty prints a Node. Node must be the top (head),
 // as everything will be printed.
-func Print(n *jsonx.Node) string {
+func Print(n *jsonx.Node, withInline bool) string {
 	var out strings.Builder
 
 	it := n
 	for it != nil {
-		if isInlineable(it) {
+		if withInline && isInlineable(it) {
 			out.WriteString(inline(it))
 			it = it.End.Next
 			continue

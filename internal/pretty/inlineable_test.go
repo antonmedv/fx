@@ -105,7 +105,7 @@ func TestIsInlineable(t *testing.T) {
 				testNode = node
 			}
 
-			output := pretty.Print(testNode)
+			output := pretty.Print(testNode, true)
 
 			lineCount := strings.Count(output, "\n")
 			isInlined := lineCount == 1
