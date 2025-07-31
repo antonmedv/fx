@@ -1,6 +1,7 @@
 package jsonx
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -59,4 +60,41 @@ func TestNode_Paths_Collapsed(t *testing.T) {
 		".c[1]",
 		".c[1].d",
 	}, paths)
+}
+
+func TestNode_ForEach(t *testing.T) {
+	n, err := Parse([]byte(`{"a": 1, "b": 2, "c": 3}`))
+	require.NoError(t, err)
+
+	var keys []string
+	n.ForEach(func(node *Node) {
+		if k, err := strconv.Unquote(node.Key); err == nil {
+			keys = append(keys, k)
+		}
+	})
+	assert.Equal(t, []string{"a", "b", "c"}, keys)
+}
+
+func TestNode_ForEach_Empty(t *testing.T) {
+	n, err := Parse([]byte(`{}`))
+	require.NoError(t, err)
+
+	called := false
+	n.ForEach(func(node *Node) {
+		called = true
+	})
+	assert.False(t, called)
+}
+
+func TestNode_ForEach_SkipsNested(t *testing.T) {
+	n, err := Parse([]byte(`{"a": {"b": 1}, "c": [2, {"d": 3}]}`))
+	require.NoError(t, err)
+
+	var keys []string
+	n.ForEach(func(node *Node) {
+		if k, err := strconv.Unquote(node.Key); err == nil {
+			keys = append(keys, k)
+		}
+	})
+	assert.Equal(t, []string{"a", "c"}, keys)
 }

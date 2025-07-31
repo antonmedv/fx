@@ -257,7 +257,7 @@ func (n *Node) Children() ([]string, []*Node) {
 
 	for it != nil && it != n.End {
 		if it.Key != "" {
-			key := string(it.Key)
+			key := it.Key
 			unquoted, err := strconv.Unquote(key)
 			if err == nil {
 				key = unquoted
@@ -341,6 +341,18 @@ func (n *Node) Paths(paths *[]string, nodes *[]*Node) {
 			} else {
 				it = it.Next
 			}
+		}
+	}
+}
+
+func (n *Node) ForEach(cb func(*Node)) {
+	it := n.Next
+	for it != nil && it != n.End {
+		cb(it)
+		if it.HasChildren() {
+			it = it.End.Next
+		} else {
+			it = it.Next
 		}
 	}
 }
