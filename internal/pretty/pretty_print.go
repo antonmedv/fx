@@ -16,13 +16,11 @@ func Print(n *jsonx.Node, withInline bool) string {
 	for it != nil {
 		if withInline {
 			if isTable(it) {
-				table(&out, it)
-				it = afterEnd(it)
+				it = table(&out, it)
 				continue
 			}
 			if isInlineable(it) {
-				inline(&out, it)
-				it = afterEnd(it)
+				it = inline(&out, it)
 				continue
 			}
 		}
@@ -43,14 +41,18 @@ func table(out *strings.Builder, n *jsonx.Node) *jsonx.Node {
 	printKey(out, n)
 	printValue(out, n)
 	out.WriteByte('\n')
+
 	it := next(n)
 	end := n.End
 	for it != nil && it != end {
 		it = inline(out, it)
 	}
-	if end != nil {
-		printIdent(out, end)
-		printValue(out, end)
+
+	printIdent(out, end)
+	printValue(out, end)
+
+	it = next(it)
+	if it != nil {
 		out.WriteByte('\n')
 	}
 	return it

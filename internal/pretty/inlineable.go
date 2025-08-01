@@ -71,7 +71,7 @@ func isSimpleArray(n *jsonx.Node) bool {
 }
 
 func isTable(n *jsonx.Node) bool {
-	if n.Kind != jsonx.Array {
+	if n.Kind != jsonx.Array || n.Size == 0 {
 		return false
 	}
 

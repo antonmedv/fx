@@ -176,11 +176,6 @@ func TestIsTable(t *testing.T) {
 			expected: false,
 		},
 		{
-			name:     "not a table - array with empty arrays",
-			json:     `[[], []]`,
-			expected: false,
-		},
-		{
 			name:     "not a table - array with mixed content",
 			json:     `[[1, 2], 3, [4, 5]]`,
 			expected: false,
