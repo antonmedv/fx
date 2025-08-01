@@ -151,14 +151,8 @@ func TestPrettyPrint(t *testing.T) {
 			json: `{"people":[{"name":"John","age":30},{"name":"Jane","age":25}]}`,
 			expected: `{
   "people": [
-    {
-      "name": "John",
-      "age": 30
-    },
-    {
-      "name": "Jane",
-      "age": 25
-    }
+    { "name": "John", "age": 30 },
+    { "name": "Jane", "age": 25 }
   ]
 }`,
 			inline: true,

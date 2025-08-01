@@ -63,7 +63,7 @@ func TestIsInlineable(t *testing.T) {
 		{
 			name:     "object with mixed value types",
 			json:     `{"key": {"a": 1, "b": "string"}}`,
-			expected: false,
+			expected: true,
 		},
 		{
 			name:     "object with long string value",
@@ -323,9 +323,9 @@ func TestIsArrayOfSimpleObject(t *testing.T) {
 			expected: false,
 		},
 		{
-			name:     "not a valid array - array of objects with mixed value types",
+			name:     "valid array - array of objects with mixed value types",
 			json:     `[{"a": 1, "b": "string"}, {"a": 2, "b": "text"}]`,
-			expected: false,
+			expected: true,
 		},
 		{
 			name:     "not a valid array - array of objects with long string values",

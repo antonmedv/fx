@@ -21,9 +21,9 @@ func isInlineable(n *jsonx.Node) bool {
 func isSimpleObject(n *jsonx.Node) bool {
 	if n.Kind == jsonx.Object {
 		isSimple := true
-		var firstKind jsonx.Kind
-		first := true
 		count := 0
+		numStrings := 0
+		numOther := 0
 
 		n.ForEach(func(child *jsonx.Node) {
 			count++
@@ -31,25 +31,24 @@ func isSimpleObject(n *jsonx.Node) bool {
 				isSimple = false
 				return
 			}
-			if first {
-				firstKind = child.Kind
-				first = false
-			} else if child.Kind != firstKind {
-				isSimple = false
-				return
-			}
 
-			if child.Kind != jsonx.Number &&
-				child.Kind != jsonx.Bool &&
-				(child.Kind != jsonx.String || len(child.Value) > 20) {
+			if child.Kind == jsonx.String {
+				numStrings++
+				if len(child.Value) > 20 {
+					isSimple = false
+				}
+			} else if child.Kind == jsonx.Number || child.Kind == jsonx.Bool || child.Kind == jsonx.Null {
+				numOther++
+			} else {
 				isSimple = false
 			}
 		})
 
-		if (firstKind == jsonx.String && count > 2) ||
-			((firstKind == jsonx.Number || firstKind == jsonx.Bool) && count > 3) {
+		// Apply limits based on the types of values present
+		if numStrings > 2 || numOther > 3 {
 			isSimple = false
 		}
+
 		return isSimple
 	}
 	return false
