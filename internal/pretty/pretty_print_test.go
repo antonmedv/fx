@@ -599,6 +599,300 @@ func TestPrettyPrintEdgeCases(t *testing.T) {
 }`,
 			inline: false,
 		},
+		{
+			name: "zero-width characters with inline",
+			json: `{"zeroWidth":"invisible\u200Bjoiner\u200Chere"}`,
+			expected: `{
+  "zeroWidth": "invisible\u200Bjoiner\u200Chere"
+}`,
+			inline: true,
+		},
+		{
+			name: "zero-width characters without inline",
+			json: `{"zeroWidth":"invisible\u200Bjoiner\u200Chere"}`,
+			expected: `{
+  "zeroWidth": "invisible\u200Bjoiner\u200Chere"
+}`,
+			inline: false,
+		},
+		{
+			name: "extremely deep nesting with inline",
+			json: `{"l1":{"l2":{"l3":{"l4":{"l5":{"l6":{"l7":{"l8":{"l9":{"l10":{"l11":{"l12":{"l13":{"l14":{"l15":{"l16":{"l17":{"l18":{"l19":{"l20":"deep"}}}}}}}}}}}}}}}}}}}}`,
+			expected: `{
+  "l1": {
+    "l2": {
+      "l3": {
+        "l4": {
+          "l5": {
+            "l6": {
+              "l7": {
+                "l8": {
+                  "l9": {
+                    "l10": {
+                      "l11": {
+                        "l12": {
+                          "l13": {
+                            "l14": {
+                              "l15": {
+                                "l16": {
+                                  "l17": {
+                                    "l18": {
+                                      "l19": { "l20": "deep" }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}`,
+			inline: true,
+		},
+		{
+			name: "extremely deep nesting without inline",
+			json: `{"l1":{"l2":{"l3":{"l4":{"l5":{"l6":{"l7":{"l8":{"l9":{"l10":{"l11":{"l12":{"l13":{"l14":{"l15":{"l16":{"l17":{"l18":{"l19":{"l20":"deep"}}}}}}}}}}}}}}}}}}}}`,
+			expected: `{
+  "l1": {
+    "l2": {
+      "l3": {
+        "l4": {
+          "l5": {
+            "l6": {
+              "l7": {
+                "l8": {
+                  "l9": {
+                    "l10": {
+                      "l11": {
+                        "l12": {
+                          "l13": {
+                            "l14": {
+                              "l15": {
+                                "l16": {
+                                  "l17": {
+                                    "l18": {
+                                      "l19": {
+                                        "l20": "deep"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}`,
+			inline: false,
+		},
+		{
+			name: "unusual whitespace with inline",
+			json: `{   "spaces"   :  "many   spaces"  ,  "tabs"  :  "tabs\ttabs\t"  }`,
+			expected: `{
+  "spaces": "many   spaces",
+  "tabs": "tabs\ttabs\t"
+}`,
+			inline: true,
+		},
+		{
+			name: "unusual whitespace without inline",
+			json: `{   "spaces"   :  "many   spaces"  ,  "tabs"  :  "tabs\ttabs\t"  }`,
+			expected: `{
+  "spaces": "many   spaces",
+  "tabs": "tabs\ttabs\t"
+}`,
+			inline: false,
+		},
+		{
+			name: "extremely long key name with inline",
+			json: `{"thisIsAnExtremelyLongKeyNameThatShouldTestTheFormattingCapabilitiesOfThePrettyPrinterAndEnsureThatItHandlesVeryLongKeysCorrectlyWithoutBreakingOrCausingAnyIssuesInTheOutput":"value"}`,
+			expected: `{
+  "thisIsAnExtremelyLongKeyNameThatShouldTestTheFormattingCapabilitiesOfThePrettyPrinterAndEnsureThatItHandlesVeryLongKeysCorrectlyWithoutBreakingOrCausingAnyIssuesInTheOutput": "value"
+}`,
+			inline: true,
+		},
+		{
+			name: "extremely long key name without inline",
+			json: `{"thisIsAnExtremelyLongKeyNameThatShouldTestTheFormattingCapabilitiesOfThePrettyPrinterAndEnsureThatItHandlesVeryLongKeysCorrectlyWithoutBreakingOrCausingAnyIssuesInTheOutput":"value"}`,
+			expected: `{
+  "thisIsAnExtremelyLongKeyNameThatShouldTestTheFormattingCapabilitiesOfThePrettyPrinterAndEnsureThatItHandlesVeryLongKeysCorrectlyWithoutBreakingOrCausingAnyIssuesInTheOutput": "value"
+}`,
+			inline: false,
+		},
+		{
+			name: "unusual escape sequences with inline",
+			json: `{"escapes":"\\u0000\\u0001\\u0002\\u0003\\u0004\\u0005\\u0006\\u0007\\b\\t\\n\\u000B\\f\\r\\u000E\\u000F"}`,
+			expected: `{
+  "escapes": "\\u0000\\u0001\\u0002\\u0003\\u0004\\u0005\\u0006\\u0007\\b\\t\\n\\u000B\\f\\r\\u000E\\u000F"
+}`,
+			inline: true,
+		},
+		{
+			name: "unusual escape sequences without inline",
+			json: `{"escapes":"\\u0000\\u0001\\u0002\\u0003\\u0004\\u0005\\u0006\\u0007\\b\\t\\n\\u000B\\f\\r\\u000E\\u000F"}`,
+			expected: `{
+  "escapes": "\\u0000\\u0001\\u0002\\u0003\\u0004\\u0005\\u0006\\u0007\\b\\t\\n\\u000B\\f\\r\\u000E\\u000F"
+}`,
+			inline: false,
+		},
+		{
+			name: "array with mixed sized elements with inline",
+			json: `{"mixedArray":["small",{"medium":"object with some text"},{"large":"this is a much larger object with significantly more text that should cause different formatting depending on the pretty printer settings"}]}`,
+			expected: `{
+  "mixedArray": [
+    "small",
+    {
+      "medium": "object with some text"
+    },
+    {
+      "large": "this is a much larger object with significantly more text that should cause different formatting depending on the pretty printer settings"
+    }
+  ]
+}`,
+			inline: true,
+		},
+		{
+			name: "array with mixed sized elements without inline",
+			json: `{"mixedArray":["small",{"medium":"object with some text"},{"large":"this is a much larger object with significantly more text that should cause different formatting depending on the pretty printer settings"}]}`,
+			expected: `{
+  "mixedArray": [
+    "small",
+    {
+      "medium": "object with some text"
+    },
+    {
+      "large": "this is a much larger object with significantly more text that should cause different formatting depending on the pretty printer settings"
+    }
+  ]
+}`,
+			inline: false,
+		},
+		{
+			name: "boundary number values with inline",
+			json: `{"maxInt":9007199254740991,"minInt":-9007199254740991,"smallFloat":0.0000000000000001,"largeFloat":1.7976931348623157e+308,"smallNegativeFloat":-0.0000000000000001}`,
+			expected: `{
+  "maxInt": 9007199254740991,
+  "minInt": -9007199254740991,
+  "smallFloat": 0.0000000000000001,
+  "largeFloat": 1.7976931348623157e+308,
+  "smallNegativeFloat": -0.0000000000000001
+}`,
+			inline: true,
+		},
+		{
+			name: "boundary number values without inline",
+			json: `{"maxInt":9007199254740991,"minInt":-9007199254740991,"smallFloat":0.0000000000000001,"largeFloat":1.7976931348623157e+308,"smallNegativeFloat":-0.0000000000000001}`,
+			expected: `{
+  "maxInt": 9007199254740991,
+  "minInt": -9007199254740991,
+  "smallFloat": 0.0000000000000001,
+  "largeFloat": 1.7976931348623157e+308,
+  "smallNegativeFloat": -0.0000000000000001
+}`,
+			inline: false,
+		},
+
+		// Complex nested structures with mixed types
+		{
+			name: "complex nested structure with inline",
+			json: `{"complex":{"arrays":[1,2,3,[4,5,[6,7,8]],"string",true,null,{"nested":"object"}],"objects":{"a":1,"b":"string","c":true,"d":null,"e":[1,2,3],"f":{"nested":"object"}}}}`,
+			expected: `{
+  "complex": {
+    "arrays": [
+      1,
+      2,
+      3,
+      [
+        4,
+        5,
+        [
+          6,
+          7,
+          8
+        ]
+      ],
+      "string",
+      true,
+      null,
+      {
+        "nested": "object"
+      }
+    ],
+    "objects": {
+      "a": 1,
+      "b": "string",
+      "c": true,
+      "d": null,
+      "e": [ 1, 2, 3 ],
+      "f": { "nested": "object" }
+    }
+  }
+}`,
+			inline: true,
+		},
+		{
+			name: "complex nested structure without inline",
+			json: `{"complex":{"arrays":[1,2,3,[4,5,[6,7,8]],"string",true,null,{"nested":"object"}],"objects":{"a":1,"b":"string","c":true,"d":null,"e":[1,2,3],"f":{"nested":"object"}}}}`,
+			expected: `{
+  "complex": {
+    "arrays": [
+      1,
+      2,
+      3,
+      [
+        4,
+        5,
+        [
+          6,
+          7,
+          8
+        ]
+      ],
+      "string",
+      true,
+      null,
+      {
+        "nested": "object"
+      }
+    ],
+    "objects": {
+      "a": 1,
+      "b": "string",
+      "c": true,
+      "d": null,
+      "e": [
+        1,
+        2,
+        3
+      ],
+      "f": {
+        "nested": "object"
+      }
+    }
+  }
+}`,
+			inline: false,
+		},
 	}
 
 	for _, tt := range tests {
