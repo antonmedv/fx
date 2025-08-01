@@ -24,6 +24,60 @@ func TestPrettyPrint(t *testing.T) {
 		inline   bool
 	}{
 		{
+			name:     "standalone null with inline",
+			json:     `null`,
+			expected: `null`,
+			inline:   true,
+		},
+		{
+			name:     "standalone null without inline",
+			json:     `null`,
+			expected: `null`,
+			inline:   false,
+		},
+		{
+			name:     "standalone true with inline",
+			json:     `true`,
+			expected: `true`,
+			inline:   true,
+		},
+		{
+			name:     "standalone true without inline",
+			json:     `true`,
+			expected: `true`,
+			inline:   false,
+		},
+		{
+			name:     "standalone false with inline",
+			json:     `false`,
+			expected: `false`,
+			inline:   true,
+		},
+		{
+			name:     "standalone false without inline",
+			json:     `false`,
+			expected: `false`,
+			inline:   false,
+		},
+		{
+			name: "array with empty object and empty array with inline",
+			json: `[{}, []]`,
+			expected: `[
+  {},
+  []
+]`,
+			inline: true,
+		},
+		{
+			name: "array with empty object and empty array without inline",
+			json: `[{}, []]`,
+			expected: `[
+  {},
+  []
+]`,
+			inline: false,
+		},
+		{
 			name: "simple object with inline",
 			json: `{"name":"John","age":30,"city":"New York"}`,
 			expected: `{
