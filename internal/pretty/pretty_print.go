@@ -14,29 +14,22 @@ func Print(n *jsonx.Node, withInline bool) string {
 
 	it := n
 	for it != nil {
-		if withInline && isInlineable(it) {
-			out.WriteString(inline(it))
-			it = it.End.Next
-			continue
+		if withInline {
+			if isTable(it) {
+				table(&out, it)
+				it = afterEnd(it)
+				continue
+			}
+			if isInlineable(it) {
+				inline(&out, it)
+				it = afterEnd(it)
+				continue
+			}
 		}
-		for ident := 0; ident < int(it.Depth); ident++ {
-			out.WriteString("  ")
-		}
-		if it.Key != "" {
-			out.WriteString(theme.CurrentTheme.Key(it.Key))
-			out.WriteString(theme.Colon)
-		}
-		if it.Value != "" {
-			out.WriteString(theme.Value(it.Kind, false)(it.Value))
-		}
-		if it.Comma {
-			out.WriteString(theme.Comma)
-		}
-		if it.IsCollapsed() {
-			it = it.Collapsed
-		} else {
-			it = it.Next
-		}
+		printIdent(&out, it)
+		printKey(&out, it)
+		printValue(&out, it)
+		it = next(it)
 		if it != nil {
 			out.WriteByte('\n')
 		}
@@ -45,41 +38,77 @@ func Print(n *jsonx.Node, withInline bool) string {
 	return out.String()
 }
 
-func inline(n *jsonx.Node) string {
-	var out strings.Builder
-
-	for ident := 0; ident < int(n.Depth); ident++ {
-		out.WriteString("  ")
+func table(out *strings.Builder, n *jsonx.Node) *jsonx.Node {
+	printIdent(out, n)
+	printKey(out, n)
+	printValue(out, n)
+	out.WriteByte('\n')
+	it := next(n)
+	end := n.End
+	for it != nil && it != end {
+		it = inline(out, it)
 	}
+	if end != nil {
+		printIdent(out, end)
+		printValue(out, end)
+		out.WriteByte('\n')
+	}
+	return it
+}
 
+func inline(out *strings.Builder, n *jsonx.Node) *jsonx.Node {
+	printIdent(out, n)
 	printSpace := false
-
 	it := n
-	end := n.End.Next
+	end := afterEnd(n)
 	for it != nil && it != end {
 		if printSpace {
 			out.WriteString(" ")
 		} else {
 			printSpace = true
 		}
-		if it.Key != "" {
-			out.WriteString(theme.CurrentTheme.Key(it.Key))
-			out.WriteString(theme.Colon)
-		}
-		if it.Value != "" {
-			out.WriteString(theme.Value(it.Kind, false)(it.Value))
-		}
-		if it.Comma {
-			out.WriteString(theme.Comma)
-		}
-		if it.IsCollapsed() {
-			it = it.Collapsed
-		} else {
-			it = it.Next
-		}
+		printKey(out, it)
+		printValue(out, it)
+		it = next(it)
 	}
 
 	out.WriteByte('\n')
+	return it
+}
 
-	return out.String()
+func printIdent(out *strings.Builder, n *jsonx.Node) {
+	for ident := 0; ident < int(n.Depth); ident++ {
+		out.WriteString("  ")
+	}
+}
+
+func printKey(out *strings.Builder, n *jsonx.Node) {
+	if n.Key != "" {
+		out.WriteString(theme.CurrentTheme.Key(n.Key))
+		out.WriteString(theme.Colon)
+	}
+}
+
+func printValue(out *strings.Builder, n *jsonx.Node) {
+	if n.Value != "" {
+		out.WriteString(theme.Value(n.Kind, false)(n.Value))
+	}
+	if n.Comma {
+		out.WriteString(theme.Comma)
+	}
+}
+
+func next(n *jsonx.Node) *jsonx.Node {
+	if n.IsCollapsed() {
+		return n.Collapsed
+	} else {
+		return n.Next
+	}
+}
+
+func afterEnd(n *jsonx.Node) *jsonx.Node {
+	if n.End != nil {
+		return n.End.Next
+	}
+	return n.Next
 }
