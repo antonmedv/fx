@@ -70,7 +70,7 @@ func isSimpleArray(n *jsonx.Node) bool {
 	return false
 }
 
-func isTable(n *jsonx.Node) bool {
+func isNestedArrays(n *jsonx.Node) bool {
 	if n.Kind != jsonx.Array || n.Size == 0 {
 		return false
 	}
@@ -84,9 +84,22 @@ func isTable(n *jsonx.Node) bool {
 		child.ForEach(func(innerChild *jsonx.Node) {
 			if innerChild.Kind != jsonx.Number {
 				isValid = false
-				return
 			}
 		})
+	})
+	return isValid
+}
+
+func isArrayOfSimpleObject(n *jsonx.Node) bool {
+	if n.Kind != jsonx.Array || n.Size == 0 {
+		return false
+	}
+
+	isValid := true
+	n.ForEach(func(child *jsonx.Node) {
+		if !isSimpleObject(child) {
+			isValid = false
+		}
 	})
 	return isValid
 }

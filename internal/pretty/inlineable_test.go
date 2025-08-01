@@ -116,7 +116,7 @@ func TestIsInlineable(t *testing.T) {
 	}
 }
 
-func TestIsTable(t *testing.T) {
+func TestIsNestedArrays(t *testing.T) {
 	tests := []struct {
 		name     string
 		json     string
@@ -257,7 +257,7 @@ func TestIsTable(t *testing.T) {
 			}
 
 			assert.Equal(t, tt.expected, isTable,
-				"Expected isTable to be %v for %s, but got %v\nOutput:\n%s",
+				"Expected isNestedArrays to be %v for %s, but got %v\nOutput:\n%s",
 				tt.expected, tt.json, isTable, output)
 		})
 	}

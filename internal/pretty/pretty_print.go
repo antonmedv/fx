@@ -15,7 +15,11 @@ func Print(n *jsonx.Node, withInline bool) string {
 	it := n
 	for it != nil {
 		if withInline {
-			if isTable(it) {
+			if isNestedArrays(it) {
+				it = table(&out, it)
+				continue
+			}
+			if isArrayOfSimpleObject(it) {
 				it = table(&out, it)
 				continue
 			}
