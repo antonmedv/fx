@@ -75,33 +75,18 @@ func isTable(n *jsonx.Node) bool {
 		return false
 	}
 
-	var firstArraySize int
-	isFirst := true
 	isValid := true
-
 	n.ForEach(func(child *jsonx.Node) {
 		if child.Kind != jsonx.Array {
 			isValid = false
 			return
 		}
-
-		currentSize := 0
 		child.ForEach(func(innerChild *jsonx.Node) {
 			if innerChild.Kind != jsonx.Number {
 				isValid = false
 				return
 			}
-			currentSize++
 		})
-
-		if isFirst {
-			firstArraySize = currentSize
-			isFirst = false
-		} else if currentSize != firstArraySize {
-			isValid = false
-			return
-		}
 	})
-
 	return isValid
 }
