@@ -104,7 +104,10 @@ func TestPrettyPrint(t *testing.T) {
   "person": {
     "name": "John",
     "age": 30,
-    "address": { "city": "New York", "zip": "10001" }
+    "address": {
+      "city": "New York",
+      "zip": "10001"
+    }
   }
 }`,
 			inline: true,
@@ -293,7 +296,9 @@ func TestPrettyPrint(t *testing.T) {
   "level1": {
     "level2": {
       "level3": {
-        "level4": { "level5": "deep value" }
+        "level4": {
+          "level5": "deep value"
+        }
       }
     }
   }
@@ -664,50 +669,6 @@ func TestPrettyPrintEdgeCases(t *testing.T) {
 			inline: false,
 		},
 		{
-			name: "extremely deep nesting with inline",
-			json: `{"l1":{"l2":{"l3":{"l4":{"l5":{"l6":{"l7":{"l8":{"l9":{"l10":{"l11":{"l12":{"l13":{"l14":{"l15":{"l16":{"l17":{"l18":{"l19":{"l20":"deep"}}}}}}}}}}}}}}}}}}}}`,
-			expected: `{
-  "l1": {
-    "l2": {
-      "l3": {
-        "l4": {
-          "l5": {
-            "l6": {
-              "l7": {
-                "l8": {
-                  "l9": {
-                    "l10": {
-                      "l11": {
-                        "l12": {
-                          "l13": {
-                            "l14": {
-                              "l15": {
-                                "l16": {
-                                  "l17": {
-                                    "l18": {
-                                      "l19": { "l20": "deep" }
-                                    }
-                                  }
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-}`,
-			inline: true,
-		},
-		{
 			name: "extremely deep nesting without inline",
 			json: `{"l1":{"l2":{"l3":{"l4":{"l5":{"l6":{"l7":{"l8":{"l9":{"l10":{"l11":{"l12":{"l13":{"l14":{"l15":{"l16":{"l17":{"l18":{"l19":{"l20":"deep"}}}}}}}}}}}}}}}}}}}}`,
 			expected: `{
@@ -858,45 +819,6 @@ func TestPrettyPrintEdgeCases(t *testing.T) {
   "smallNegativeFloat": -0.0000000000000001
 }`,
 			inline: false,
-		},
-
-		// Complex nested structures with mixed types
-		{
-			name: "complex nested structure with inline",
-			json: `{"complex":{"arrays":[1,2,3,[4,5,[6,7,8]],"string",true,null,{"nested":"object"}],"objects":{"a":1,"b":"string","c":true,"d":null,"e":[1,2,3],"f":{"nested":"object"}}}}`,
-			expected: `{
-  "complex": {
-    "arrays": [
-      1,
-      2,
-      3,
-      [
-        4,
-        5,
-        [
-          6,
-          7,
-          8
-        ]
-      ],
-      "string",
-      true,
-      null,
-      {
-        "nested": "object"
-      }
-    ],
-    "objects": {
-      "a": 1,
-      "b": "string",
-      "c": true,
-      "d": null,
-      "e": [ 1, 2, 3 ],
-      "f": { "nested": "object" }
-    }
-  }
-}`,
-			inline: true,
 		},
 		{
 			name: "complex nested structure without inline",

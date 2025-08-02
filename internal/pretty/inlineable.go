@@ -4,16 +4,24 @@ import (
 	"github.com/antonmedv/fx/internal/jsonx"
 )
 
-// isInlineable determines if a JSON node should be inlined for better readability.
-// We only inline simple structures that remain easily readable in a single line,
-// such as short arrays of numbers or objects with few, simple values.
-// This selective approach maintains readability while avoiding inlining of complex structures.
 func isInlineable(n *jsonx.Node) bool {
 	if n.Kind == jsonx.Array {
 		return len(n.Key) > 0 && isSimpleArray(n)
 	}
-	if n.Kind == jsonx.Object {
-		return len(n.Key) > 0 && isSimpleObject(n)
+	return false
+}
+
+func isSimpleArray(n *jsonx.Node) bool {
+	if n.Kind == jsonx.Array {
+		isAllNumbers := true
+		count := 0
+		n.ForEach(func(child *jsonx.Node) {
+			count++
+			if child.Kind != jsonx.Number {
+				isAllNumbers = false
+			}
+		})
+		return isAllNumbers && count > 0
 	}
 	return false
 }
@@ -74,21 +82,6 @@ func isSimpleObject(n *jsonx.Node) bool {
 		}
 
 		return isSimple
-	}
-	return false
-}
-
-func isSimpleArray(n *jsonx.Node) bool {
-	if n.Kind == jsonx.Array {
-		isAllNumbers := true
-		count := 0
-		n.ForEach(func(child *jsonx.Node) {
-			count++
-			if child.Kind != jsonx.Number {
-				isAllNumbers = false
-			}
-		})
-		return isAllNumbers && count > 0
 	}
 	return false
 }

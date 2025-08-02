@@ -17,7 +17,6 @@ func TestIsInlineable(t *testing.T) {
 		json     string
 		expected bool
 	}{
-		// Array tests
 		{
 			name:     "simple array with numbers",
 			json:     `{"key": [1, 2, 3]}`,
@@ -31,29 +30,27 @@ func TestIsInlineable(t *testing.T) {
 		{
 			name:     "empty array",
 			json:     `{"key": []}`,
-			expected: true, // Empty arrays are inlined
+			expected: true,
 		},
 		{
 			name:     "array without key",
 			json:     `[1, 2, 3]`,
 			expected: false,
 		},
-
-		// Object tests
 		{
 			name:     "simple object with number values",
 			json:     `{"key": {"a": 1, "b": 2, "c": 3}}`,
-			expected: true,
+			expected: false,
 		},
 		{
 			name:     "simple object with boolean values",
 			json:     `{"key": {"a": true, "b": false, "c": true}}`,
-			expected: true,
+			expected: false,
 		},
 		{
 			name:     "simple object with short string values",
 			json:     `{"key": {"a": "short", "b": "string"}}`,
-			expected: true,
+			expected: false,
 		},
 		{
 			name:     "object with long key",
@@ -63,12 +60,12 @@ func TestIsInlineable(t *testing.T) {
 		{
 			name:     "object with mixed value types",
 			json:     `{"key": {"a": 1, "b": "string"}}`,
-			expected: true,
+			expected: false,
 		},
 		{
 			name:     "object with long string value",
 			json:     `{"key": {"a": "this is a very long string that exceeds twenty characters"}}`,
-			expected: true,
+			expected: false,
 		},
 		{
 			name:     "object with too many string values",
@@ -88,7 +85,7 @@ func TestIsInlineable(t *testing.T) {
 		{
 			name:     "empty object",
 			json:     `{"key": {}}`,
-			expected: true, // Empty objects are inlined
+			expected: true,
 		},
 	}
 
