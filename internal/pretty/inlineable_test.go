@@ -68,7 +68,7 @@ func TestIsInlineable(t *testing.T) {
 		{
 			name:     "object with long string value",
 			json:     `{"key": {"a": "this is a very long string that exceeds twenty characters"}}`,
-			expected: false,
+			expected: true,
 		},
 		{
 			name:     "object with too many string values",
@@ -271,84 +271,82 @@ func TestIsArrayOfSimpleObject(t *testing.T) {
 	}{
 		// Valid arrays of simple objects
 		{
-			name:     "valid array of simple objects with number values",
+			name:     "array of simple objects with number values",
 			json:     `[{"a": 1, "b": 2}, {"a": 3, "b": 4}, {"a": 5, "b": 6}]`,
 			expected: true,
 		},
 		{
-			name:     "valid array of simple objects with boolean values",
+			name:     "array of simple objects with boolean values",
 			json:     `[{"a": true, "b": false}, {"a": false, "b": true}]`,
 			expected: true,
 		},
 		{
-			name:     "valid array of simple objects with short string values",
+			name:     "array of simple objects with short string values",
 			json:     `[{"a": "short", "b": "text"}, {"a": "another", "b": "value"}]`,
 			expected: true,
 		},
 		{
-			name:     "valid array with single simple object",
+			name:     "array with single simple object",
 			json:     `[{"a": 1, "b": 2, "c": 3}]`,
 			expected: true,
 		},
 		{
-			name:     "valid array of simple objects with different keys but same value types",
+			name:     "array of simple objects with different keys but same value types",
 			json:     `[{"a": 1, "b": 2}, {"c": 3, "d": 4}]`,
 			expected: true,
 		},
 		{
-			name:     "not a valid array - object containing array of simple objects",
+			name:     "object containing array of simple objects",
 			json:     `{"data": [{"a": 1, "b": 2}, {"a": 3, "b": 4}]}`,
 			expected: false,
 		},
-
-		// Invalid arrays of simple objects
 		{
-			name:     "not a valid array - empty array",
+			name:     "empty array",
 			json:     `[]`,
 			expected: false,
 		},
 		{
-			name:     "not a valid array - array of non-objects",
+			name:     "array of non-objects",
 			json:     `[1, 2, 3]`,
 			expected: false,
 		},
 		{
-			name:     "not a valid array - array of mixed types",
+			name:     "array of mixed types",
 			json:     `[{"a": 1}, 2, {"b": 3}]`,
 			expected: false,
 		},
 		{
-			name:     "not a valid array - array of objects with long keys",
+			name:     "array of objects with long keys",
 			json:     `[{"veryLongKey": 1, "b": 2}, {"veryLongKey": 3, "b": 4}]`,
 			expected: false,
 		},
 		{
-			name:     "valid array - array of objects with mixed value types",
+			name:     "array - array of objects with mixed value types",
 			json:     `[{"a": 1, "b": "string"}, {"a": 2, "b": "text"}]`,
 			expected: true,
 		},
 		{
-			name:     "not a valid array - array of objects with long string values",
+			name:     "array of objects with long string values",
 			json:     `[{"a": "this is a very long string that exceeds twenty characters"}, {"a": "short"}]`,
-			expected: false,
+			expected: true,
 		},
 		{
-			name:     "not a valid array - array of objects with too many string values",
+			name:     "array of objects with too many string values",
 			json:     `[{"a": "string1", "b": "string2", "c": "string3"}, {"a": "text1", "b": "text2", "c": "text3"}]`,
 			expected: false,
 		},
 		{
-			name:     "not a valid array - array of objects with too many number values",
+			name:     "array of objects with too many number values",
 			json:     `[{"a": 1, "b": 2, "c": 3, "d": 4}, {"a": 5, "b": 6, "c": 7, "d": 8}]`,
 			expected: false,
 		},
 		{
-			name:     "not a valid array - array of objects with nested objects",
+			name:     "array of objects with nested objects",
 			json:     `[{"a": {"nested": 1}}, {"a": {"nested": 2}}]`,
 			expected: false,
 		},
 		{
-			name:     "not a valid array - array of objects with arrays",
+			name:     "array of objects with arrays",
 			json:     `[{"a": [1, 2]}, {"a": [3, 4]}]`,
 			expected: false,
 		},

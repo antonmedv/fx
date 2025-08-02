@@ -20,6 +20,30 @@ func isInlineable(n *jsonx.Node) bool {
 
 func isSimpleObject(n *jsonx.Node) bool {
 	if n.Kind == jsonx.Object {
+		// Special case for empty objects
+		if n.Size == 0 {
+			return true
+		}
+
+		// Special case: exactly one key with string value and len(key+value) <= 80 chars
+		if n.Size == 1 {
+			var hasOneStringValue bool
+			var keyLength, valueLength int
+
+			n.ForEach(func(child *jsonx.Node) {
+				keyLength = len(child.Key)
+				if child.Kind == jsonx.String {
+					valueLength = len(child.Value)
+					hasOneStringValue = true
+				}
+			})
+
+			if hasOneStringValue && keyLength+valueLength <= 80 {
+				return true
+			}
+		}
+
+		// Original implementation
 		isSimple := true
 		count := 0
 		numStrings := 0
