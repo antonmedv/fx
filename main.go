@@ -35,11 +35,12 @@ import (
 )
 
 var (
-	flagYaml   bool
-	flagRaw    bool
-	flagSlurp  bool
-	flagComp   bool
-	flagStrict bool
+	flagYaml     bool
+	flagRaw      bool
+	flagSlurp    bool
+	flagComp     bool
+	flagStrict   bool
+	flagNoInline bool
 )
 
 func main() {
@@ -97,6 +98,8 @@ func main() {
 			flagSlurp = true
 		case "--strict":
 			flagStrict = true
+		case "--no-inline":
+			flagNoInline = true
 		default:
 			args = append(args, arg)
 		}
@@ -170,7 +173,7 @@ func main() {
 	if len(args) > 0 || flagSlurp {
 		writeOut := func(s string) { fmt.Println(s) }
 		writeErr := func(s string) { fmt.Fprintln(os.Stderr, s) }
-		exitCode := engine.Start(parser, args, flagSlurp, writeOut, writeErr)
+		exitCode := engine.Start(parser, args, flagSlurp, !flagNoInline, writeOut, writeErr)
 		if exitCode != 0 {
 			os.Exit(exitCode)
 		}

@@ -33,6 +33,7 @@ func Start(
 	parser Parser,
 	args []string,
 	slurp bool,
+	withInline bool,
 	writeOut, writeErr func(string),
 ) int {
 	if slurp {
@@ -64,7 +65,7 @@ func Start(
 				}
 				writeOut(unquoted)
 			} else {
-				writeOut(pretty.Print(node))
+				writeOut(pretty.Print(node, withInline))
 			}
 		}
 
