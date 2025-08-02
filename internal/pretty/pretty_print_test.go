@@ -257,50 +257,13 @@ func TestPrettyPrint(t *testing.T) {
 }`,
 			inline: both,
 		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			node, err := jsonx.Parse([]byte(tt.json))
-			require.NoError(t, err)
-
-			if tt.inline == both {
-				{
-					output := pretty.Print(node, true)
-					strippedOutput := stripEscapeSequences(output)
-					assert.Equal(t, tt.expected, strippedOutput,
-						"Output doesn't match expected for %s", tt.name)
-				}
-				{
-					output := pretty.Print(node, false)
-					strippedOutput := stripEscapeSequences(output)
-					assert.Equal(t, tt.expected, strippedOutput,
-						"Output doesn't match expected for %s", tt.name)
-				}
-			} else {
-				output := pretty.Print(node, tt.inline == yes)
-				strippedOutput := stripEscapeSequences(output)
-				assert.Equal(t, tt.expected, strippedOutput,
-					"Output doesn't match expected for %s", tt.name)
-			}
-		})
-	}
-}
-
-func TestPrettyPrintEdgeCases(t *testing.T) {
-	tests := []struct {
-		name     string
-		json     string
-		expected string
-		inline   bool
-	}{
 		{
 			name: "very large array with inline",
 			json: `{"largeArray":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30]}`,
 			expected: `{
   "largeArray": [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30 ]
 }`,
-			inline: true,
+			inline: yes,
 		},
 		{
 			name: "very large array without inline",
@@ -339,51 +302,7 @@ func TestPrettyPrintEdgeCases(t *testing.T) {
     30
   ]
 }`,
-			inline: false,
-		},
-		{
-			name: "object with many properties with inline",
-			json: `{"prop1":"value1","prop2":"value2","prop3":"value3","prop4":"value4","prop5":"value5","prop6":"value6","prop7":"value7","prop8":"value8","prop9":"value9","prop10":"value10"}`,
-			expected: `{
-  "prop1": "value1",
-  "prop2": "value2",
-  "prop3": "value3",
-  "prop4": "value4",
-  "prop5": "value5",
-  "prop6": "value6",
-  "prop7": "value7",
-  "prop8": "value8",
-  "prop9": "value9",
-  "prop10": "value10"
-}`,
-			inline: true,
-		},
-		{
-			name: "object with many properties without inline",
-			json: `{"prop1":"value1","prop2":"value2","prop3":"value3","prop4":"value4","prop5":"value5","prop6":"value6","prop7":"value7","prop8":"value8","prop9":"value9","prop10":"value10"}`,
-			expected: `{
-  "prop1": "value1",
-  "prop2": "value2",
-  "prop3": "value3",
-  "prop4": "value4",
-  "prop5": "value5",
-  "prop6": "value6",
-  "prop7": "value7",
-  "prop8": "value8",
-  "prop9": "value9",
-  "prop10": "value10"
-}`,
-			inline: false,
-		},
-		{
-			name: "special number values with inline",
-			json: `{"nan":NaN,"infinity":Infinity,"negInfinity":-Infinity}`,
-			expected: `{
-  "nan": NaN,
-  "infinity": Infinity,
-  "negInfinity": -Infinity
-}`,
-			inline: true,
+			inline: no,
 		},
 		{
 			name: "special number values without inline",
@@ -393,35 +312,7 @@ func TestPrettyPrintEdgeCases(t *testing.T) {
   "infinity": Infinity,
   "negInfinity": -Infinity
 }`,
-			inline: false,
-		},
-		{
-			name: "object with numeric keys with inline",
-			json: `{"1":"one","2":"two","3":"three"}`,
-			expected: `{
-  "1": "one",
-  "2": "two",
-  "3": "three"
-}`,
-			inline: true,
-		},
-		{
-			name: "object with numeric keys without inline",
-			json: `{"1":"one","2":"two","3":"three"}`,
-			expected: `{
-  "1": "one",
-  "2": "two",
-  "3": "three"
-}`,
-			inline: false,
-		},
-		{
-			name: "object with empty keys with inline",
-			json: `{"":"empty key"}`,
-			expected: `{
-  "": "empty key"
-}`,
-			inline: true,
+			inline: both,
 		},
 		{
 			name: "object with empty keys without inline",
@@ -429,7 +320,7 @@ func TestPrettyPrintEdgeCases(t *testing.T) {
 			expected: `{
   "": "empty key"
 }`,
-			inline: false,
+			inline: both,
 		},
 		{
 			name: "array with single element with inline",
@@ -437,7 +328,7 @@ func TestPrettyPrintEdgeCases(t *testing.T) {
 			expected: `{
   "singleElement": [ 42 ]
 }`,
-			inline: true,
+			inline: yes,
 		},
 		{
 			name: "array with single element without inline",
@@ -447,20 +338,7 @@ func TestPrettyPrintEdgeCases(t *testing.T) {
     42
   ]
 }`,
-			inline: false,
-		},
-		{
-			name: "nested empty structures with inline",
-			json: `{"emptyObject":{},"emptyArray":[],"nestedEmpty":{"empty":{},"alsoEmpty":[]}}`,
-			expected: `{
-  "emptyObject": {},
-  "emptyArray": [],
-  "nestedEmpty": {
-    "empty": {},
-    "alsoEmpty": []
-  }
-}`,
-			inline: true,
+			inline: no,
 		},
 		{
 			name: "nested empty structures without inline",
@@ -473,41 +351,7 @@ func TestPrettyPrintEdgeCases(t *testing.T) {
     "alsoEmpty": []
   }
 }`,
-			inline: false,
-		},
-		{
-			name: "escaped characters in keys with inline",
-			json: `{"escaped\\key":"value","key\\nwith\\tnewline":"value"}`,
-			expected: `{
-  "escaped\\key": "value",
-  "key\\nwith\\tnewline": "value"
-}`,
-			inline: true,
-		},
-		{
-			name: "escaped characters in keys without inline",
-			json: `{"escaped\\key":"value","key\\nwith\\tnewline":"value"}`,
-			expected: `{
-  "escaped\\key": "value",
-  "key\\nwith\\tnewline": "value"
-}`,
-			inline: false,
-		},
-		{
-			name: "zero-width characters with inline",
-			json: `{"zeroWidth":"invisible\u200Bjoiner\u200Chere"}`,
-			expected: `{
-  "zeroWidth": "invisible\u200Bjoiner\u200Chere"
-}`,
-			inline: true,
-		},
-		{
-			name: "zero-width characters without inline",
-			json: `{"zeroWidth":"invisible\u200Bjoiner\u200Chere"}`,
-			expected: `{
-  "zeroWidth": "invisible\u200Bjoiner\u200Chere"
-}`,
-			inline: false,
+			inline: both,
 		},
 		{
 			name: "extremely deep nesting without inline",
@@ -553,33 +397,7 @@ func TestPrettyPrintEdgeCases(t *testing.T) {
     }
   }
 }`,
-			inline: false,
-		},
-		{
-			name: "unusual whitespace with inline",
-			json: `{   "spaces"   :  "many   spaces"  ,  "tabs"  :  "tabs\ttabs\t"  }`,
-			expected: `{
-  "spaces": "many   spaces",
-  "tabs": "tabs\ttabs\t"
-}`,
-			inline: true,
-		},
-		{
-			name: "unusual whitespace without inline",
-			json: `{   "spaces"   :  "many   spaces"  ,  "tabs"  :  "tabs\ttabs\t"  }`,
-			expected: `{
-  "spaces": "many   spaces",
-  "tabs": "tabs\ttabs\t"
-}`,
-			inline: false,
-		},
-		{
-			name: "extremely long key name with inline",
-			json: `{"thisIsAnExtremelyLongKeyNameThatShouldTestTheFormattingCapabilitiesOfThePrettyPrinterAndEnsureThatItHandlesVeryLongKeysCorrectlyWithoutBreakingOrCausingAnyIssuesInTheOutput":"value"}`,
-			expected: `{
-  "thisIsAnExtremelyLongKeyNameThatShouldTestTheFormattingCapabilitiesOfThePrettyPrinterAndEnsureThatItHandlesVeryLongKeysCorrectlyWithoutBreakingOrCausingAnyIssuesInTheOutput": "value"
-}`,
-			inline: true,
+			inline: both,
 		},
 		{
 			name: "extremely long key name without inline",
@@ -587,15 +405,7 @@ func TestPrettyPrintEdgeCases(t *testing.T) {
 			expected: `{
   "thisIsAnExtremelyLongKeyNameThatShouldTestTheFormattingCapabilitiesOfThePrettyPrinterAndEnsureThatItHandlesVeryLongKeysCorrectlyWithoutBreakingOrCausingAnyIssuesInTheOutput": "value"
 }`,
-			inline: false,
-		},
-		{
-			name: "unusual escape sequences with inline",
-			json: `{"escapes":"\\u0000\\u0001\\u0002\\u0003\\u0004\\u0005\\u0006\\u0007\\b\\t\\n\\u000B\\f\\r\\u000E\\u000F"}`,
-			expected: `{
-  "escapes": "\\u0000\\u0001\\u0002\\u0003\\u0004\\u0005\\u0006\\u0007\\b\\t\\n\\u000B\\f\\r\\u000E\\u000F"
-}`,
-			inline: true,
+			inline: both,
 		},
 		{
 			name: "unusual escape sequences without inline",
@@ -603,23 +413,7 @@ func TestPrettyPrintEdgeCases(t *testing.T) {
 			expected: `{
   "escapes": "\\u0000\\u0001\\u0002\\u0003\\u0004\\u0005\\u0006\\u0007\\b\\t\\n\\u000B\\f\\r\\u000E\\u000F"
 }`,
-			inline: false,
-		},
-		{
-			name: "array with mixed sized elements with inline",
-			json: `{"mixedArray":["small",{"medium":"object with some text"},{"large":"this is a much larger object with significantly more text that should cause different formatting depending on the pretty printer settings"}]}`,
-			expected: `{
-  "mixedArray": [
-    "small",
-    {
-      "medium": "object with some text"
-    },
-    {
-      "large": "this is a much larger object with significantly more text that should cause different formatting depending on the pretty printer settings"
-    }
-  ]
-}`,
-			inline: true,
+			inline: both,
 		},
 		{
 			name: "array with mixed sized elements without inline",
@@ -635,7 +429,7 @@ func TestPrettyPrintEdgeCases(t *testing.T) {
     }
   ]
 }`,
-			inline: false,
+			inline: both,
 		},
 		{
 			name: "boundary number values with inline",
@@ -647,7 +441,7 @@ func TestPrettyPrintEdgeCases(t *testing.T) {
   "largeFloat": 1.7976931348623157e+308,
   "smallNegativeFloat": -0.0000000000000001
 }`,
-			inline: true,
+			inline: both,
 		},
 		{
 			name: "boundary number values without inline",
@@ -659,50 +453,7 @@ func TestPrettyPrintEdgeCases(t *testing.T) {
   "largeFloat": 1.7976931348623157e+308,
   "smallNegativeFloat": -0.0000000000000001
 }`,
-			inline: false,
-		},
-		{
-			name: "complex nested structure without inline",
-			json: `{"complex":{"arrays":[1,2,3,[4,5,[6,7,8]],"string",true,null,{"nested":"object"}],"objects":{"a":1,"b":"string","c":true,"d":null,"e":[1,2,3],"f":{"nested":"object"}}}}`,
-			expected: `{
-  "complex": {
-    "arrays": [
-      1,
-      2,
-      3,
-      [
-        4,
-        5,
-        [
-          6,
-          7,
-          8
-        ]
-      ],
-      "string",
-      true,
-      null,
-      {
-        "nested": "object"
-      }
-    ],
-    "objects": {
-      "a": 1,
-      "b": "string",
-      "c": true,
-      "d": null,
-      "e": [
-        1,
-        2,
-        3
-      ],
-      "f": {
-        "nested": "object"
-      }
-    }
-  }
-}`,
-			inline: false,
+			inline: both,
 		},
 	}
 
@@ -711,10 +462,25 @@ func TestPrettyPrintEdgeCases(t *testing.T) {
 			node, err := jsonx.Parse([]byte(tt.json))
 			require.NoError(t, err)
 
-			output := pretty.Print(node, tt.inline)
-			strippedOutput := stripEscapeSequences(output)
-			assert.Equal(t, tt.expected, strippedOutput,
-				"Output doesn't match expected for %s", tt.name)
+			if tt.inline == both {
+				{
+					output := pretty.Print(node, true)
+					strippedOutput := stripEscapeSequences(output)
+					assert.Equal(t, tt.expected, strippedOutput,
+						"Output doesn't match expected for %s", tt.name)
+				}
+				{
+					output := pretty.Print(node, false)
+					strippedOutput := stripEscapeSequences(output)
+					assert.Equal(t, tt.expected, strippedOutput,
+						"Output doesn't match expected for %s", tt.name)
+				}
+			} else {
+				output := pretty.Print(node, tt.inline == yes)
+				strippedOutput := stripEscapeSequences(output)
+				assert.Equal(t, tt.expected, strippedOutput,
+					"Output doesn't match expected for %s", tt.name)
+			}
 		})
 	}
 }
