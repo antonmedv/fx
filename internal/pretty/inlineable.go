@@ -5,13 +5,33 @@ import (
 )
 
 func isInlineable(n *jsonx.Node) bool {
-	if n.Kind == jsonx.Array {
-		return len(n.Key) > 0 && isSimpleArray(n)
+	if n.Kind == jsonx.Array && len(n.Key) > 0 {
+		if isSimpleNumbersArray(n) {
+			return true
+		}
+		if isSingleElementArray(n) {
+			return true
+		}
 	}
 	return false
 }
 
-func isSimpleArray(n *jsonx.Node) bool {
+func isSingleElementArray(n *jsonx.Node) bool {
+	if n.Kind == jsonx.Array && n.Size == 1 {
+		it := n.Next
+		if it != nil {
+			if it.Kind == jsonx.Null || it.Kind == jsonx.Bool || it.Kind == jsonx.Number {
+				return true
+			}
+			if it.Kind == jsonx.String && len(it.Value) <= 80 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func isSimpleNumbersArray(n *jsonx.Node) bool {
 	if n.Kind == jsonx.Array {
 		isAllNumbers := true
 		count := 0

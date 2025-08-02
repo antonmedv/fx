@@ -455,6 +455,14 @@ func TestPrettyPrint(t *testing.T) {
 }`,
 			inline: both,
 		},
+		{
+			name: "array with single element",
+			json: `{"key":[42]}`,
+			expected: `{
+  "key": [ 42 ]
+}`,
+			inline: yes,
+		},
 	}
 
 	for _, tt := range tests {
