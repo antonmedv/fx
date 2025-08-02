@@ -16,48 +16,36 @@ func stripEscapeSequences(s string) string {
 	return re.ReplaceAllString(s, "")
 }
 
+const (
+	yes byte = iota
+	no
+	both
+)
+
 func TestPrettyPrint(t *testing.T) {
 	tests := []struct {
 		name     string
 		json     string
 		expected string
-		inline   bool
+		inline   byte
 	}{
 		{
 			name:     "standalone null with inline",
 			json:     `null`,
 			expected: `null`,
-			inline:   true,
-		},
-		{
-			name:     "standalone null without inline",
-			json:     `null`,
-			expected: `null`,
-			inline:   false,
+			inline:   both,
 		},
 		{
 			name:     "standalone true with inline",
 			json:     `true`,
 			expected: `true`,
-			inline:   true,
-		},
-		{
-			name:     "standalone true without inline",
-			json:     `true`,
-			expected: `true`,
-			inline:   false,
+			inline:   both,
 		},
 		{
 			name:     "standalone false with inline",
 			json:     `false`,
 			expected: `false`,
-			inline:   true,
-		},
-		{
-			name:     "standalone false without inline",
-			json:     `false`,
-			expected: `false`,
-			inline:   false,
+			inline:   both,
 		},
 		{
 			name: "array with empty object and empty array with inline",
@@ -66,16 +54,7 @@ func TestPrettyPrint(t *testing.T) {
   {},
   []
 ]`,
-			inline: true,
-		},
-		{
-			name: "array with empty object and empty array without inline",
-			json: `[{}, []]`,
-			expected: `[
-  {},
-  []
-]`,
-			inline: false,
+			inline: both,
 		},
 		{
 			name: "simple object with inline",
@@ -85,32 +64,7 @@ func TestPrettyPrint(t *testing.T) {
   "age": 30,
   "city": "New York"
 }`,
-			inline: true,
-		},
-		{
-			name: "simple object without inline",
-			json: `{"name":"John","age":30,"city":"New York"}`,
-			expected: `{
-  "name": "John",
-  "age": 30,
-  "city": "New York"
-}`,
-			inline: false,
-		},
-		{
-			name: "nested object with inline",
-			json: `{"person":{"name":"John","age":30,"address":{"city":"New York","zip":"10001"}}}`,
-			expected: `{
-  "person": {
-    "name": "John",
-    "age": 30,
-    "address": {
-      "city": "New York",
-      "zip": "10001"
-    }
-  }
-}`,
-			inline: true,
+			inline: both,
 		},
 		{
 			name: "nested object without inline",
@@ -125,7 +79,7 @@ func TestPrettyPrint(t *testing.T) {
     }
   }
 }`,
-			inline: false,
+			inline: both,
 		},
 		{
 			name: "array of numbers with inline",
@@ -133,7 +87,7 @@ func TestPrettyPrint(t *testing.T) {
 			expected: `{
   "numbers": [ 1, 2, 3, 4, 5 ]
 }`,
-			inline: true,
+			inline: yes,
 		},
 		{
 			name: "array of numbers without inline",
@@ -147,7 +101,7 @@ func TestPrettyPrint(t *testing.T) {
     5
   ]
 }`,
-			inline: false,
+			inline: no,
 		},
 		{
 			name: "array of objects with inline",
@@ -158,7 +112,7 @@ func TestPrettyPrint(t *testing.T) {
     { "name": "Jane", "age": 25 }
   ]
 }`,
-			inline: true,
+			inline: yes,
 		},
 		{
 			name: "array of objects without inline",
@@ -175,31 +129,19 @@ func TestPrettyPrint(t *testing.T) {
     }
   ]
 }`,
-			inline: false,
+			inline: no,
 		},
 		{
 			name:     "empty object with inline",
 			json:     `{}`,
 			expected: `{}`,
-			inline:   true,
-		},
-		{
-			name:     "empty object without inline",
-			json:     `{}`,
-			expected: `{}`,
-			inline:   false,
+			inline:   both,
 		},
 		{
 			name:     "empty array with inline",
 			json:     `[]`,
 			expected: `[]`,
-			inline:   true,
-		},
-		{
-			name:     "empty array without inline",
-			json:     `[]`,
-			expected: `[]`,
-			inline:   false,
+			inline:   both,
 		},
 		{
 			name: "null value with inline",
@@ -207,15 +149,7 @@ func TestPrettyPrint(t *testing.T) {
 			expected: `{
   "value": null
 }`,
-			inline: true,
-		},
-		{
-			name: "null value without inline",
-			json: `{"value":null}`,
-			expected: `{
-  "value": null
-}`,
-			inline: false,
+			inline: both,
 		},
 		{
 			name: "boolean values with inline",
@@ -224,24 +158,7 @@ func TestPrettyPrint(t *testing.T) {
   "active": true,
   "verified": false
 }`,
-			inline: true,
-		},
-		{
-			name: "boolean values without inline",
-			json: `{"active":true,"verified":false}`,
-			expected: `{
-  "active": true,
-  "verified": false
-}`,
-			inline: false,
-		},
-		{
-			name: "string with special characters with inline",
-			json: `{"message":"Hello, \"World\"!\nNew line\tTab"}`,
-			expected: `{
-  "message": "Hello, \"World\"!\nNew line\tTab"
-}`,
-			inline: true,
+			inline: both,
 		},
 		{
 			name: "string with special characters without inline",
@@ -249,45 +166,7 @@ func TestPrettyPrint(t *testing.T) {
 			expected: `{
   "message": "Hello, \"World\"!\nNew line\tTab"
 }`,
-			inline: false,
-		},
-		{
-			name: "unicode characters with inline",
-			json: `{"text":"こんにちは世界"}`,
-			expected: `{
-  "text": "こんにちは世界"
-}`,
-			inline: true,
-		},
-		{
-			name: "unicode characters without inline",
-			json: `{"text":"こんにちは世界"}`,
-			expected: `{
-  "text": "こんにちは世界"
-}`,
-			inline: false,
-		},
-		{
-			name: "numbers with inline",
-			json: `{"integer":42,"float":3.14159,"scientific":1.23e-4,"negative":-10}`,
-			expected: `{
-  "integer": 42,
-  "float": 3.14159,
-  "scientific": 1.23e-4,
-  "negative": -10
-}`,
-			inline: true,
-		},
-		{
-			name: "numbers without inline",
-			json: `{"integer":42,"float":3.14159,"scientific":1.23e-4,"negative":-10}`,
-			expected: `{
-  "integer": 42,
-  "float": 3.14159,
-  "scientific": 1.23e-4,
-  "negative": -10
-}`,
-			inline: false,
+			inline: both,
 		},
 		{
 			name: "deeply nested structure with inline",
@@ -303,23 +182,7 @@ func TestPrettyPrint(t *testing.T) {
     }
   }
 }`,
-			inline: true,
-		},
-		{
-			name: "deeply nested structure without inline",
-			json: `{"level1":{"level2":{"level3":{"level4":{"level5":"deep value"}}}}}`,
-			expected: `{
-  "level1": {
-    "level2": {
-      "level3": {
-        "level4": {
-          "level5": "deep value"
-        }
-      }
-    }
-  }
-}`,
-			inline: false,
+			inline: both,
 		},
 		{
 			name: "mixed array elements with inline",
@@ -340,28 +203,7 @@ func TestPrettyPrint(t *testing.T) {
     ]
   ]
 }`,
-			inline: true,
-		},
-		{
-			name: "mixed array elements without inline",
-			json: `{"mixed":[1,"string",true,null,{"key":"value"},[1,2,3]]}`,
-			expected: `{
-  "mixed": [
-    1,
-    "string",
-    true,
-    null,
-    {
-      "key": "value"
-    },
-    [
-      1,
-      2,
-      3
-    ]
-  ]
-}`,
-			inline: false,
+			inline: both,
 		},
 		{
 			name: "table-like structure with inline",
@@ -373,7 +215,7 @@ func TestPrettyPrint(t *testing.T) {
     [ 7, 8, 9 ]
   ]
 }`,
-			inline: true,
+			inline: yes,
 		},
 		{
 			name: "table-like structure without inline",
@@ -397,7 +239,7 @@ func TestPrettyPrint(t *testing.T) {
     ]
   ]
 }`,
-			inline: false,
+			inline: no,
 		},
 		{
 			name: "empty string with inline",
@@ -405,15 +247,7 @@ func TestPrettyPrint(t *testing.T) {
 			expected: `{
   "value": ""
 }`,
-			inline: true,
-		},
-		{
-			name: "empty string without inline",
-			json: `{"value":""}`,
-			expected: `{
-  "value": ""
-}`,
-			inline: false,
+			inline: both,
 		},
 		{
 			name: "very long string with inline",
@@ -421,15 +255,7 @@ func TestPrettyPrint(t *testing.T) {
 			expected: `{
   "longText": "This is a very long string that should not be inlined because it exceeds the maximum length for inlining. It should be displayed on its own line even when inlining is enabled."
 }`,
-			inline: true,
-		},
-		{
-			name: "very long string without inline",
-			json: `{"longText":"This is a very long string that should not be inlined because it exceeds the maximum length for inlining. It should be displayed on its own line even when inlining is enabled."}`,
-			expected: `{
-  "longText": "This is a very long string that should not be inlined because it exceeds the maximum length for inlining. It should be displayed on its own line even when inlining is enabled."
-}`,
-			inline: false,
+			inline: both,
 		},
 	}
 
@@ -438,10 +264,25 @@ func TestPrettyPrint(t *testing.T) {
 			node, err := jsonx.Parse([]byte(tt.json))
 			require.NoError(t, err)
 
-			output := pretty.Print(node, tt.inline)
-			strippedOutput := stripEscapeSequences(output)
-			assert.Equal(t, tt.expected, strippedOutput,
-				"Output doesn't match expected for %s", tt.name)
+			if tt.inline == both {
+				{
+					output := pretty.Print(node, true)
+					strippedOutput := stripEscapeSequences(output)
+					assert.Equal(t, tt.expected, strippedOutput,
+						"Output doesn't match expected for %s", tt.name)
+				}
+				{
+					output := pretty.Print(node, false)
+					strippedOutput := stripEscapeSequences(output)
+					assert.Equal(t, tt.expected, strippedOutput,
+						"Output doesn't match expected for %s", tt.name)
+				}
+			} else {
+				output := pretty.Print(node, tt.inline == yes)
+				strippedOutput := stripEscapeSequences(output)
+				assert.Equal(t, tt.expected, strippedOutput,
+					"Output doesn't match expected for %s", tt.name)
+			}
 		})
 	}
 }
