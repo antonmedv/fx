@@ -66,24 +66,17 @@ func (m *model) View() string {
 
 		isRef := false
 		isRefSelected := false
-		var isRefValue string
 
 		if n.Key != "" {
 			screen = append(screen, m.prettyKey(n, isSelected)...)
 			screen = append(screen, theme.Colon...)
 
-			isRefValue, isRef = isRefNode(n)
+			_, isRef = isRefNode(n)
 			isRefSelected = isRef && isSelected
 			isSelected = false // don't highlight the key's value
 		}
 
-		if isRef {
-			screen = append(screen, theme.CurrentTheme.String("\"")...)
-			screen = append(screen, theme.CurrentTheme.Ref(isRefValue)...)
-			screen = append(screen, theme.CurrentTheme.String("\"")...)
-		} else {
-			screen = append(screen, m.prettyPrint(n, isSelected)...)
-		}
+		screen = append(screen, m.prettyPrint(n, isSelected, isRef)...)
 
 		if n.IsCollapsed() {
 			if n.Kind == Object {

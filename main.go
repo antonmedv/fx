@@ -1155,7 +1155,7 @@ func (m *model) prettyKey(node *Node, selected bool) []byte {
 	}
 }
 
-func (m *model) prettyPrint(node *Node, selected bool) string {
+func (m *model) prettyPrint(node *Node, isSelected, isRef bool) string {
 	var s string
 	if node.Chunk != "" {
 		s = node.Chunk
@@ -1164,14 +1164,17 @@ func (m *model) prettyPrint(node *Node, selected bool) string {
 	}
 
 	if len(s) == 0 {
-		if selected {
+		if isSelected {
 			return theme.CurrentTheme.Cursor(" ")
 		} else {
 			return s
 		}
 	}
 
-	style := theme.Value(node.Kind, selected)
+	style := theme.Value(node.Kind, isSelected)
+	if isRef {
+		style = theme.CurrentTheme.Ref
+	}
 
 	if indexes, ok := m.search.values[node]; ok {
 		var out strings.Builder
