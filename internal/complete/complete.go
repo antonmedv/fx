@@ -12,6 +12,7 @@ import (
 	"github.com/goccy/go-yaml"
 
 	"github.com/antonmedv/fx/internal/engine"
+	"github.com/antonmedv/fx/internal/jsonx"
 	"github.com/antonmedv/fx/internal/shlex"
 )
 
@@ -143,7 +144,12 @@ func doComplete(compLine string, compWord string, withDisplay bool) {
 			}
 		}
 
-		reply = append(reply, keysComplete(input, args, compWord)...)
+		node, err := jsonx.Parse(input)
+		if err != nil {
+			return
+		}
+
+		reply = append(reply, keysComplete(node, args, compWord)...)
 	}
 
 	reply = filterReply(reply, compWord)
@@ -184,7 +190,7 @@ func globalsComplete() []pair {
 	return nil
 }
 
-func keysComplete(input []byte, args []string, compWord string) []pair {
+func keysComplete(input *jsonx.Node, args []string, compWord string) []pair {
 	args = args[2:] // Drop binary & file from the args.
 
 	if compWord == "" {
@@ -202,8 +208,6 @@ func keysComplete(input []byte, args []string, compWord string) []pair {
 	var code strings.Builder
 	code.WriteString(prelude)
 	code.WriteString(engine.Stdlib)
-	code.WriteString("let json = ")
-	code.Write(input)
 	for i, arg := range args {
 		if arg == "" { // After dropTail, we can have empty strings.
 			continue
@@ -213,6 +217,9 @@ func keysComplete(input []byte, args []string, compWord string) []pair {
 	code.WriteString("\n__keys\n")
 
 	vm := goja.New()
+	if err := vm.Set("json", input.ToValue(vm)); err != nil {
+		return nil
+	}
 	value, err := vm.RunString(code.String())
 	if err != nil {
 		return nil
