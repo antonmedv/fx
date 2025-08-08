@@ -65,3 +65,5 @@ func (p *slurpParser) Parse() (*jsonx.Node, error) {
 func (p *slurpParser) Recover() *jsonx.Node {
 	return nil
 }
+
+func (p *slurpParser) SkipWhitespace() {}

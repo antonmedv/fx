@@ -27,6 +27,7 @@ func init() {
 type Parser interface {
 	Parse() (*jsonx.Node, error)
 	Recover() *jsonx.Node
+	SkipWhitespace()
 }
 
 type Options struct {
@@ -68,6 +69,8 @@ func Start(parser Parser, args []string, opts Options) int {
 			} else {
 				opts.WriteOut(pretty.Print(node, opts.WithInline))
 			}
+
+			parser.SkipWhitespace()
 		}
 
 		return 0
@@ -138,6 +141,8 @@ func Start(parser Parser, args []string, opts Options) int {
 			continue
 		}
 		echo(output)
+
+		parser.SkipWhitespace()
 	}
 
 	return 0

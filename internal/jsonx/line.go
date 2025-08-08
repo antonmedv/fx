@@ -51,3 +51,5 @@ func (p *LineParser) Parse() (*Node, error) {
 func (p *LineParser) Recover() *Node {
 	return nil
 }
+
+func (p *LineParser) SkipWhitespace() {}

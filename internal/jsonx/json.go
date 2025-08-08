@@ -147,7 +147,7 @@ func (p *JsonParser) lineNumberPlusPlus() int {
 }
 
 func (p *JsonParser) parseValue() *Node {
-	p.skipWhitespace()
+	p.SkipWhitespace()
 
 	var l *Node
 	switch p.char {
@@ -306,7 +306,7 @@ func (p *JsonParser) parseObject() *Node {
 	object.Value = curlyBracketOpen
 
 	p.next()
-	p.skipWhitespace()
+	p.SkipWhitespace()
 
 	// Empty object
 	if p.char == '}' {
@@ -323,7 +323,7 @@ func (p *JsonParser) parseObject() *Node {
 
 		keyBytes := p.scanString()
 
-		p.skipWhitespace()
+		p.SkipWhitespace()
 
 		// Expecting colon after key
 		if p.char != ':' {
@@ -341,13 +341,13 @@ func (p *JsonParser) parseObject() *Node {
 		object.Append(value)
 		object.Size += 1
 
-		p.skipWhitespace()
+		p.SkipWhitespace()
 
 		commaPos := p.end
 		if p.char == ',' {
 			object.End.Comma = true
 			p.next()
-			p.skipWhitespace()
+			p.SkipWhitespace()
 			if p.char == '}' {
 				if p.strict {
 					p.set(commaPos)
@@ -386,7 +386,7 @@ func (p *JsonParser) parseArray() *Node {
 	arr.Value = squareBracketOpen
 
 	p.next()
-	p.skipWhitespace()
+	p.SkipWhitespace()
 
 	if p.char == ']' {
 		arr.Value = squareBracketPair
@@ -403,13 +403,13 @@ func (p *JsonParser) parseArray() *Node {
 		p.depth--
 
 		arr.Append(value)
-		p.skipWhitespace()
+		p.SkipWhitespace()
 
 		commaPos := p.end
 		if p.char == ',' {
 			arr.End.Comma = true
 			p.next()
-			p.skipWhitespace()
+			p.SkipWhitespace()
 			if p.char == ']' {
 				if p.strict {
 					p.set(commaPos)
@@ -562,7 +562,7 @@ func isWhitespace(ch byte) bool {
 	return ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r'
 }
 
-func (p *JsonParser) skipWhitespace() {
+func (p *JsonParser) SkipWhitespace() {
 	for {
 		switch p.char {
 		case ' ', '\t', '\n', '\r':
