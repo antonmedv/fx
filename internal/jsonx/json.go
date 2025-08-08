@@ -179,8 +179,6 @@ func (p *JsonParser) parseValue() *Node {
 	default:
 		panic(fmt.Sprintf("Unexpected character %q", p.char))
 	}
-
-	p.skipWhitespace()
 	return l
 }
 

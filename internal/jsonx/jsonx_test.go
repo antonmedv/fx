@@ -94,7 +94,7 @@ func TestJsonParser_Parse_strict(t *testing.T) {
 		{`-null`},
 		{`Null`},
 		{`-Null`},
-		{`42 // comment`},
+		{`/*comment*/ 42`},
 		{`undefined`},
 	}
 
