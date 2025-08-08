@@ -754,6 +754,9 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keyMap.NextSibling):
 		pointsTo := m.cursorPointsTo()
+		if pointsTo == nil {
+			return m, nil
+		}
 		var nextSibling *Node
 		if pointsTo.End != nil && pointsTo.End.Next != nil {
 			nextSibling = pointsTo.End.Next
@@ -769,6 +772,9 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keyMap.PrevSibling):
 		pointsTo := m.cursorPointsTo()
+		if pointsTo == nil {
+			return m, nil
+		}
 		var prevSibling *Node
 		parent := pointsTo.Parent
 		if parent != nil && parent.End == pointsTo {
@@ -803,11 +809,18 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.recordHistory()
 
 	case key.Matches(msg, keyMap.Expand):
-		m.cursorPointsTo().Expand()
+		n := m.cursorPointsTo()
+		if n == nil {
+			return m, nil
+		}
+		n.Expand()
 		m.showCursor = true
 
 	case key.Matches(msg, keyMap.CollapseRecursively):
 		n := m.cursorPointsTo()
+		if n == nil {
+			return m, nil
+		}
 		if n.HasChildren() {
 			n.CollapseRecursively()
 		}
@@ -815,6 +828,9 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keyMap.ExpandRecursively):
 		n := m.cursorPointsTo()
+		if n == nil {
+			return m, nil
+		}
 		if n.HasChildren() {
 			n.ExpandRecursively(0, math.MaxInt)
 		}
@@ -841,6 +857,9 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keyMap.ExpandAll):
 		at := m.cursorPointsTo()
+		if at == nil {
+			return m, nil
+		}
 		m.collapsed = false
 		n := m.top
 		for n != nil {
@@ -864,6 +883,9 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keyMap.ToggleWrap):
 		at := m.cursorPointsTo()
+		if at == nil {
+			return m, nil
+		}
 		m.wrap = !m.wrap
 		if m.wrap {
 			Wrap(m.top, m.viewWidth())
@@ -907,6 +929,9 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keyMap.Dig):
 		at := m.cursorPointsTo()
+		if at == nil {
+			return m, nil
+		}
 		if at.Kind == Err {
 			nextJson := at.FindNextNonErr()
 			if nextJson != nil {
@@ -926,6 +951,9 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keyMap.GotoRef):
 		at := m.cursorPointsTo()
+		if at == nil {
+			return m, nil
+		}
 		value, isRef := isRefNode(at)
 		if isRef {
 			refPath, ok := jsonpath.ParseSchemaRef(value)
@@ -1081,6 +1109,9 @@ func (m *model) scrollBackward(lines int) {
 }
 
 func (m *model) scrollForward(lines int) {
+	if m.head == nil {
+		return
+	}
 	it := m.head
 	for it.Next != nil {
 		it = it.Next
