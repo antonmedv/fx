@@ -29,16 +29,17 @@ type Parser interface {
 	Recover() *jsonx.Node
 }
 
-func Start(
-	parser Parser,
-	args []string,
-	slurp bool,
-	withInline bool,
-	writeOut, writeErr func(string),
-) int {
-	if slurp {
+type Options struct {
+	Slurp      bool
+	WithInline bool
+	WriteOut   func(string)
+	WriteErr   func(string)
+}
+
+func Start(parser Parser, args []string, opts Options) int {
+	if opts.Slurp {
 		var ok bool
-		parser, ok = Slurp(parser, writeErr)
+		parser, ok = Slurp(parser, opts.WriteErr)
 		if !ok {
 			return 1
 		}
@@ -54,7 +55,7 @@ func Start(
 				if err == io.EOF {
 					break
 				}
-				writeErr(err.Error())
+				opts.WriteErr(err.Error())
 				return 1
 			}
 
@@ -63,9 +64,9 @@ func Start(
 				if err != nil {
 					panic(err)
 				}
-				writeOut(unquoted)
+				opts.WriteOut(unquoted)
 			} else {
-				writeOut(pretty.Print(node, withInline))
+				opts.WriteOut(pretty.Print(node, opts.WithInline))
 			}
 		}
 
@@ -77,7 +78,7 @@ func Start(
 			jsCode := transpile(args[i])
 			snippet := formatErr(args, i, jsCode)
 			message := errorToString(err)
-			writeErr(snippet + message)
+			opts.WriteErr(snippet + message)
 			return 1
 		}
 	}
@@ -90,9 +91,9 @@ func Start(
 	}
 	code.WriteString("  return json\n}\n")
 
-	vm := NewVM(writeOut)
+	vm := NewVM(opts.WriteOut)
 	if _, err := vm.RunString(code.String()); err != nil {
-		writeErr(errorToString(err))
+		opts.WriteErr(errorToString(err))
 		return 1
 	}
 
@@ -103,11 +104,11 @@ func Start(
 	echo := func(output goja.Value) {
 		rtype := output.ExportType()
 		if output.StrictEquals(undefined) {
-			writeErr("undefined")
+			opts.WriteErr("undefined")
 		} else if rtype != nil && rtype.Kind() == reflect.String {
-			writeOut(output.String())
+			opts.WriteOut(output.String())
 		} else {
-			writeOut(Stringify(output, vm, 0))
+			opts.WriteOut(Stringify(output, vm, 0))
 		}
 	}
 
@@ -117,14 +118,14 @@ func Start(
 			if err == io.EOF {
 				break
 			}
-			writeErr(err.Error())
+			opts.WriteErr(err.Error())
 			return 1
 		}
 
 		input := node.ToValue(vm)
 		output, err := main(goja.Undefined(), input)
 		if err != nil {
-			writeErr(errorToString(err))
+			opts.WriteErr(errorToString(err))
 			return 1
 		}
 

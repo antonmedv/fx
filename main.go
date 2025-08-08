@@ -171,9 +171,13 @@ func main() {
 	}
 
 	if len(args) > 0 || flagSlurp {
-		writeOut := func(s string) { fmt.Println(s) }
-		writeErr := func(s string) { fmt.Fprintln(os.Stderr, s) }
-		exitCode := engine.Start(parser, args, flagSlurp, !flagNoInline, writeOut, writeErr)
+		opts := engine.Options{
+			Slurp:      flagSlurp,
+			WithInline: !flagNoInline,
+			WriteOut:   func(s string) { fmt.Println(s) },
+			WriteErr:   func(s string) { fmt.Fprintln(os.Stderr, s) },
+		}
+		exitCode := engine.Start(parser, args, opts)
 		if exitCode != 0 {
 			os.Exit(exitCode)
 		}
