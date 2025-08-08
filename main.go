@@ -397,7 +397,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.top = msg.node
 			m.bottom = msg.node
 		} else {
-			scrollToBottom := m.cursorPointsTo() == m.bottom.Bottom()
+			to, ok := m.cursorPointsTo()
+			if !ok {
+				return m, nil
+			}
+			scrollToBottom := to == m.bottom.Bottom()
 			msg.node.Index = -1 // To fix the statusbar path (to show .key instead of [0].key).
 			m.bottom.Adjacent(msg.node)
 			m.bottom = msg.node
@@ -427,8 +431,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.showCursor = true
 			if msg.Y < m.viewHeight() {
 				if m.cursor == msg.Y {
-					to := m.cursorPointsTo()
-					if to != nil {
+					to, ok := m.cursorPointsTo()
+					if ok {
 						if to.IsCollapsed() {
 							to.Expand()
 						} else {
@@ -753,8 +757,8 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.recordHistory()
 
 	case key.Matches(msg, keyMap.NextSibling):
-		pointsTo := m.cursorPointsTo()
-		if pointsTo == nil {
+		pointsTo, ok := m.cursorPointsTo()
+		if !ok {
 			return m, nil
 		}
 		var nextSibling *Node
@@ -771,8 +775,8 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.recordHistory()
 
 	case key.Matches(msg, keyMap.PrevSibling):
-		pointsTo := m.cursorPointsTo()
-		if pointsTo == nil {
+		pointsTo, ok := m.cursorPointsTo()
+		if !ok {
 			return m, nil
 		}
 		var prevSibling *Node
@@ -794,8 +798,8 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.recordHistory()
 
 	case key.Matches(msg, keyMap.Collapse):
-		n := m.cursorPointsTo()
-		if n == nil {
+		n, ok := m.cursorPointsTo()
+		if !ok {
 			return m, nil
 		}
 		if n.HasChildren() && !n.IsCollapsed() {
@@ -809,16 +813,16 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.recordHistory()
 
 	case key.Matches(msg, keyMap.Expand):
-		n := m.cursorPointsTo()
-		if n == nil {
+		n, ok := m.cursorPointsTo()
+		if !ok {
 			return m, nil
 		}
 		n.Expand()
 		m.showCursor = true
 
 	case key.Matches(msg, keyMap.CollapseRecursively):
-		n := m.cursorPointsTo()
-		if n == nil {
+		n, ok := m.cursorPointsTo()
+		if !ok {
 			return m, nil
 		}
 		if n.HasChildren() {
@@ -827,8 +831,8 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.showCursor = true
 
 	case key.Matches(msg, keyMap.ExpandRecursively):
-		n := m.cursorPointsTo()
-		if n == nil {
+		n, ok := m.cursorPointsTo()
+		if !ok {
 			return m, nil
 		}
 		if n.HasChildren() {
@@ -837,8 +841,8 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.showCursor = true
 
 	case key.Matches(msg, keyMap.CollapseAll):
-		at := m.cursorPointsTo()
-		if at != nil {
+		at, ok := m.cursorPointsTo()
+		if ok {
 			m.collapsed = true
 			n := m.top
 			for n != nil {
@@ -856,8 +860,8 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 	case key.Matches(msg, keyMap.ExpandAll):
-		at := m.cursorPointsTo()
-		if at == nil {
+		at, ok := m.cursorPointsTo()
+		if !ok {
 			return m, nil
 		}
 		m.collapsed = false
@@ -873,8 +877,8 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.selectNode(at)
 
 	case key.Matches(msg, keyMap.CollapseLevel):
-		at := m.cursorPointsTo()
-		if at != nil && at.HasChildren() {
+		at, ok := m.cursorPointsTo()
+		if ok && at.HasChildren() {
 			toLevel, _ := strconv.Atoi(msg.String())
 			at.CollapseRecursively()
 			at.ExpandRecursively(0, toLevel)
@@ -882,8 +886,8 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 	case key.Matches(msg, keyMap.ToggleWrap):
-		at := m.cursorPointsTo()
-		if at == nil {
+		at, ok := m.cursorPointsTo()
+		if !ok {
 			return m, nil
 		}
 		m.wrap = !m.wrap
@@ -928,8 +932,8 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, m.open()
 
 	case key.Matches(msg, keyMap.Dig):
-		at := m.cursorPointsTo()
-		if at == nil {
+		at, ok := m.cursorPointsTo()
+		if !ok {
 			return m, nil
 		}
 		if at.Kind == Err {
@@ -950,8 +954,8 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.createKeysIndex()
 
 	case key.Matches(msg, keyMap.GotoRef):
-		at := m.cursorPointsTo()
-		if at == nil {
+		at, ok := m.cursorPointsTo()
+		if !ok {
 			return m, nil
 		}
 		value, isRef := isRefNode(at)
@@ -983,7 +987,10 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keyMap.GoBack):
 		if m.locationIndex > 0 {
-			at := m.cursorPointsTo()
+			at, ok := m.cursorPointsTo()
+			if !ok {
+				return m, nil
+			}
 			m.locationIndex--
 
 			loc := m.locationHistory[m.locationIndex]
@@ -1027,8 +1034,8 @@ func (m *model) down() {
 	}
 	m.showCursor = true
 	m.cursor++
-	n := m.cursorPointsTo()
-	if n == nil {
+	_, ok := m.cursorPointsTo()
+	if !ok {
 		m.cursor--
 		return
 	}
@@ -1041,8 +1048,8 @@ func (m *model) down() {
 }
 
 func (m *model) recordHistory() {
-	at := m.cursorPointsTo()
-	if at == nil {
+	at, ok := m.cursorPointsTo()
+	if !ok {
 		return
 	}
 	if at.Chunk != "" && at.Value == "" {
@@ -1210,8 +1217,9 @@ func (m *model) viewHeight() int {
 	return m.termHeight - 1
 }
 
-func (m *model) cursorPointsTo() *Node {
-	return m.at(m.cursor)
+func (m *model) cursorPointsTo() (*Node, bool) {
+	n := m.at(m.cursor)
+	return n, n != nil
 }
 
 func (m *model) at(pos int) *Node {
@@ -1275,8 +1283,11 @@ func (m *model) selectNode(n *Node) {
 }
 
 func (m *model) cursorPath() string {
+	at, ok := m.cursorPointsTo()
+	if !ok {
+		return ""
+	}
 	path := ""
-	at := m.cursorPointsTo()
 	for at != nil {
 		if at.Prev != nil {
 			if at.Chunk != "" && at.Value == "" {
@@ -1300,8 +1311,8 @@ func (m *model) cursorPath() string {
 }
 
 func (m *model) cursorValue() string {
-	at := m.cursorPointsTo()
-	if at == nil {
+	at, ok := m.cursorPointsTo()
+	if !ok {
 		return ""
 	}
 	parent := at.Parent
@@ -1360,8 +1371,8 @@ func (m *model) cursorValue() string {
 }
 
 func (m *model) cursorKey() string {
-	at := m.cursorPointsTo()
-	if at == nil {
+	at, ok := m.cursorPointsTo()
+	if !ok {
 		return ""
 	}
 	if at.IsWrap() {
@@ -1381,8 +1392,8 @@ func (m *model) findByPath(path []any) *Node {
 }
 
 func (m *model) currentTopNode() *Node {
-	at := m.cursorPointsTo()
-	if at == nil {
+	at, ok := m.cursorPointsTo()
+	if !ok {
 		return nil
 	}
 	for at.Parent != nil {
@@ -1497,8 +1508,8 @@ func (m *model) redoSearch() {
 }
 
 func (m *model) createKeysIndex() {
-	at := m.cursorPointsTo()
-	if at == nil {
+	at, ok := m.cursorPointsTo()
+	if !ok {
 		return
 	}
 	root := at.Root()
@@ -1561,8 +1572,8 @@ func (m *model) open() tea.Cmd {
 		engine.FilePath,
 	)
 	if command[0] == "vi" || command[0] == "vim" {
-		at := m.cursorPointsTo()
-		if at != nil {
+		at, ok := m.cursorPointsTo()
+		if ok {
 			tail := command[1:]
 			command = append([]string{command[0]}, fmt.Sprintf("+%d", at.LineNumber))
 			command = append(command, tail...)
