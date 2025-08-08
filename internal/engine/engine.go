@@ -108,7 +108,12 @@ func Start(parser Parser, args []string, opts Options) int {
 		} else if rtype != nil && rtype.Kind() == reflect.String {
 			opts.WriteOut(output.String())
 		} else {
-			opts.WriteOut(Stringify(output, vm, 0))
+			jsonOut := Stringify(output, vm, 0)
+			nodeOut, err := jsonx.Parse([]byte(jsonOut))
+			if err != nil {
+				panic(err)
+			}
+			opts.WriteOut(pretty.Print(nodeOut, opts.WithInline))
 		}
 	}
 
