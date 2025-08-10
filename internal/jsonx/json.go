@@ -21,6 +21,7 @@ type JsonParser struct {
 	lineNumber     int
 	realLineNumber int
 	depth          uint8
+	count          int
 }
 
 func Parse(b []byte) (*Node, error) {
@@ -45,15 +46,19 @@ func NewJsonParser(rd io.Reader, strict bool) *JsonParser {
 }
 
 func (p *JsonParser) Parse() (node *Node, err error) {
-	if p.eof {
-		return nil, io.EOF
-	}
 	defer func() {
 		if r := recover(); r != nil {
 			err = p.errorSnippet(fmt.Sprintf("%v", r))
 		}
 	}()
-	node = p.parseValue()
+	if p.count > 0 {
+		p.skipWhitespace()
+	}
+	if p.eof {
+		return nil, io.EOF
+	}
+	node = p.parseValue(true)
+	p.count++
 	return
 }
 
@@ -146,8 +151,8 @@ func (p *JsonParser) lineNumberPlusPlus() int {
 	return n
 }
 
-func (p *JsonParser) parseValue() *Node {
-	p.SkipWhitespace()
+func (p *JsonParser) parseValue(root bool) *Node {
+	p.skipWhitespace()
 
 	var l *Node
 	switch p.char {
@@ -179,6 +184,13 @@ func (p *JsonParser) parseValue() *Node {
 	default:
 		panic(fmt.Sprintf("Unexpected character %q", p.char))
 	}
+
+	// Skip whitespace will block parseValue (with io.Read in refill func),
+	// as soon as we parsed the root value, return and ignore remining whitespaces.
+	if !root {
+		p.skipWhitespace()
+	}
+
 	return l
 }
 
@@ -306,7 +318,7 @@ func (p *JsonParser) parseObject() *Node {
 	object.Value = curlyBracketOpen
 
 	p.next()
-	p.SkipWhitespace()
+	p.skipWhitespace()
 
 	// Empty object
 	if p.char == '}' {
@@ -323,7 +335,7 @@ func (p *JsonParser) parseObject() *Node {
 
 		keyBytes := p.scanString()
 
-		p.SkipWhitespace()
+		p.skipWhitespace()
 
 		// Expecting colon after key
 		if p.char != ':' {
@@ -333,7 +345,7 @@ func (p *JsonParser) parseObject() *Node {
 		p.next()
 
 		p.depth++
-		value := p.parseValue()
+		value := p.parseValue(false)
 		value.Key = keyBytes
 		value.Parent = object
 		p.depth--
@@ -341,13 +353,13 @@ func (p *JsonParser) parseObject() *Node {
 		object.Append(value)
 		object.Size += 1
 
-		p.SkipWhitespace()
+		p.skipWhitespace()
 
 		commaPos := p.end
 		if p.char == ',' {
 			object.End.Comma = true
 			p.next()
-			p.SkipWhitespace()
+			p.skipWhitespace()
 			if p.char == '}' {
 				if p.strict {
 					p.set(commaPos)
@@ -386,7 +398,7 @@ func (p *JsonParser) parseArray() *Node {
 	arr.Value = squareBracketOpen
 
 	p.next()
-	p.SkipWhitespace()
+	p.skipWhitespace()
 
 	if p.char == ']' {
 		arr.Value = squareBracketPair
@@ -396,20 +408,20 @@ func (p *JsonParser) parseArray() *Node {
 
 	for i := 0; ; i++ {
 		p.depth++
-		value := p.parseValue()
+		value := p.parseValue(false)
 		value.Parent = arr
 		arr.Size += 1
 		value.Index = i
 		p.depth--
 
 		arr.Append(value)
-		p.SkipWhitespace()
+		p.skipWhitespace()
 
 		commaPos := p.end
 		if p.char == ',' {
 			arr.End.Comma = true
 			p.next()
-			p.SkipWhitespace()
+			p.skipWhitespace()
 			if p.char == ']' {
 				if p.strict {
 					p.set(commaPos)
@@ -562,7 +574,7 @@ func isWhitespace(ch byte) bool {
 	return ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r'
 }
 
-func (p *JsonParser) SkipWhitespace() {
+func (p *JsonParser) skipWhitespace() {
 	for {
 		switch p.char {
 		case ' ', '\t', '\n', '\r':

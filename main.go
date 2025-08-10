@@ -275,7 +275,6 @@ func main() {
 				firstOk = true
 				p.Send(nodeMsg{node: node})
 			}
-			parser.SkipWhitespace()
 		}
 	}()
 
