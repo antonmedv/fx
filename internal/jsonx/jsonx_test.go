@@ -39,6 +39,7 @@ func TestJsonParser_Parse(t *testing.T) {
 		{`inf`, jsonx.Infinity},
 		{`INF`, jsonx.Infinity},
 		{`undefined`, jsonx.Undefined},
+		{`"\g"`, jsonx.String},
 	}
 
 	for _, tt := range tests {
@@ -55,7 +56,6 @@ func TestJsonParser_Parse_error(t *testing.T) {
 		input string
 	}{
 		{`"abc`},
-		{`"ab\q"`},
 		{`truth`},
 		{`1e`},
 		{`[1, 2`},
@@ -96,6 +96,7 @@ func TestJsonParser_Parse_strict(t *testing.T) {
 		{`-Null`},
 		{`/*comment*/ 42`},
 		{`undefined`},
+		{`"\g"`},
 	}
 
 	for _, tt := range tests {

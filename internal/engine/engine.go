@@ -61,7 +61,7 @@ func Start(parser Parser, args []string, opts Options) int {
 			}
 
 			if node.Kind == jsonx.String {
-				unquoted, err := strconv.Unquote(string(node.Value))
+				unquoted, err := strconv.Unquote(node.Value)
 				if err != nil {
 					panic(err)
 				}
