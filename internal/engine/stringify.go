@@ -5,7 +5,6 @@ import (
 	"math"
 	"math/big"
 	"reflect"
-	"strconv"
 	"strings"
 	"time"
 
@@ -28,7 +27,7 @@ func Stringify(value goja.Value, vm *goja.Runtime, depth int) string {
 		return bi.String()
 	case timeTimeType:
 		t := value.Export().(time.Time)
-		quoted := strconv.Quote(t.String())
+		quoted := Quote(t.String())
 		return quoted
 	}
 
@@ -53,7 +52,7 @@ func Stringify(value goja.Value, vm *goja.Runtime, depth int) string {
 		return value.String()
 
 	case reflect.String:
-		return strconv.Quote(value.String())
+		return Quote(value.String())
 
 	case reflect.Map:
 		obj := value.ToObject(vm)
@@ -72,7 +71,7 @@ func Stringify(value goja.Value, vm *goja.Runtime, depth int) string {
 
 		for i, key := range keys {
 			out.WriteString(identKey)
-			out.WriteString(strconv.Quote(key))
+			out.WriteString(Quote(key))
 			out.WriteString(":")
 			out.WriteString(" ")
 			out.WriteString(Stringify(obj.Get(key), vm, depth+1))
