@@ -3,7 +3,6 @@ package engine
 import (
 	"fmt"
 	"strings"
-	"unicode/utf16"
 	"unicode/utf8"
 )
 
@@ -34,13 +33,6 @@ func Quote(s string) string {
 			if r < 0x20 || r == 0x7F {
 				// Control characters must be escaped as \uXXXX
 				_, err = fmt.Fprintf(&b, `\u%04x`, r)
-				if err != nil {
-					panic(err)
-				}
-			} else if r > 0xFFFF {
-				// Characters outside BMP need UTF-16 surrogate pairs
-				r1, r2 := utf16.EncodeRune(r)
-				_, err = fmt.Fprintf(&b, `\u%04x\u%04x`, r1, r2)
 				if err != nil {
 					panic(err)
 				}

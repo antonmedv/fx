@@ -61,18 +61,17 @@ func TestQuote_ControlCharactersAndDEL(t *testing.T) {
 	assert.Equal(t, `"\u007f"`, engine.Quote(string([]byte{0x7F})))
 }
 
-func TestQuote_BMP_CharactersAsIs(t *testing.T) {
+func TestQuote_BMP_Characters_AsIs(t *testing.T) {
 	// Latin-1 supplement, Cyrillic, CJK BMP characters should appear as-is
 	assert.Equal(t, "\"café\"", engine.Quote("café"))
 	assert.Equal(t, "\"Привет\"", engine.Quote("Привет"))
 	assert.Equal(t, "\"漢字\"", engine.Quote("漢字"))
 }
 
-func TestQuote_NonBMP_SurrogatePairs(t *testing.T) {
-	// Rocket U+1F680 -> \ud83d\ude80
-	assert.Equal(t, `"\ud83d\ude80"`, engine.Quote("🚀"))
-	// Musical symbol G clef U+1D11E -> \ud834\udd1e
-	assert.Equal(t, `"\ud834\udd1e"`, engine.Quote("𝄞"))
+func TestQuote_SurrogatePairs_AsIs(t *testing.T) {
+	assert.Equal(t, `"🚀"`, engine.Quote("🚀"))
+	assert.Equal(t, `"👍🏻"`, engine.Quote("👍🏻"))
+	assert.Equal(t, `"𝄞"`, engine.Quote("𝄞"))
 }
 
 func TestQuote_InvalidUTF8BytesAreEscaped(t *testing.T) {
