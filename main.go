@@ -1268,6 +1268,9 @@ func (m *model) selectNodeInView(n *Node) {
 }
 
 func (m *model) selectNode(n *Node) {
+	if n == nil {
+		return
+	}
 	m.showCursor = true
 	if m.nodeInsideView(n) {
 		m.selectNodeInView(n)
@@ -1275,13 +1278,15 @@ func (m *model) selectNode(n *Node) {
 	} else {
 		m.cursor = 0
 		m.head = n
-		m.scrollIntoView()
+		{
+			parent := n.Parent
+			for parent != nil {
+				parent.Expand()
+				parent = parent.Parent
+			}
+		}
 		m.centerLine(n)
-	}
-	parent := n.Parent
-	for parent != nil {
-		parent.Expand()
-		parent = parent.Parent
+		m.scrollIntoView()
 	}
 }
 

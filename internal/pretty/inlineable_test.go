@@ -96,7 +96,7 @@ func TestIsInlineable(t *testing.T) {
 
 			var testNode *jsonx.Node
 			if strings.Contains(tt.json, `"key":`) {
-				testNode = node.FindChildByKey("key")
+				testNode = node.FindByPath([]any{"key"})
 				require.NotNil(t, testNode, "Could not find node with key 'key'")
 			} else {
 				testNode = node
@@ -211,7 +211,7 @@ func TestIsNestedArrays(t *testing.T) {
 
 			var testNode *jsonx.Node
 			if strings.Contains(tt.json, `"table":`) {
-				testNode = node.FindChildByKey("table")
+				testNode = node.FindByPath([]any{"table"})
 				require.NotNil(t, testNode, "Could not find node with key 'table'")
 			} else {
 				testNode = node
@@ -356,7 +356,7 @@ func TestIsArrayOfSimpleObject(t *testing.T) {
 
 			var testNode *jsonx.Node
 			if strings.Contains(tt.json, `"data":`) {
-				testNode = node.FindChildByKey("data")
+				testNode = node.FindByPath([]any{"data"})
 				require.NotNil(t, testNode, "Could not find node with key 'data'")
 			} else {
 				testNode = node

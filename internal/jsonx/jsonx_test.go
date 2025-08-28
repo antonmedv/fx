@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/antonmedv/fx/internal/jsonx"
 )
@@ -173,4 +174,96 @@ func TestJsonParser_NestedStructureVerification(t *testing.T) {
 	assert.NotNil(t, role)
 	assert.Equal(t, jsonx.String, role.Kind)
 	assert.Equal(t, `"editor"`, string(role.Value))
+}
+
+func TestJsonParser_FindByPathWithCollapsedNodes(t *testing.T) {
+	t.Run("collapsed array access", func(t *testing.T) {
+		node, err := jsonx.Parse([]byte(`{
+			"items": [1, 2, 3, 4, 5]
+		}`))
+		require.NoError(t, err)
+
+		node.CollapseRecursively()
+
+		items := node.FindByPath([]any{"items"})
+		require.NotNil(t, items)
+
+		element := node.FindByPath([]any{"items", 2})
+		require.NotNil(t, element)
+		require.Equal(t, jsonx.Number, element.Kind)
+		require.Equal(t, "3", element.Value)
+	})
+
+	t.Run("collapsed object access", func(t *testing.T) {
+		node, err := jsonx.Parse([]byte(`{
+			"user": {
+				"settings": {
+					"theme": "dark",
+					"notifications": true
+				}
+			}
+		}`))
+		require.NoError(t, err)
+
+		node.CollapseRecursively()
+
+		settings := node.FindByPath([]any{"user", "settings"})
+		require.NotNil(t, settings)
+
+		theme := node.FindByPath([]any{"user", "settings", "theme"})
+		require.NotNil(t, theme)
+		require.Equal(t, jsonx.String, theme.Kind)
+		require.Equal(t, `"dark"`, string(theme.Value))
+	})
+
+	t.Run("nested collapsed structures", func(t *testing.T) {
+		node, err := jsonx.Parse([]byte(`{
+			"data": {
+				"users": [
+					{"id": 1, "name": "John"},
+					{"id": 2, "name": "Jane"}
+				]
+			}
+		}`))
+		require.NoError(t, err)
+
+		node.CollapseRecursively()
+
+		users := node.FindByPath([]any{"data", "users"})
+		require.NotNil(t, users)
+
+		userName := node.FindByPath([]any{"data", "users", 1, "name"})
+		require.NotNil(t, userName)
+		require.Equal(t, jsonx.String, userName.Kind)
+		require.Equal(t, `"Jane"`, string(userName.Value))
+	})
+
+	t.Run("nested collapsed structures with arrays", func(t *testing.T) {
+		node, err := jsonx.Parse([]byte(`{
+		  "data": [
+			{
+			  "first": [
+				"tmp",
+				{
+				  "foo": [
+					1,
+					2,
+					true
+				  ]
+				}
+			  ]
+			},
+			{
+			  "second": []
+			}
+		  ]
+		}`))
+		require.NoError(t, err)
+
+		node.CollapseRecursively()
+
+		value := node.FindByPath([]any{"data", 0, "first", 1, "foo", 2})
+		require.NotNil(t, value)
+		require.Equal(t, jsonx.Bool, value.Kind)
+	})
 }
