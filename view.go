@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/antonmedv/fx/internal/ident"
 	. "github.com/antonmedv/fx/internal/jsonx"
 	"github.com/antonmedv/fx/internal/theme"
 	"github.com/antonmedv/fx/internal/utils"
@@ -48,8 +49,8 @@ func (m *model) View() string {
 			screen = append(screen, ' ', ' ')
 		}
 
-		for ident := 0; ident < int(n.Depth); ident++ {
-			screen = append(screen, ' ', ' ')
+		for i := 0; i < int(n.Depth); i++ {
+			screen = append(screen, ident.IdentBytes...)
 		}
 
 		isSelected := m.cursor == lineNumber

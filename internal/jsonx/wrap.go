@@ -4,6 +4,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/mattn/go-runewidth"
+
+	"github.com/antonmedv/fx/internal/ident"
 )
 
 func DropWrapAll(n *Node) {
@@ -53,7 +55,7 @@ func Wrap(n *Node, termWidth int) {
 
 func doWrap(n *Node, termWidth int) ([]string, int) {
 	lines := make([]string, 0, 1)
-	width := int(n.Depth) * 2
+	width := int(n.Depth) * ident.IdentWidth
 
 	if n.Key != "" {
 		for _, ch := range n.Key {

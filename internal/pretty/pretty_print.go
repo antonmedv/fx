@@ -3,6 +3,7 @@ package pretty
 import (
 	"strings"
 
+	"github.com/antonmedv/fx/internal/ident"
 	"github.com/antonmedv/fx/internal/jsonx"
 	"github.com/antonmedv/fx/internal/theme"
 )
@@ -83,8 +84,8 @@ func inline(out *strings.Builder, n *jsonx.Node) *jsonx.Node {
 }
 
 func printIdent(out *strings.Builder, n *jsonx.Node) {
-	for ident := 0; ident < int(n.Depth); ident++ {
-		out.WriteString("  ")
+	for i := 0; i < int(n.Depth); i++ {
+		out.WriteString(ident.Ident)
 	}
 }
 
