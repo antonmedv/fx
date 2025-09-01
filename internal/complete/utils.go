@@ -7,22 +7,22 @@ import (
 	"strings"
 )
 
-func compReply(reply []pair, withDisplay bool) {
+func compReply(reply []Reply, withDisplay bool) {
 	var lines []string
 	for _, line := range reply {
 		if withDisplay {
-			lines = append(lines, fmt.Sprintf("%s\t%s", line.display, line.value))
+			lines = append(lines, fmt.Sprintf("%s\t%s\t%s", line.Display, line.Value, line.Type))
 		} else {
-			lines = append(lines, line.value)
+			lines = append(lines, line.Value)
 		}
 	}
 	fmt.Print(strings.Join(lines, "\n"))
 }
 
-func filterReply(reply []pair, compWord string) []pair {
-	var filtered []pair
+func filterReply(reply []Reply, compWord string) []Reply {
+	var filtered []Reply
 	for _, word := range reply {
-		if strings.HasPrefix(word.value, compWord) {
+		if strings.HasPrefix(word.Value, compWord) {
 			filtered = append(filtered, word)
 		}
 	}

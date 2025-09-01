@@ -16,21 +16,13 @@ import (
 	"github.com/antonmedv/fx/internal/shlex"
 )
 
-type pair struct {
-	display string
-	value   string
+type Reply struct {
+	Display string
+	Value   string
+	Type    string // "file" for files, others optional
 }
 
-var flags = []pair{
-	{"--help", "--help"},
-	{"--raw", "--raw"},
-	{"--slurp", "--slurp"},
-	{"--themes", "--themes"},
-	{"--version", "--version"},
-	{"--yaml", "--yaml"},
-	{"--strict", "--strict"},
-	{"--no-inline", "--no-inline"},
-}
+var Flags []Reply
 
 //go:embed complete.bash
 var Bash string
@@ -68,7 +60,7 @@ func Complete() bool {
 
 func doComplete(compLine string, compWord string, withDisplay bool) {
 	if strings.HasPrefix(compWord, "-") {
-		compReply(filterReply(flags, compWord), withDisplay)
+		compReply(filterReply(Flags, compWord), withDisplay)
 		return
 	}
 
@@ -87,7 +79,7 @@ func doComplete(compLine string, compWord string, withDisplay bool) {
 		}
 	}
 
-	// Remove flags from args.
+	// Remove Flags from args.
 	args = filterArgs(args)
 
 	isSecondArgIsFile := false
@@ -108,7 +100,7 @@ func doComplete(compLine string, compWord string, withDisplay bool) {
 		isSecondArgIsFile = isFile(args[1])
 	}
 
-	var reply []pair
+	var reply []Reply
 
 	if isSecondArgIsFile {
 		file := args[1]
@@ -165,7 +157,7 @@ func doComplete(compLine string, compWord string, withDisplay bool) {
 	}
 }
 
-func globalsComplete() []pair {
+func globalsComplete() []Reply {
 	var code strings.Builder
 	code.WriteString(prelude)
 	code.WriteString(engine.Stdlib)
@@ -178,11 +170,12 @@ func globalsComplete() []pair {
 	}
 
 	if array, ok := value.Export().([]any); ok {
-		var reply []pair
+		var reply []Reply
 		for _, key := range array {
-			reply = append(reply, pair{
-				display: key.(string),
-				value:   key.(string),
+			reply = append(reply, Reply{
+				Display: key.(string),
+				Value:   key.(string),
+				Type:    "global",
 			})
 		}
 		return reply
@@ -190,7 +183,7 @@ func globalsComplete() []pair {
 	return nil
 }
 
-func keysComplete(input *jsonx.Node, args []string, compWord string) []pair {
+func keysComplete(input *jsonx.Node, args []string, compWord string) []Reply {
 	args = args[2:] // Drop binary & file from the args.
 
 	if compWord == "" {
@@ -227,11 +220,12 @@ func keysComplete(input *jsonx.Node, args []string, compWord string) []pair {
 
 	if array, ok := value.Export().([]interface{}); ok {
 		prefix := dropTail(compWord)
-		var reply []pair
+		var reply []Reply
 		for _, key := range array {
-			reply = append(reply, pair{
-				display: "." + key.(string),
-				value:   join(prefix, key.(string)),
+			reply = append(reply, Reply{
+				Display: "." + key.(string),
+				Value:   join(prefix, key.(string)),
+				Type:    "key",
 			})
 		}
 		return reply
@@ -256,8 +250,8 @@ func filterArgs(args []string) []string {
 	filtered := make([]string, 0, len(args))
 	for _, arg := range args {
 		found := false
-		for _, flag := range flags {
-			if arg == flag.value {
+		for _, flag := range Flags {
+			if arg == flag.Value {
 				found = true
 				break
 			}
@@ -269,7 +263,7 @@ func filterArgs(args []string) []string {
 	return filtered
 }
 
-func fileComplete(compWord string) []pair {
+func fileComplete(compWord string) []Reply {
 	original := compWord
 
 	// Step 1: Expand ~ to home directory
@@ -301,7 +295,7 @@ func fileComplete(compWord string) []pair {
 	}
 
 	// Step 4: Format matches
-	var matches []pair
+	var matches []Reply
 	for _, match := range files {
 		if match == "." || match == ".." {
 			continue
@@ -333,9 +327,10 @@ func fileComplete(compWord string) []pair {
 			}
 		}
 
-		matches = append(matches, pair{
-			display: filepath.Base(suggestion) + dirSuffix,
-			value:   suggestion,
+		matches = append(matches, Reply{
+			Display: filepath.Base(suggestion) + dirSuffix,
+			Value:   suggestion,
+			Type:    "file",
 		})
 	}
 

@@ -43,6 +43,23 @@ var (
 	flagNoInline bool
 )
 
+var flags = []string{
+	"--help",
+	"--raw",
+	"--slurp",
+	"--themes",
+	"--version",
+	"--yaml",
+	"--strict",
+	"--no-inline",
+}
+
+func init() {
+	for _, name := range flags {
+		complete.Flags = append(complete.Flags, complete.Reply{name, name, "flag"})
+	}
+}
+
 func main() {
 	if _, ok := os.LookupEnv("FX_PPROF"); ok {
 		f, err := os.Create("cpu.prof")
