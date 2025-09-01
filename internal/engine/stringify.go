@@ -12,12 +12,9 @@ import (
 )
 
 func Stringify(value goja.Value, vm *goja.Runtime, depth int) string {
-	if value.StrictEquals(goja.Undefined()) {
-		return "undefined"
-	}
-
 	rtype := value.ExportType()
 	if rtype == nil {
+		// Convert both null and undefined to null (save as JSON.stringify)
 		return "null"
 	}
 
