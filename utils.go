@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"io"
 	"io/fs"
@@ -12,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/goccy/go-yaml"
+	"github.com/pelletier/go-toml/v2"
 
 	"github.com/antonmedv/fx/internal/jsonpath"
 	"github.com/antonmedv/fx/internal/jsonx"
@@ -27,7 +29,7 @@ func lookup(names []string, defaultEditor string) string {
 	return defaultEditor
 }
 
-func open(filePath string, flagYaml *bool) *os.File {
+func open(filePath string, flagYaml, flagToml *bool) *os.File {
 	f, err := os.Open(filePath)
 	if err != nil {
 		var pathError *fs.PathError
@@ -40,8 +42,12 @@ func open(filePath string, flagYaml *bool) *os.File {
 	}
 	fileName := path.Base(filePath)
 	hasYamlExt, _ := regexp.MatchString(`(?i)\.ya?ml$`, fileName)
+	hasTomlExt, _ := regexp.MatchString(`(?i)\.toml$`, fileName)
 	if !*flagYaml && hasYamlExt {
 		*flagYaml = true
+	}
+	if !*flagToml && hasTomlExt {
+		*flagToml = true
 	}
 	return f
 }
@@ -101,6 +107,14 @@ func parseYAML(b []byte) ([]byte, error) {
 		out = append(out, j...)
 	}
 	return out, nil
+}
+
+func parseTOML(b []byte) ([]byte, error) {
+	var v any
+	if err := toml.Unmarshal(b, &v); err != nil {
+		return nil, err
+	}
+	return json.Marshal(v)
 }
 
 func isRefNode(n *jsonx.Node) (string, bool) {
