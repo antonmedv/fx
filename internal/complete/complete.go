@@ -215,9 +215,10 @@ func keysComplete(input *jsonx.Node, args []string, compWord string) []Reply {
 		prefix := dropTail(compWord)
 		var reply []Reply
 		for _, key := range array {
+			k := key.(string)
 			reply = append(reply, Reply{
-				Display: "." + key.(string),
-				Value:   join(prefix, key.(string)),
+				Display: join("", k),
+				Value:   join(prefix, k),
 				Type:    "key",
 			})
 		}
@@ -226,7 +227,7 @@ func keysComplete(input *jsonx.Node, args []string, compWord string) []Reply {
 	return nil
 }
 
-var alphaRe = regexp.MustCompile(`^[\w$]+$`)
+var alphaRe = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]*$`)
 
 func join(prefix, key string) string {
 	if alphaRe.MatchString(key) {
