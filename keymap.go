@@ -38,6 +38,7 @@ type KeyMap struct {
 	GoBack              key.Binding
 	GoForward           key.Binding
 	Dig                 key.Binding
+	Delete              key.Binding
 }
 
 var keyMap KeyMap
@@ -61,11 +62,11 @@ func init() {
 			key.WithHelp("pgup, b", "page up"),
 		),
 		HalfPageUp: key.NewBinding(
-			key.WithKeys("u", "ctrl+u"),
+			key.WithKeys("ctrl+u"),
 			key.WithHelp("", "half page up"),
 		),
 		HalfPageDown: key.NewBinding(
-			key.WithKeys("d", "ctrl+d"),
+			key.WithKeys("ctrl+d"),
 			key.WithHelp("", "half page down"),
 		),
 		GotoTop: key.NewBinding(
@@ -183,6 +184,10 @@ func init() {
 		Dig: key.NewBinding(
 			key.WithKeys("."),
 			key.WithHelp("", "dig"),
+		),
+		Delete: key.NewBinding(
+			key.WithKeys("d"),
+			key.WithHelp("", "delete current node"),
 		),
 	}
 }

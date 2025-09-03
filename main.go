@@ -363,6 +363,7 @@ type model struct {
 	keysIndex             []string
 	keysIndexNodes        []*Node
 	fuzzyMatch            *fuzzy.Match
+	deletePending         bool
 }
 
 type location struct {
@@ -741,6 +742,17 @@ func (m *model) handleShowSelectorKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Handle potential 'dd' sequence for delete
+	if m.deletePending {
+		// Second key after an initial 'd'
+		if key.Matches(msg, keyMap.Delete) {
+			m.deletePending = false
+			m.deleteAtCursor()
+			return m, nil
+		}
+		m.deletePending = false
+	}
+
 	switch {
 	case key.Matches(msg, keyMap.Suspend):
 		m.suspending = true
@@ -1048,6 +1060,8 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.selectNode(loc.node)
 		}
 
+	case key.Matches(msg, keyMap.Delete):
+		m.deletePending = true
 	}
 	return m, nil
 }
@@ -1629,4 +1643,84 @@ func (m *model) open() tea.Cmd {
 	return tea.ExecProcess(execCmd, func(err error) tea.Msg {
 		return nil
 	})
+}
+
+// deleteAtCursor deletes the current key/value (node) from the view structure.
+func (m *model) deleteAtCursor() {
+	at, ok := m.cursorPointsTo()
+	if !ok || at == nil {
+		return
+	}
+	// Avoid closing bracket nodes (Index == -1 used for brackets)
+	if at.Index == -1 {
+		return
+	}
+	// Avoid deleting root
+	parent := at.Parent
+	if parent == nil {
+		return
+	}
+	// If current points to a wrap placeholder, move to its parent value
+	if at.Chunk != "" && at.Value == "" && at.Parent != nil {
+		at = at.Parent
+		parent = at.Parent
+		if parent == nil {
+			return
+		}
+	}
+
+	// Determine the last node of this item (to skip its subtree or chunks)
+	endOf := at
+	if at.End != nil {
+		endOf = at.End
+	} else if at.ChunkEnd != nil {
+		endOf = at.ChunkEnd
+	}
+	prev := at.Prev
+	next := endOf.Next
+
+	// If deleting the last child before parent's closing bracket, clear trailing comma on previous sibling
+	isLast := next == parent.End
+	if isLast && prev != nil && prev != parent {
+		// prev is either previous sibling (scalar) or its End (for objects/arrays)
+		prev.Comma = false
+	}
+
+	// Relink to remove [at..endOf] from the chain
+	if prev != nil {
+		prev.Next = next
+	}
+	if next != nil {
+		next.Prev = prev
+	}
+
+	// Update parent size and array indices if needed
+	if parent.Size > 0 {
+		parent.Size--
+	}
+	if parent.Kind == Array {
+		for it := next; it != nil && it != parent.End; {
+			if it.Parent == parent && it.Index >= 0 {
+				it.Index = it.Index - 1
+			}
+			if it.HasChildren() {
+				it = it.End.Next
+			} else {
+				it = it.Next
+			}
+		}
+	}
+
+	// Select a sensible node after deletion
+	selectTo := next
+	if selectTo == nil || selectTo == parent.End {
+		// Try to select previous visible node
+		if prev != nil && prev != parent {
+			selectTo = prev
+		} else {
+			selectTo = parent
+		}
+	}
+	m.selectNode(selectTo)
+	m.recordHistory()
 }
