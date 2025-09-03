@@ -8,6 +8,8 @@ import (
 
 	toml "github.com/pelletier/go-toml/v2"
 	"github.com/pelletier/go-toml/v2/unstable"
+
+	"github.com/antonmedv/fx/internal/engine"
 )
 
 type jnode interface{}
@@ -313,6 +315,11 @@ func writeJSON(w io.Writer, n jnode) error {
 		_, err := io.WriteString(w, "]")
 		return err
 	default:
+		if str, ok := v.(string); ok {
+			quoted := engine.Quote(str)
+			_, err := w.Write([]byte(quoted))
+			return err
+		}
 		b, err := json.Marshal(v)
 		if err != nil {
 			return err
