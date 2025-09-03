@@ -31,6 +31,7 @@ import (
 	"github.com/antonmedv/fx/internal/jsonpath"
 	. "github.com/antonmedv/fx/internal/jsonx"
 	"github.com/antonmedv/fx/internal/theme"
+	"github.com/antonmedv/fx/internal/toml"
 	"github.com/antonmedv/fx/internal/utils"
 )
 
@@ -190,11 +191,7 @@ func main() {
 		}
 		parser = NewJsonParser(bytes.NewReader(jsonBytes), flagStrict)
 	} else if flagToml {
-		b, err := io.ReadAll(src)
-		if err != nil {
-			panic(err)
-		}
-		jsonBytes, err := parseTOML(b)
+		jsonBytes, err := toml.ToJSON(src)
 		if err != nil {
 			fmt.Print(err.Error())
 			os.Exit(1)

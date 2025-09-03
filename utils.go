@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"io"
 	"io/fs"
@@ -13,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/goccy/go-yaml"
-	"github.com/pelletier/go-toml/v2"
 
 	"github.com/antonmedv/fx/internal/jsonpath"
 	"github.com/antonmedv/fx/internal/jsonx"
@@ -107,14 +105,6 @@ func parseYAML(b []byte) ([]byte, error) {
 		out = append(out, j...)
 	}
 	return out, nil
-}
-
-func parseTOML(b []byte) ([]byte, error) {
-	var v any
-	if err := toml.Unmarshal(b, &v); err != nil {
-		return nil, err
-	}
-	return json.Marshal(v)
 }
 
 func isRefNode(n *jsonx.Node) (string, bool) {
