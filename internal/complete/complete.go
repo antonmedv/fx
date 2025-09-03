@@ -2,6 +2,7 @@ package complete
 
 import (
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/dop251/goja"
 	"github.com/goccy/go-yaml"
+	"github.com/pelletier/go-toml/v2"
 
 	"github.com/antonmedv/fx/internal/engine"
 	"github.com/antonmedv/fx/internal/jsonx"
@@ -72,10 +74,13 @@ func doComplete(compLine string, compWord string, withDisplay bool) {
 	compWord = shlex.Parse(compWord)
 
 	var flagYaml bool
+	var flagToml bool
 	for _, arg := range args {
 		if arg == "--yaml" {
 			flagYaml = true
-			break
+		}
+		if arg == "--toml" {
+			flagToml = true
 		}
 	}
 
@@ -106,8 +111,12 @@ func doComplete(compLine string, compWord string, withDisplay bool) {
 		file := args[1]
 
 		hasYamlExt, _ := regexp.MatchString(`(?i)\.ya?ml$`, file)
+		hasTomlExt, _ := regexp.MatchString(`(?i)\.toml$`, file)
 		if !flagYaml && hasYamlExt {
 			flagYaml = true
+		}
+		if !flagToml && hasTomlExt {
+			flagToml = true
 		}
 
 		if strings.HasPrefix(file, "~") {
@@ -127,6 +136,16 @@ func doComplete(compLine string, compWord string, withDisplay bool) {
 			if err != nil {
 				return
 			}
+		} else if flagToml {
+			var v any
+			if err := toml.Unmarshal(input, &v); err != nil {
+				return
+			}
+			b, err := json.Marshal(v)
+			if err != nil {
+				return
+			}
+			input = b
 		}
 
 		node, err := jsonx.Parse(input)

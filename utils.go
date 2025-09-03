@@ -27,7 +27,7 @@ func lookup(names []string, defaultEditor string) string {
 	return defaultEditor
 }
 
-func open(filePath string, flagYaml *bool) *os.File {
+func open(filePath string, flagYaml, flagToml *bool) *os.File {
 	f, err := os.Open(filePath)
 	if err != nil {
 		var pathError *fs.PathError
@@ -40,8 +40,12 @@ func open(filePath string, flagYaml *bool) *os.File {
 	}
 	fileName := path.Base(filePath)
 	hasYamlExt, _ := regexp.MatchString(`(?i)\.ya?ml$`, fileName)
+	hasTomlExt, _ := regexp.MatchString(`(?i)\.toml$`, fileName)
 	if !*flagYaml && hasYamlExt {
 		*flagYaml = true
+	}
+	if !*flagToml && hasTomlExt {
+		*flagToml = true
 	}
 	return f
 }

@@ -17,8 +17,9 @@ require (
 	github.com/mattn/go-runewidth v0.0.16
 	github.com/muesli/termenv v0.16.0
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
+	github.com/pelletier/go-toml/v2 v2.2.3
 	github.com/rivo/uniseg v0.4.7
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 )
 
 require (
