@@ -191,7 +191,11 @@ func main() {
 		}
 		parser = NewJsonParser(bytes.NewReader(jsonBytes), flagStrict)
 	} else if flagToml {
-		jsonBytes, err := toml.ToJSON(src)
+		b, err := io.ReadAll(src)
+		if err != nil {
+			panic(err)
+		}
+		jsonBytes, err := toml.ToJSON(b)
 		if err != nil {
 			fmt.Print(err.Error())
 			os.Exit(1)

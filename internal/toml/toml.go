@@ -25,12 +25,7 @@ type jarray struct {
 	elems []jnode
 }
 
-func ToJSON(r io.Reader) ([]byte, error) {
-	in, err := io.ReadAll(r)
-	if err != nil {
-		return nil, err
-	}
-
+func ToJSON(in []byte) ([]byte, error) {
 	var typed any
 	if err := toml.Unmarshal(in, &typed); err != nil {
 		panic(in)
