@@ -748,8 +748,9 @@ func (m *model) handlePendingDelete(msg tea.Msg) {
 	if m.deletePending {
 		if keyMsg, ok := msg.(tea.KeyMsg); ok {
 			if key.Matches(keyMsg, keyMap.Delete) {
-				m.deletePending = false
 				m.deleteAtCursor()
+				m.deletePending = true
+				return
 			}
 		}
 		m.deletePending = false
