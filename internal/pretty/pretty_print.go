@@ -98,7 +98,7 @@ func printKey(out *strings.Builder, n *jsonx.Node) {
 
 func printValue(out *strings.Builder, n *jsonx.Node) {
 	if n.Value != "" {
-		out.WriteString(theme.Value(n.Kind, false)(n.Value))
+		out.WriteString(theme.Value(n.Kind)(n.Value))
 	}
 	if n.Comma {
 		out.WriteString(theme.Comma)

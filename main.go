@@ -458,6 +458,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tea.MouseMsg:
+		m.handlePendingDelete(msg)
+
 		switch {
 		case msg.Button == tea.MouseButtonWheelUp:
 			m.up()
@@ -741,17 +743,21 @@ func (m *model) handleShowSelectorKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *model) handlePendingDelete(msg tea.Msg) {
 	// Handle potential 'dd' sequence for delete
 	if m.deletePending {
-		// Second key after an initial 'd'
-		if key.Matches(msg, keyMap.Delete) {
-			m.deletePending = false
-			m.deleteAtCursor()
-			return m, nil
+		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+			if key.Matches(keyMsg, keyMap.Delete) {
+				m.deletePending = false
+				m.deleteAtCursor()
+			}
 		}
 		m.deletePending = false
 	}
+}
+
+func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	m.handlePendingDelete(msg)
 
 	switch {
 	case key.Matches(msg, keyMap.Suspend):
@@ -1222,7 +1228,14 @@ func (m *model) prettyPrint(node *Node, isSelected, isRef bool) string {
 		}
 	}
 
-	style := theme.Value(node.Kind, isSelected)
+	var style theme.Color
+
+	if isSelected {
+		style = theme.CurrentTheme.Cursor
+	} else {
+		style = theme.Value(node.Kind)
+	}
+
 	if isRef {
 		style = theme.CurrentTheme.Ref
 	}
@@ -1651,76 +1664,8 @@ func (m *model) deleteAtCursor() {
 	if !ok || at == nil {
 		return
 	}
-	// Avoid closing bracket nodes (Index == -1 used for brackets)
-	if at.Index == -1 {
-		return
+	if next, ok := DeleteNode(at); ok {
+		m.selectNode(next)
+		m.recordHistory()
 	}
-	// Avoid deleting root
-	parent := at.Parent
-	if parent == nil {
-		return
-	}
-	// If current points to a wrap placeholder, move to its parent value
-	if at.Chunk != "" && at.Value == "" && at.Parent != nil {
-		at = at.Parent
-		parent = at.Parent
-		if parent == nil {
-			return
-		}
-	}
-
-	// Determine the last node of this item (to skip its subtree or chunks)
-	endOf := at
-	if at.End != nil {
-		endOf = at.End
-	} else if at.ChunkEnd != nil {
-		endOf = at.ChunkEnd
-	}
-	prev := at.Prev
-	next := endOf.Next
-
-	// If deleting the last child before parent's closing bracket, clear trailing comma on previous sibling
-	isLast := next == parent.End
-	if isLast && prev != nil && prev != parent {
-		// prev is either previous sibling (scalar) or its End (for objects/arrays)
-		prev.Comma = false
-	}
-
-	// Relink to remove [at..endOf] from the chain
-	if prev != nil {
-		prev.Next = next
-	}
-	if next != nil {
-		next.Prev = prev
-	}
-
-	// Update parent size and array indices if needed
-	if parent.Size > 0 {
-		parent.Size--
-	}
-	if parent.Kind == Array {
-		for it := next; it != nil && it != parent.End; {
-			if it.Parent == parent && it.Index >= 0 {
-				it.Index = it.Index - 1
-			}
-			if it.HasChildren() {
-				it = it.End.Next
-			} else {
-				it = it.Next
-			}
-		}
-	}
-
-	// Select a sensible node after deletion
-	selectTo := next
-	if selectTo == nil || selectTo == parent.End {
-		// Try to select previous visible node
-		if prev != nil && prev != parent {
-			selectTo = prev
-		} else {
-			selectTo = parent
-		}
-	}
-	m.selectNode(selectTo)
-	m.recordHistory()
 }

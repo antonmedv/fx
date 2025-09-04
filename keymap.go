@@ -28,6 +28,7 @@ type KeyMap struct {
 	ToggleWrap          key.Binding
 	ShowSelector        key.Binding
 	Yank                key.Binding
+	Delete              key.Binding
 	CommandLine         key.Binding
 	Search              key.Binding
 	SearchNext          key.Binding
@@ -38,7 +39,6 @@ type KeyMap struct {
 	GoBack              key.Binding
 	GoForward           key.Binding
 	Dig                 key.Binding
-	Delete              key.Binding
 }
 
 var keyMap KeyMap
@@ -145,6 +145,10 @@ func init() {
 			key.WithKeys("y"),
 			key.WithHelp("", "yank/copy"),
 		),
+		Delete: key.NewBinding(
+			key.WithKeys("d"),
+			key.WithHelp("", "delete node"),
+		),
 		CommandLine: key.NewBinding(
 			key.WithKeys(":"),
 			key.WithHelp("", "open command line"),
@@ -184,10 +188,6 @@ func init() {
 		Dig: key.NewBinding(
 			key.WithKeys("."),
 			key.WithHelp("", "dig"),
-		),
-		Delete: key.NewBinding(
-			key.WithKeys("d"),
-			key.WithHelp("", "delete current node"),
 		),
 	}
 }

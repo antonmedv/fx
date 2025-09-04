@@ -32,31 +32,28 @@ type Theme struct {
 
 type Color func(s string) string
 
-func Value(kind jsonx.Kind, selected bool) Color {
-	if selected {
-		return CurrentTheme.Cursor
-	} else {
-		switch kind {
-		case jsonx.String:
-			return CurrentTheme.String
-		case jsonx.Bool:
-			return CurrentTheme.Boolean
-		case jsonx.Null:
-			return CurrentTheme.Null
-		case jsonx.Object, jsonx.Array:
-			return CurrentTheme.Syntax
-		case jsonx.Number:
-			return CurrentTheme.Number
-		case jsonx.NaN:
-			return CurrentTheme.Error
-		case jsonx.Infinity:
-			return CurrentTheme.Error
-		case jsonx.Undefined:
-			return CurrentTheme.Error
-		default:
-			return noColor
-		}
+func Value(kind jsonx.Kind) Color {
+	switch kind {
+	case jsonx.String:
+		return CurrentTheme.String
+	case jsonx.Bool:
+		return CurrentTheme.Boolean
+	case jsonx.Null:
+		return CurrentTheme.Null
+	case jsonx.Object, jsonx.Array:
+		return CurrentTheme.Syntax
+	case jsonx.Number:
+		return CurrentTheme.Number
+	case jsonx.NaN:
+		return CurrentTheme.Error
+	case jsonx.Infinity:
+		return CurrentTheme.Error
+	case jsonx.Undefined:
+		return CurrentTheme.Error
+	default:
+		return noColor
 	}
+
 }
 
 var (
