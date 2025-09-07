@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestTranspileBasic(t *testing.T) {
+func TestTranspile(t *testing.T) {
 	tests := []struct {
 		code string
 		want string
@@ -13,36 +13,17 @@ func TestTranspileBasic(t *testing.T) {
 		{".foo", "x.foo"},
 		{".[0]", "x[0]"},
 		{"foo", "foo"},
-	}
-	for _, tt := range tests {
-		got := transpile(tt.code)
-		if got != tt.want {
-			t.Errorf("transpile(%q) = %q; want %q", tt.code, got, tt.want)
-		}
-	}
-}
-
-func TestTranspileBracketAndNested(t *testing.T) {
-	code := ".foo[].bar[]"
-	want := "(x => x.foo.flatMap(x => x.bar.flatMap(x => x)))(x)"
-	got := transpile(code)
-	if got != want {
-		t.Errorf("transpile(%q) = %q; want %q", code, got, want)
-	}
-}
-
-func TestTranspileMapAndAt(t *testing.T) {
-	tests := []struct {
-		code string
-		want string
-	}{
 		{"@.baz", "x.map((x, i) => apply(x.baz, x, i))"},
+		{"?.foo > 42", "x.filter((x, i) => apply(x.foo > 42, x, i))"},
+		{".foo[].bar[]", "(x => x.foo.flatMap(x => x.bar.flatMap(x => x)))(x)"},
 	}
 	for _, tt := range tests {
-		got := transpile(tt.code)
-		if got != tt.want {
-			t.Errorf("transpile(%q) = %q; want %q", tt.code, got, tt.want)
-		}
+		t.Run(tt.code, func(t *testing.T) {
+			got := transpile(tt.code)
+			if got != tt.want {
+				t.Errorf("transpile(%q) = %q; want %q", tt.code, got, tt.want)
+			}
+		})
 	}
 }
 

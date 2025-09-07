@@ -27,6 +27,7 @@ var (
 	reBracketStart = regexp.MustCompile(`^\.\[`)
 	reDotStart     = regexp.MustCompile(`^\.`)
 	reAt           = regexp.MustCompile(`^@`)
+	reFilter       = regexp.MustCompile(`^\?`)
 )
 
 func transpile(code string) string {
@@ -49,6 +50,11 @@ func transpile(code string) string {
 	if reAt.MatchString(code) {
 		jsCode := transpile(code[1:])
 		return fmt.Sprintf(`x.map((x, i) => apply(%s, x, i))`, jsCode)
+	}
+
+	if reFilter.MatchString(code) {
+		jsCode := transpile(code[1:])
+		return fmt.Sprintf(`x.filter((x, i) => apply(%s, x, i))`, jsCode)
 	}
 
 	return code

@@ -128,6 +128,11 @@ function transpile(code) {
     return `x.map((x, i) => apply(${jsCode}, x, i))`
   }
 
+  if (/^\?/.test(code)) {
+    const jsCode = transpile(code.substring(1))
+    return `x.filter((x, i) => apply(${jsCode}, x, i))`
+  }
+
   return code
 }
 
