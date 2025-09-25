@@ -729,16 +729,6 @@ function themes(id) {
   return themes[id] || themes['1']
 }
 
-async function importFxrc(path) {
-  const {join} = await import('node:path')
-  const {pathToFileURL} = await import('node:url')
-  try {
-    await import(pathToFileURL(join(path, '.fxrc.js')))
-  } catch (err) {
-    if (err.code !== 'ERR_MODULE_NOT_FOUND') throw err
-  }
-}
-
 function loadFxrc(os, fs, path, process) {
   let script = ''
 
