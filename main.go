@@ -122,6 +122,9 @@ func main() {
 			flagStrict = true
 		case "--no-inline":
 			flagNoInline = true
+		case "--game-of-life":
+			utils.GameOfLife()
+			return
 		default:
 			args = append(args, arg)
 		}

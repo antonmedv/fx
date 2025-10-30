@@ -13,7 +13,6 @@ import (
 
 func usage(keyMap KeyMap) string {
 	title := lipgloss.NewStyle().Bold(true)
-	pad := lipgloss.NewStyle().PaddingLeft(4)
 	return fmt.Sprintf(`
   %v
     Terminal JSON viewer
@@ -34,9 +33,7 @@ func usage(keyMap KeyMap) string {
     --toml                parse input as TOML
     --strict              strict mode
     --no-inline           disable inlining in output
-
-  %v
-%v
+    --game-of-life        play the game of life
 
   %v
     https://fx.wtf
@@ -47,8 +44,6 @@ func usage(keyMap KeyMap) string {
 		title.Render("fx "+version),
 		title.Render("Usage"),
 		title.Render("Flags"),
-		title.Render("Key Bindings"),
-		strings.Join(keyMapInfo(keyMap, pad), "\n"),
 		title.Render("More info"),
 		title.Render("Author"),
 	)
