@@ -782,186 +782,52 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.down()
 
 	case key.Matches(msg, keyMap.PageUp):
-		m.cursor = m.viewHeight() - 1
-		m.showCursor = true
-		m.scrollBackward(max(0, m.viewHeight()-2))
-		m.scrollIntoView() // As the cursor is at the bottom, and it may be empty.
-		m.recordHistory()
+		return m.handlePageUp()
 
 	case key.Matches(msg, keyMap.PageDown):
-		m.cursor = 0
-		m.showCursor = true
-		m.scrollForward(max(0, m.viewHeight()-2))
-		m.recordHistory()
+		return m.handlePageDown()
 
 	case key.Matches(msg, keyMap.HalfPageUp):
-		m.showCursor = true
-		m.scrollBackward(m.viewHeight() / 2)
-		m.scrollIntoView() // As the cursor stays at the same position, and it may be empty.
-		m.recordHistory()
+		return m.handleHalfPageUp()
 
 	case key.Matches(msg, keyMap.HalfPageDown):
-		m.showCursor = true
-		m.scrollForward(m.viewHeight() / 2)
-		m.scrollIntoView() // As the cursor stays at the same position, and it may be empty.
-		m.recordHistory()
+		return m.handleHalfPageDown()
 
 	case key.Matches(msg, keyMap.GotoTop):
-		m.head = m.top
-		m.cursor = 0
-		m.showCursor = true
-		m.recordHistory()
+		return m.handleGotoTop()
 
 	case key.Matches(msg, keyMap.GotoBottom):
-		m.scrollToBottom()
-		m.recordHistory()
+		return m.handleGotoBottom()
 
 	case key.Matches(msg, keyMap.NextSibling):
-		pointsTo, ok := m.cursorPointsTo()
-		if !ok {
-			return m, nil
-		}
-		var nextSibling *Node
-		if pointsTo.End != nil && pointsTo.End.Next != nil {
-			nextSibling = pointsTo.End.Next
-		} else if pointsTo.ChunkEnd != nil && pointsTo.ChunkEnd.Next != nil {
-			nextSibling = pointsTo.ChunkEnd.Next
-		} else {
-			nextSibling = pointsTo.Next
-		}
-		if nextSibling != nil {
-			m.selectNode(nextSibling)
-		}
-		m.recordHistory()
+		return m.handleNextSibling()
 
 	case key.Matches(msg, keyMap.PrevSibling):
-		pointsTo, ok := m.cursorPointsTo()
-		if !ok {
-			return m, nil
-		}
-		var prevSibling *Node
-		parent := pointsTo.Parent
-		if parent != nil && parent.End == pointsTo {
-			prevSibling = parent
-		} else if pointsTo.Prev != nil {
-			prevSibling = pointsTo.Prev
-			parent := prevSibling.Parent
-			if parent != nil && parent.End == prevSibling {
-				prevSibling = parent
-			} else if prevSibling.Chunk != "" {
-				prevSibling = parent
-			}
-		}
-		if prevSibling != nil {
-			m.selectNode(prevSibling)
-		}
-		m.recordHistory()
+		return m.handlePrevSibling()
 
 	case key.Matches(msg, keyMap.Collapse):
-		n, ok := m.cursorPointsTo()
-		if !ok {
-			return m, nil
-		}
-		if n.HasChildren() && !n.IsCollapsed() {
-			n.Collapse()
-		} else {
-			if n.Parent != nil {
-				n = n.Parent
-			}
-		}
-		m.selectNode(n)
-		m.recordHistory()
+		return m.handleCollapse()
 
 	case key.Matches(msg, keyMap.Expand):
-		n, ok := m.cursorPointsTo()
-		if !ok {
-			return m, nil
-		}
-		n.Expand()
-		m.showCursor = true
+		return m.handleExpand()
 
 	case key.Matches(msg, keyMap.CollapseRecursively):
-		n, ok := m.cursorPointsTo()
-		if !ok {
-			return m, nil
-		}
-		if n.HasChildren() {
-			n.CollapseRecursively()
-		}
-		m.showCursor = true
+		return m.handleCollapseRecursively()
 
 	case key.Matches(msg, keyMap.ExpandRecursively):
-		n, ok := m.cursorPointsTo()
-		if !ok {
-			return m, nil
-		}
-		if n.HasChildren() {
-			n.ExpandRecursively(0, math.MaxInt)
-		}
-		m.showCursor = true
+		return m.handleExpandRecursively()
 
 	case key.Matches(msg, keyMap.CollapseAll):
-		at, ok := m.cursorPointsTo()
-		if ok {
-			m.collapsed = true
-			n := m.top
-			for n != nil {
-				if n.Kind != Err {
-					n.CollapseRecursively()
-				}
-				if n.End == nil {
-					n = nil
-				} else {
-					n = n.End.Next
-				}
-			}
-			m.selectNode(at.Root())
-			m.recordHistory()
-		}
+		return m.handleCollapseAll()
 
 	case key.Matches(msg, keyMap.ExpandAll):
-		at, ok := m.cursorPointsTo()
-		if !ok {
-			return m, nil
-		}
-		m.collapsed = false
-		n := m.top
-		for n != nil {
-			n.ExpandRecursively(0, math.MaxInt)
-			if n.End == nil {
-				n = nil
-			} else {
-				n = n.End.Next
-			}
-		}
-		m.selectNode(at)
+		return m.handleExpandAll()
 
 	case key.Matches(msg, keyMap.CollapseLevel):
-		at, ok := m.cursorPointsTo()
-		if ok && at.HasChildren() {
-			toLevel, _ := strconv.Atoi(msg.String())
-			at.CollapseRecursively()
-			at.ExpandRecursively(0, toLevel)
-			m.showCursor = true
-		}
+		return m.handleCollapseLevel(msg)
 
 	case key.Matches(msg, keyMap.ToggleWrap):
-		at, ok := m.cursorPointsTo()
-		if !ok {
-			return m, nil
-		}
-		m.wrap = !m.wrap
-		if m.wrap {
-			Wrap(m.top, m.viewWidth())
-		} else {
-			DropWrapAll(m.top)
-		}
-		m.searchCache.invalidate()
-		if at.Chunk != "" && at.Value == "" {
-			at = at.Parent
-		}
-		m.redoSearch()
-		m.selectNode(at)
+		return m.handleToggleWrap()
 
 	case key.Matches(msg, keyMap.ShowSelector):
 		m.showShowSelector = true
@@ -970,20 +836,7 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.yank = true
 
 	case key.Matches(msg, keyMap.Preview):
-		m.showPreview = true
-		content := ""
-		value := m.cursorValue()
-		if decodedValue, err := base64.StdEncoding.DecodeString(value); err == nil {
-			img, err := utils.DrawImage(bytes.NewReader(decodedValue), m.termWidth, m.termHeight)
-			if err == nil {
-				content = strings.TrimRight(img, "\n")
-			}
-		}
-		if content == "" {
-			content = lipgloss.NewStyle().Width(m.termWidth).Render(value)
-		}
-		m.preview.SetContent(content)
-		m.preview.GotoTop()
+		return m.handlePreviewKey()
 
 	case key.Matches(msg, keyMap.Print):
 		return m, m.print()
@@ -992,83 +845,31 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, m.open()
 
 	case key.Matches(msg, keyMap.Dig):
-		at, ok := m.cursorPointsTo()
-		if !ok {
-			return m, nil
-		}
-		if at.Kind == Err {
-			nextJson := at.FindNextNonErr()
-			if nextJson != nil {
-				m.selectNode(nextJson)
-			}
-		}
-		m.digInput.SetValue(m.cursorPath() + ".")
-		m.digInput.CursorEnd()
-		m.digInput.Width = m.termWidth - 1
-		m.digInput.Focus()
+		return m.handleDigMode()
 
 	case key.Matches(msg, keyMap.GotoSymbol):
-		m.gotoSymbolInput.CursorEnd()
-		m.gotoSymbolInput.Width = m.termWidth - 2 // -1 for the prompt, -1 for the cursor
-		m.gotoSymbolInput.Focus()
-		m.createKeysIndex()
+		return m.handleGotoSymbolMode()
 
 	case key.Matches(msg, keyMap.GotoRef):
-		at, ok := m.cursorPointsTo()
-		if !ok {
-			return m, nil
-		}
-		value, isRef := isRefNode(at)
-		if isRef {
-			refPath, ok := jsonpath.ParseSchemaRef(value)
-			if ok {
-				m.selectNode(m.findByPath(refPath))
-				m.recordHistory()
-			}
-		}
+		return m.handleGotoRefMode()
 
 	case key.Matches(msg, keyMap.CommandLine):
-		m.commandInput.CursorEnd()
-		m.commandInput.Width = m.termWidth - 2 // -1 for the prompt, -1 for the cursor
-		m.commandInput.Focus()
+		return m.handleCommandLineMode()
 
 	case key.Matches(msg, keyMap.Search):
-		m.searchInput.CursorEnd()
-		m.searchInput.Width = m.termWidth - 2 // -1 for the prompt, -1 for the cursor
-		m.searchInput.Focus()
+		return m.handleSearchMode()
 
 	case key.Matches(msg, keyMap.SearchNext):
-		m.selectSearchResult(m.search.cursor + 1)
-		m.recordHistory()
+		return m.handleSearchNext()
 
 	case key.Matches(msg, keyMap.SearchPrev):
-		m.selectSearchResult(m.search.cursor - 1)
-		m.recordHistory()
+		return m.handleSearchPrev()
 
 	case key.Matches(msg, keyMap.GoBack):
-		if m.locationIndex > 0 {
-			at, ok := m.cursorPointsTo()
-			if !ok {
-				return m, nil
-			}
-			m.locationIndex--
-
-			loc := m.locationHistory[m.locationIndex]
-			for loc.node == at && m.locationIndex > 0 {
-				m.locationIndex--
-				loc = m.locationHistory[m.locationIndex]
-			}
-			m.selectNode(loc.head)
-			m.selectNode(loc.node)
-		}
+		return m.handleGoBack()
 
 	case key.Matches(msg, keyMap.GoForward):
-		if m.locationIndex < len(m.locationHistory)-1 {
-			m.locationIndex++
-			loc := m.locationHistory[m.locationIndex]
-			m.selectNode(loc.head)
-			m.selectNode(loc.node)
-		}
+		return m.handleGoForward()
 
 	case key.Matches(msg, keyMap.Delete):
 		m.deletePending = true
