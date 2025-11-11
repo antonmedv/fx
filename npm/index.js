@@ -130,7 +130,7 @@ function transpile(code) {
 
   if (/^\?/.test(code)) {
     const jsCode = transpile(code.substring(1))
-    return `x.filter((x, i) => apply(${jsCode}, x, i))`
+    return `filter((x, i) => apply(${jsCode}, x, i))`
   }
 
   return code
@@ -164,21 +164,16 @@ async function run(json, code) {
     throw new Error(`Cannot sort ${typeof x}`)
   }
 
+  function isFalsely(x) {
+    return x === false || x === null || x === undefined
+  }
+
   function filter(fn) {
     return function (x) {
       if (Array.isArray(x)) {
-        return x.filter((v, i) => fn(v, i))
-      } else if (x !== null && typeof x === 'object') {
-        const result = {}
-        for (const [k, v] of Object.entries(x)) {
-          if (fn(v, k)) {
-            result[k] = v
-          }
-        }
-        return result
-      } else {
-        throw new Error(`Cannot filter ${typeof x}`)
+        return x.filter((v, i) => !isFalsely(fn(v, i)))
       }
+      return isFalsely(fn(x))? skip : x
     }
   }
 

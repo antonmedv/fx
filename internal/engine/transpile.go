@@ -54,7 +54,7 @@ func transpile(code string) string {
 
 	if reFilter.MatchString(code) {
 		jsCode := transpile(code[1:])
-		return fmt.Sprintf(`x.filter((x, i) => apply(%s, x, i))`, jsCode)
+		return fmt.Sprintf(`filter((x, i) => apply(%s, x, i))`, jsCode)
 	}
 
 	return code
