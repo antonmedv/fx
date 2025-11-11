@@ -10,7 +10,8 @@ import (
 func Transpile(args []string, i int) string {
 	jsCode := transpile(args[i])
 	snippet := formatErr(args, i, jsCode)
-	return fmt.Sprintf(`  try {
+	return fmt.Sprintf(`
+  try {
     json = apply((function () {
       const x = this
       return %s
@@ -19,6 +20,7 @@ func Transpile(args []string, i int) string {
     throw %s
   }
 
+  if (json === skip) return skip
 `, jsCode, strconv.Quote(snippet)+" + e.toString()")
 }
 

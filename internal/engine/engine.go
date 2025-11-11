@@ -90,7 +90,7 @@ func Start(parser Parser, args []string, opts Options) int {
 	for i := range args {
 		code.WriteString(Transpile(args, i))
 	}
-	code.WriteString("  return json\n}\n")
+	code.WriteString("\n  return json\n}\n")
 
 	vm := NewVM(opts.WriteOut)
 	if _, err := vm.RunString(code.String()); err != nil {

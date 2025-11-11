@@ -73,6 +73,7 @@ async function transform(json, args, theme) {
       return ${jsCode}
     })`
     output = await run(output, fn)
+    if (output === skip) break
   } catch (err) {
     await printErr(err)
   }
