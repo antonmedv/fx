@@ -57,15 +57,8 @@ function map(fn) {
   return function (x) {
     if (Array.isArray(x)) {
       return x.map((v, i) => fn(v, i))
-    } else if (x !== null && typeof x === 'object') {
-      const result = {}
-      for (const [k, v] of Object.entries(x)) {
-        result[k] = fn(v, k)
-      }
-      return result
-    } else {
-      throw new Error(`Cannot map over ${typeof x}`)
     }
+    return fn(x)
   }
 }
 
