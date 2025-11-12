@@ -126,7 +126,7 @@ function transpile(code) {
 
   if (/^@/.test(code)) {
     const jsCode = transpile(code.substring(1))
-    return `x.map((x, i) => apply(${jsCode}, x, i))`
+    return `map((x, i) => apply(${jsCode}, x, i))`
   }
 
   if (/^\?/.test(code)) {
@@ -182,15 +182,8 @@ async function run(json, code) {
     return function (x) {
       if (Array.isArray(x)) {
         return x.map((v, i) => fn(v, i))
-      } else if (x !== null && typeof x === 'object') {
-        const result = {}
-        for (const [k, v] of Object.entries(x)) {
-          result[k] = fn(v, k)
-        }
-        return result
-      } else {
-        throw new Error(`Cannot map over ${typeof x}`)
       }
+      return fn(x)
     }
   }
 
