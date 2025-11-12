@@ -16,11 +16,6 @@ const console = {
   },
 }
 
-const YAML = {
-  stringify: x => __yaml_stringify__(x),
-  parse: x => JSON.parse(__yaml_parse__(x)),
-}
-
 const skip = Symbol('skip')
 
 function apply(fn, ...args) {
@@ -174,4 +169,9 @@ function toBase64(x) {
 
 function fromBase64(x) {
   return __fromBase64__(x)
+}
+
+const YAML = {
+  stringify: x => __yaml_stringify__(x),
+  parse: x => JSON.parse(__yaml_parse__(x)),
 }
