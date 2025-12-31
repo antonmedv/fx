@@ -8,7 +8,7 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o fx .
+RUN CGO_ENABLED=0 go build -o fx .
 
 FROM alpine
 
