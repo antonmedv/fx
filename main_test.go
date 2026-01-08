@@ -129,3 +129,26 @@ func TestCollapseRecursiveWithSizes(t *testing.T) {
 	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
 	tm.WaitFinished(t, teatest.WithFinalTimeout(time.Second))
 }
+
+func TestScrollLineDown(t *testing.T) {
+	tm := prepare(t)
+
+	// Scroll down one line with Ctrl+E
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlE})
+	teatest.RequireEqualOutput(t, read(t, tm))
+
+	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
+	tm.WaitFinished(t, teatest.WithFinalTimeout(time.Second))
+}
+
+func TestScrollLineUp(t *testing.T) {
+	tm := prepare(t)
+
+	// First scroll down one line, then scroll back up with Ctrl+Y
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlE})
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlY})
+	teatest.RequireEqualOutput(t, read(t, tm))
+
+	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
+	tm.WaitFinished(t, teatest.WithFinalTimeout(time.Second))
+}
