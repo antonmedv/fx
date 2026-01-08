@@ -59,7 +59,7 @@ var flags = []string{
 
 func init() {
 	for _, name := range flags {
-		complete.Flags = append(complete.Flags, complete.Reply{name, name, "flag"})
+		complete.Flags = append(complete.Flags, complete.Reply{Display: name, Value: name, Type: "flag"})
 	}
 }
 
@@ -803,6 +803,18 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keyMap.HalfPageDown):
 		m.showCursor = true
 		m.scrollForward(m.viewHeight() / 2)
+		m.scrollIntoView() // As the cursor stays at the same position, and it may be empty.
+		m.recordHistory()
+
+	case key.Matches(msg, keyMap.ScrollLineUp):
+		m.showCursor = true
+		m.scrollBackward(1)
+		m.scrollIntoView() // As the cursor stays at the same position, and it may be empty.
+		m.recordHistory()
+
+	case key.Matches(msg, keyMap.ScrollLineDown):
+		m.showCursor = true
+		m.scrollForward(1)
 		m.scrollIntoView() // As the cursor stays at the same position, and it may be empty.
 		m.recordHistory()
 

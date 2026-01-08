@@ -9,6 +9,8 @@ type KeyMap struct {
 	PageUp              key.Binding
 	HalfPageUp          key.Binding
 	HalfPageDown        key.Binding
+	ScrollLineUp        key.Binding
+	ScrollLineDown      key.Binding
 	GotoTop             key.Binding
 	GotoBottom          key.Binding
 	GotoSymbol          key.Binding
@@ -68,6 +70,14 @@ func init() {
 		HalfPageDown: key.NewBinding(
 			key.WithKeys("ctrl+d"),
 			key.WithHelp("", "half page down"),
+		),
+		ScrollLineUp: key.NewBinding(
+			key.WithKeys("ctrl+y"),
+			key.WithHelp("", "scroll line up"),
+		),
+		ScrollLineDown: key.NewBinding(
+			key.WithKeys("ctrl+e"),
+			key.WithHelp("", "scroll line down"),
 		),
 		GotoTop: key.NewBinding(
 			key.WithKeys("g", "home"),
