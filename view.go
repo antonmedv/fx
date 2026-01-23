@@ -18,8 +18,7 @@ func (m *model) View() string {
 	}
 
 	if m.showHelp {
-		statusBar := flex(m.termWidth, ": press q or ? to close help", "")
-		return m.help.View() + "\n" + theme.CurrentTheme.StatusBar(statusBar)
+		return m.help.View()
 	}
 
 	if m.showPreview {

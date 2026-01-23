@@ -96,7 +96,7 @@ func main() {
 		}
 		switch arg {
 		case "-h", "--help":
-			fmt.Println(usage(keyMap))
+			fmt.Println(usage())
 			return
 		case "-v", "-V", "--version":
 			fmt.Println(version)
@@ -164,7 +164,7 @@ func main() {
 	if stdinIsTty {
 		if len(args) == 0 {
 			// $ fx
-			fmt.Println(usage(keyMap))
+			fmt.Println(usage())
 			return
 		} else {
 			// $ fx file.json arg*

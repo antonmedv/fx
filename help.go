@@ -11,7 +11,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-func usage(keyMap KeyMap) string {
+func usage() string {
 	title := lipgloss.NewStyle().Bold(true)
 	return fmt.Sprintf(`
   %v
@@ -49,49 +49,92 @@ func usage(keyMap KeyMap) string {
 	)
 }
 
-func help(keyMap KeyMap) string {
-	title := lipgloss.NewStyle().Bold(true)
-	pad := lipgloss.NewStyle().PaddingLeft(4)
-	return fmt.Sprintf(`
-  %v
-%v
-`,
-		title.Render("Key Bindings"),
-		strings.Join(keyMapInfo(keyMap, pad), "\n"),
-	)
+var categoryOrder = []string{
+	"Navigation",
+	"Expand / Collapse",
+	"Search",
+	"Actions",
+	"View",
+	"Other",
 }
 
-func keyMapInfo(keyMap KeyMap, style lipgloss.Style) []string {
+func help(keyMap KeyMap) string {
+	titleStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("4"))
+
+	categoryStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("6")).
+		MarginTop(1)
+
+	keyStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("3"))
+
+	descStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("7"))
+
+	dimStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("8"))
+
+	// Group bindings by category using struct tags
 	v := reflect.ValueOf(keyMap)
-	fields := reflect.VisibleFields(v.Type())
+	t := v.Type()
+	categories := make(map[string][]key.Binding)
 
-	keys := make([]string, 0)
-	for i := range fields {
-		k := v.Field(i).Interface().(key.Binding)
-		str := k.Help().Key
-		if len(str) == 0 {
-			if len(k.Keys()) > 5 {
-				str = fmt.Sprintf("%v-%v", k.Keys()[0], k.Keys()[len(k.Keys())-1])
-			} else {
-				str = strings.Join(k.Keys(), ", ")
-			}
+	for _, field := range reflect.VisibleFields(t) {
+		category := field.Tag.Get("category")
+		if category == "" {
+			continue
 		}
-		keys = append(keys, fmt.Sprintf("%v    ", str))
+		binding := v.FieldByName(field.Name).Interface().(key.Binding)
+		categories[category] = append(categories[category], binding)
 	}
 
-	desc := make([]string, 0)
-	for i := range fields {
-		k := v.Field(i).Interface().(key.Binding)
-		desc = append(desc, fmt.Sprintf("%v", k.Help().Desc))
+	var sb strings.Builder
+
+	// Header
+	sb.WriteString("\n")
+	sb.WriteString(titleStyle.Render("  Key Bindings"))
+	sb.WriteString("\n")
+	sb.WriteString(dimStyle.Render("  ─────────────────────────────────────────"))
+	sb.WriteString("\n")
+
+	for _, cat := range categoryOrder {
+		bindings, ok := categories[cat]
+		if !ok || len(bindings) == 0 {
+			continue
+		}
+
+		sb.WriteString(categoryStyle.Render("  " + cat))
+		sb.WriteString("\n")
+
+		for _, binding := range bindings {
+			keyStr := binding.Help().Key
+			if len(keyStr) == 0 {
+				keys := binding.Keys()
+				if len(keys) > 5 {
+					keyStr = fmt.Sprintf("%v-%v", keys[0], keys[len(keys)-1])
+				} else {
+					keyStr = strings.Join(keys, ", ")
+				}
+			}
+
+			desc := binding.Help().Desc
+			keyFormatted := keyStyle.Render(fmt.Sprintf("%-20s", keyStr))
+			descFormatted := descStyle.Render(desc)
+
+			sb.WriteString(fmt.Sprintf("    %s  %s\n", keyFormatted, descFormatted))
+		}
 	}
 
-	content := lipgloss.JoinHorizontal(
-		lipgloss.Top,
-		strings.Join(keys, "\n"),
-		strings.Join(desc, "\n"),
-	)
+	sb.WriteString("\n")
+	sb.WriteString(dimStyle.Render("  ─────────────────────────────────────────"))
+	sb.WriteString("\n")
+	sb.WriteString(dimStyle.Render("  Press q or ? to close"))
+	sb.WriteString("\n")
 
-	return strings.Split(style.Render(content), "\n")
+	return sb.String()
 }
 
 func exit() {
