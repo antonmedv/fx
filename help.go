@@ -60,19 +60,16 @@ var categoryOrder = []string{
 
 func help(keyMap KeyMap) string {
 	titleStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("4"))
+		Bold(true)
 
 	categoryStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("6")).
+		Foreground(lipgloss.Color("8")).
 		MarginTop(1)
 
-	keyStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("3"))
+	keyStyle := lipgloss.NewStyle()
 
 	descStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("7"))
+		Foreground(lipgloss.Color("8"))
 
 	dimStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("8"))
