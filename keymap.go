@@ -34,8 +34,8 @@ type KeyMap struct {
 	JsQuery             key.Binding `category:"Actions"`
 	ToggleWrap          key.Binding `category:"View"`
 	ShowSelector        key.Binding `category:"View"`
-	GoBack              key.Binding `category:"View"`
-	GoForward           key.Binding `category:"View"`
+	GoBack              key.Binding `category:"Navigation"`
+	GoForward           key.Binding `category:"Navigation"`
 	Help                key.Binding `category:"Other"`
 	CommandLine         key.Binding `category:"Other"`
 	Quit                key.Binding `category:"Other"`
@@ -168,11 +168,11 @@ func init() {
 		),
 		Preview: key.NewBinding(
 			key.WithKeys("p"),
-			key.WithHelp("", "preview"),
+			key.WithHelp("", "preview node"),
 		),
 		Print: key.NewBinding(
 			key.WithKeys("P"),
-			key.WithHelp("", "print"),
+			key.WithHelp("", "print to stdout"),
 		),
 		Open: key.NewBinding(
 			key.WithKeys("v"),
