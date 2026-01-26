@@ -1,4 +1,4 @@
-[?25l[?2004h[7m{[0m |6|[K
+[?25l[?2004h[7m{[0m (6 keys)[K
   "title": "Lorem ipsum",[K
   "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusm
   od tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam
@@ -6,10 +6,10 @@
   equat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum d
   olore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident
   , sunt in culpa qui officia deserunt mollit anim id est laborum.",[K
-  "tags": […], |3|[K
+  "tags": […], (3 items)[K
   "year": 3000,[K
   "funny": true,[K
-  "author": {"name":"John Doe",…} |2|[K
+  "author": {"name":"John Doe",…} (2 keys)[K
 }[K
 ~[K
 ~[K
