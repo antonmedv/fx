@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/dop251/goja"
 	"github.com/goccy/go-yaml"
@@ -126,35 +127,50 @@ func doComplete(compLine string, compWord string, withDisplay bool) {
 			}
 		}
 
-		input, err := os.ReadFile(file)
-		if err != nil {
+		resultCh := make(chan []Reply, 1)
+
+		go func() {
+			input, err := os.ReadFile(file)
+			if err != nil {
+				resultCh <- []Reply{}
+				return
+			}
+
+			if flagYaml {
+				input, err = yaml.YAMLToJSON(input)
+				if err != nil {
+					resultCh <- []Reply{}
+					return
+				}
+			} else if flagToml {
+				var v any
+				if err := toml.Unmarshal(input, &v); err != nil {
+					resultCh <- []Reply{}
+					return
+				}
+				b, err := json.Marshal(v)
+				if err != nil {
+					resultCh <- []Reply{}
+					return
+				}
+				input = b
+			}
+
+			node, err := jsonx.Parse(input)
+			if err != nil {
+				resultCh <- []Reply{}
+				return
+			}
+
+			resultCh <- KeysComplete(node, args, compWord)
+		}()
+
+		select {
+		case result := <-resultCh:
+			reply = append(reply, result...)
+		case <-time.After(3 * time.Second):
 			return
 		}
-
-		if flagYaml {
-			input, err = yaml.YAMLToJSON(input)
-			if err != nil {
-				return
-			}
-		} else if flagToml {
-			var v any
-			if err := toml.Unmarshal(input, &v); err != nil {
-				return
-			}
-			b, err := json.Marshal(v)
-			if err != nil {
-				return
-			}
-			input = b
-		}
-
-		node, err := jsonx.Parse(input)
-		if err != nil {
-			return
-		}
-
-		keys := KeysComplete(node, args, compWord)
-		reply = append(reply, keys...)
 	}
 
 	reply = filterReply(reply, compWord)
