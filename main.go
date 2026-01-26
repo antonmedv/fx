@@ -243,6 +243,9 @@ func main() {
 	gotoSymbolInput := textinput.New()
 	gotoSymbolInput.Prompt = "@"
 
+	previewSearchInput := textinput.New()
+	previewSearchInput.Prompt = "/"
+
 	spinnerModel := spinner.New()
 	spinnerModel.Spinner = spinner.MiniDot
 
@@ -264,20 +267,22 @@ func main() {
 	}
 
 	m := &model{
-		suspending:      false,
-		showCursor:      true,
-		wrap:            true,
-		collapsed:       collapsed,
-		showSizes:       showSizes,
-		showLineNumbers: showLineNumbers,
-		fileName:        fileName,
-		digInput:        digInput,
-		gotoSymbolInput: gotoSymbolInput,
-		commandInput:    commandInput,
-		searchInput:     searchInput,
-		search:          newSearch(),
-		searchCache:     newSearchCache(50), // Cache up to 50 search queries
-		spinner:         spinnerModel,
+		suspending:          false,
+		showCursor:          true,
+		wrap:                true,
+		collapsed:           collapsed,
+		showSizes:           showSizes,
+		showLineNumbers:     showLineNumbers,
+		fileName:            fileName,
+		digInput:            digInput,
+		gotoSymbolInput:     gotoSymbolInput,
+		commandInput:        commandInput,
+		searchInput:         searchInput,
+		search:              newSearch(),
+		searchCache:         newSearchCache(50), // Cache up to 50 search queries
+		previewSearchInput:  previewSearchInput,
+		previewSearchCursor: -1,
+		spinner:             spinnerModel,
 	}
 
 	lipgloss.SetColorProfile(theme.TermOutput.ColorProfile())
@@ -358,6 +363,10 @@ type model struct {
 	help                  viewport.Model
 	showPreview           bool
 	preview               viewport.Model
+	previewContent        string
+	previewSearchInput    textinput.Model
+	previewSearchResults  []int // line numbers with matches
+	previewSearchCursor   int
 	printOnExit           bool
 	printErrorOnExit      error
 	spinner               spinner.Model
@@ -966,6 +975,10 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if content == "" {
 			content = lipgloss.NewStyle().Width(m.termWidth).Render(value)
 		}
+		m.previewContent = content
+		m.previewSearchInput.SetValue("")
+		m.previewSearchResults = nil
+		m.previewSearchCursor = -1
 		m.preview.SetContent(content)
 		m.preview.GotoTop()
 

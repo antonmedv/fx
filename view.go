@@ -22,6 +22,10 @@ func (m *model) View() string {
 	}
 
 	if m.showPreview {
+		searchBar := m.previewSearchStatusBar()
+		if searchBar != "" {
+			return m.preview.View() + "\n" + searchBar
+		}
 		statusBar := flex(m.termWidth, m.cursorPath(), m.fileName)
 		return m.preview.View() + "\n" + theme.CurrentTheme.StatusBar(statusBar)
 	}
