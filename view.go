@@ -109,10 +109,22 @@ func (m *model) View() string {
 			screen = append(screen, theme.Comma...)
 		}
 
-		if m.showSizes && (n.Kind == Array || n.Kind == Object) {
-			if n.IsCollapsed() || n.Size > 1 {
-				screen = append(screen, theme.CurrentTheme.Size(fmt.Sprintf(" |%d|", n.Size))...)
+		if m.showSizes && n.Size > 0 {
+			var w string
+			if n.Size == 1 {
+				if n.Kind == Array {
+					w = "item"
+				} else if n.Kind == Object {
+					w = "key"
+				}
+			} else {
+				if n.Kind == Array {
+					w = "items"
+				} else if n.Kind == Object {
+					w = "keys"
+				}
 			}
+			screen = append(screen, theme.CurrentTheme.Size(fmt.Sprintf(" (%d %s)", n.Size, w))...)
 		}
 
 		if isRefSelected {
