@@ -153,7 +153,8 @@ func doComplete(compLine string, compWord string, withDisplay bool) {
 			return
 		}
 
-		reply = append(reply, keysComplete(node, args, compWord)...)
+		keys := KeysComplete(node, args, compWord)
+		reply = append(reply, keys...)
 	}
 
 	reply = filterReply(reply, compWord)
@@ -195,7 +196,7 @@ func globalsComplete() []Reply {
 	return nil
 }
 
-func keysComplete(input *jsonx.Node, args []string, compWord string) []Reply {
+func KeysComplete(input *jsonx.Node, args []string, compWord string) []Reply {
 	args = args[2:] // Drop binary & file from the args.
 
 	if compWord == "" {
@@ -213,13 +214,8 @@ func keysComplete(input *jsonx.Node, args []string, compWord string) []Reply {
 	var code strings.Builder
 	code.WriteString(prelude)
 	code.WriteString(engine.Stdlib)
-	for i, arg := range args {
-		if arg == "" { // After dropTail, we can have empty strings.
-			continue
-		}
-		code.WriteString(engine.Transpile(args, i))
-	}
-	code.WriteString("\n__keys\n")
+	code.WriteString(engine.JS(args))
+	code.WriteString("\n__main__(json)\n__keys\n")
 
 	vm := goja.New()
 	if err := vm.Set("json", input.ToValue(vm)); err != nil {

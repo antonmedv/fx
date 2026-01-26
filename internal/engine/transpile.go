@@ -7,7 +7,21 @@ import (
 	"strings"
 )
 
-func Transpile(args []string, i int) string {
+func JS(args []string) string {
+	var code strings.Builder
+	code.WriteString("\nfunction __main__(json) {\n")
+	for i := range args {
+		if args[i] == "" {
+			// In autocomplete: after dropTail, we can have empty strings.
+			continue
+		}
+		code.WriteString(Body(args, i))
+	}
+	code.WriteString("\n  return json\n}\n")
+	return code.String()
+}
+
+func Body(args []string, i int) string {
 	jsCode := transpile(args[i])
 	snippet := formatErr(args, i, jsCode)
 	return fmt.Sprintf(`

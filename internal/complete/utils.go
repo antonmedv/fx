@@ -45,6 +45,9 @@ func isFile(path string) bool {
 
 func dropTail(s string) string {
 	parts := strings.Split(s, ".")
+	if len(parts) == 1 {
+		return s
+	}
 	return strings.Join(parts[:len(parts)-1], ".")
 }
 
@@ -80,7 +83,7 @@ func lastWord(line string) string {
 	return s
 }
 
-func debug(args ...interface{}) {
+func writeLog(args ...interface{}) {
 	file, err := os.OpenFile("complete.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		return
