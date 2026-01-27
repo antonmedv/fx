@@ -365,7 +365,7 @@ type model struct {
 	preview               viewport.Model
 	previewContent        string
 	previewSearchInput    textinput.Model
-	previewSearchResults  []int // line numbers with matches
+	previewSearchResults  []previewMatch // matches with line numbers
 	previewSearchCursor   int
 	printOnExit           bool
 	printErrorOnExit      error

@@ -7,9 +7,14 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-
-	"github.com/antonmedv/fx/internal/theme"
+	"github.com/charmbracelet/lipgloss"
 )
+
+type previewMatch struct {
+	line int // line number (0-indexed)
+}
+
+var reverseStyle = lipgloss.NewStyle().Reverse(true).Render
 
 func (m *model) handlePreviewKey(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
@@ -82,7 +87,12 @@ func (m *model) handlePreviewSearchInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case msg.Type == tea.KeyEnter:
 		m.previewSearchInput.Blur()
-		m.doPreviewSearch(m.previewSearchInput.Value())
+		found := m.doPreviewSearch(m.previewSearchInput.Value())
+		if !found {
+			m.previewSearchResults = nil
+			m.previewSearchCursor = -1
+			m.preview.SetContent(m.previewContent)
+		}
 		return m, nil
 
 	default:
@@ -91,12 +101,9 @@ func (m *model) handlePreviewSearchInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m *model) doPreviewSearch(pattern string) {
+func (m *model) doPreviewSearch(pattern string) bool {
 	if pattern == "" {
-		m.previewSearchResults = nil
-		m.previewSearchCursor = -1
-		m.preview.SetContent(m.previewContent)
-		return
+		return false
 	}
 
 	code, ci := regexCase(pattern)
@@ -106,28 +113,47 @@ func (m *model) doPreviewSearch(pattern string) {
 
 	re, err := regexp.Compile(code)
 	if err != nil {
-		return
+		return false
 	}
 
-	lines := strings.Split(m.previewContent, "\n")
+	content := m.previewContent
+	matches := re.FindAllStringIndex(content, 100)
+
 	m.previewSearchResults = nil
-	var highlightedLines []string
 
-	for i, line := range lines {
-		matches := re.FindAllStringIndex(line, -1)
-		if len(matches) > 0 {
-			m.previewSearchResults = append(m.previewSearchResults, i)
+	if len(matches) == 0 {
+		return false
+	}
+
+	// Precalculate line number for each match
+	for _, match := range matches {
+		lineNum := strings.Count(content[:match[0]], "\n")
+		m.previewSearchResults = append(m.previewSearchResults, previewMatch{
+			line: lineNum,
+		})
+	}
+
+	// Highlight all matches with Reverse style (once)
+	var result strings.Builder
+	lastEnd := 0
+	for _, match := range matches {
+		start, end := match[0], match[1]
+		if start > lastEnd {
+			result.WriteString(content[lastEnd:start])
 		}
-		highlightedLines = append(highlightedLines, m.highlightLine(line, matches, -1))
+		result.WriteString(reverseStyle(content[start:end]))
+		lastEnd = end
+	}
+	if lastEnd < len(content) {
+		result.WriteString(content[lastEnd:])
 	}
 
-	m.preview.SetContent(strings.Join(highlightedLines, "\n"))
+	m.preview.SetContent(result.String())
 
-	if len(m.previewSearchResults) > 0 {
-		m.selectPreviewSearchResult(0)
-	} else {
-		m.previewSearchCursor = -1
-	}
+	// Jump to first match
+	m.previewSearchCursor = 0
+	m.preview.SetYOffset(m.previewSearchResults[0].line)
+	return true
 }
 
 func (m *model) selectPreviewSearchResult(i int) {
@@ -141,85 +167,9 @@ func (m *model) selectPreviewSearchResult(i int) {
 		i = 0
 	}
 	m.previewSearchCursor = i
-	lineNum := m.previewSearchResults[i]
 
-	// Re-highlight with current match emphasized
-	m.rehighlightPreview()
-
-	// Scroll to the line
-	m.preview.SetYOffset(lineNum)
-}
-
-func (m *model) rehighlightPreview() {
-	pattern := m.previewSearchInput.Value()
-	if pattern == "" {
-		return
-	}
-
-	code, ci := regexCase(pattern)
-	if ci {
-		code = "(?i)" + code
-	}
-
-	re, err := regexp.Compile(code)
-	if err != nil {
-		return
-	}
-
-	lines := strings.Split(m.previewContent, "\n")
-	var highlightedLines []string
-	resultIndex := 0
-
-	for i, line := range lines {
-		matches := re.FindAllStringIndex(line, -1)
-		currentMatchLine := -1
-		if resultIndex < len(m.previewSearchResults) && m.previewSearchResults[resultIndex] == i {
-			if resultIndex == m.previewSearchCursor {
-				currentMatchLine = i
-			}
-			resultIndex++
-		}
-		highlightedLines = append(highlightedLines, m.highlightLine(line, matches, currentMatchLine))
-	}
-
-	m.preview.SetContent(strings.Join(highlightedLines, "\n"))
-}
-
-func (m *model) highlightLine(line string, matches [][]int, currentMatchLine int) string {
-	if len(matches) == 0 {
-		return line
-	}
-
-	var result strings.Builder
-	lastEnd := 0
-
-	for matchIdx, match := range matches {
-		start, end := match[0], match[1]
-
-		// Add text before the match
-		if start > lastEnd {
-			result.WriteString(line[lastEnd:start])
-		}
-
-		// Highlight the match
-		matchText := line[start:end]
-		if currentMatchLine >= 0 && matchIdx == 0 {
-			// Current search result - use cursor style
-			result.WriteString(theme.CurrentTheme.Cursor(matchText))
-		} else {
-			// Other matches - use search style
-			result.WriteString(theme.CurrentTheme.Search(matchText))
-		}
-
-		lastEnd = end
-	}
-
-	// Add remaining text after last match
-	if lastEnd < len(line) {
-		result.WriteString(line[lastEnd:])
-	}
-
-	return result.String()
+	// Scroll to the cached line number
+	m.preview.SetYOffset(m.previewSearchResults[i].line)
 }
 
 func (m *model) previewSearchStatusBar() string {
