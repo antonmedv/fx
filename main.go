@@ -363,7 +363,7 @@ type model struct {
 	help                  viewport.Model
 	showPreview           bool
 	preview               viewport.Model
-	previewContent        string
+	previewValue          string
 	previewSearchInput    textinput.Model
 	previewSearchResults  []int
 	previewSearchCursor   int
@@ -975,7 +975,7 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if view == "" {
 			view = lipgloss.NewStyle().Width(m.termWidth).Render(value)
 		}
-		m.previewContent = value
+		m.previewValue = value
 		m.previewSearchInput.SetValue("")
 		m.previewSearchResults = nil
 		m.previewSearchCursor = -1
