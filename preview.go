@@ -12,7 +12,7 @@ import (
 
 var reverseStyle = lipgloss.NewStyle().Reverse(true).Render
 
-func (m *model) setPreviewContent(value string) {
+func (m *model) setPreviewContentWithWrap(value string) {
 	view := lipgloss.NewStyle().Width(m.termWidth).Render(value)
 	m.preview.SetContent(view)
 }
@@ -83,7 +83,7 @@ func (m *model) handlePreviewSearchInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.previewSearchInput.SetValue("")
 		m.previewSearchResults = nil
 		m.previewSearchCursor = -1
-		m.setPreviewContent(m.previewValue)
+		m.setPreviewContentWithWrap(m.previewValue)
 		return m, nil
 
 	case msg.Type == tea.KeyEnter:
@@ -92,7 +92,7 @@ func (m *model) handlePreviewSearchInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if !found {
 			m.previewSearchResults = nil
 			m.previewSearchCursor = -1
-			m.setPreviewContent(m.previewValue)
+			m.setPreviewContentWithWrap(m.previewValue)
 		}
 		return m, nil
 
@@ -147,7 +147,7 @@ func (m *model) doPreviewSearch(pattern string) bool {
 		result.WriteString(content[lastEnd:])
 	}
 
-	m.setPreviewContent(result.String())
+	m.setPreviewContentWithWrap(result.String())
 
 	// Jump to first match
 	m.previewSearchCursor = 0
