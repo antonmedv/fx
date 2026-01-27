@@ -365,7 +365,7 @@ type model struct {
 	preview               viewport.Model
 	previewContent        string
 	previewSearchInput    textinput.Model
-	previewSearchResults  []previewMatch // matches with line numbers
+	previewSearchResults  []int
 	previewSearchCursor   int
 	printOnExit           bool
 	printErrorOnExit      error
@@ -964,22 +964,22 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keyMap.Preview):
 		m.showPreview = true
-		content := ""
 		value := m.cursorValue()
+		var view string
 		if decodedValue, err := base64.StdEncoding.DecodeString(value); err == nil {
 			img, err := utils.DrawImage(bytes.NewReader(decodedValue), m.termWidth, m.termHeight)
 			if err == nil {
-				content = strings.TrimRight(img, "\n")
+				view = strings.TrimRight(img, "\n")
 			}
 		}
-		if content == "" {
-			content = lipgloss.NewStyle().Width(m.termWidth).Render(value)
+		if view == "" {
+			view = lipgloss.NewStyle().Width(m.termWidth).Render(value)
 		}
-		m.previewContent = content
+		m.previewContent = value
 		m.previewSearchInput.SetValue("")
 		m.previewSearchResults = nil
 		m.previewSearchCursor = -1
-		m.preview.SetContent(content)
+		m.preview.SetContent(view)
 		m.preview.GotoTop()
 
 	case key.Matches(msg, keyMap.Print):

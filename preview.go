@@ -10,10 +10,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-type previewMatch struct {
-	line int // line number (0-indexed)
-}
-
 var reverseStyle = lipgloss.NewStyle().Reverse(true).Render
 
 func (m *model) handlePreviewKey(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -128,9 +124,7 @@ func (m *model) doPreviewSearch(pattern string) bool {
 	// Precalculate line number for each match
 	for _, match := range matches {
 		lineNum := strings.Count(content[:match[0]], "\n")
-		m.previewSearchResults = append(m.previewSearchResults, previewMatch{
-			line: lineNum,
-		})
+		m.previewSearchResults = append(m.previewSearchResults, lineNum)
 	}
 
 	// Highlight all matches with Reverse style (once)
@@ -152,7 +146,7 @@ func (m *model) doPreviewSearch(pattern string) bool {
 
 	// Jump to first match
 	m.previewSearchCursor = 0
-	m.preview.SetYOffset(m.previewSearchResults[0].line)
+	m.preview.SetYOffset(m.previewSearchResults[0])
 	return true
 }
 
@@ -169,7 +163,7 @@ func (m *model) selectPreviewSearchResult(i int) {
 	m.previewSearchCursor = i
 
 	// Scroll to the cached line number
-	m.preview.SetYOffset(m.previewSearchResults[i].line)
+	m.preview.SetYOffset(m.previewSearchResults[i])
 }
 
 func (m *model) previewSearchStatusBar() string {
