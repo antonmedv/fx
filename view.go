@@ -205,7 +205,10 @@ func (m *model) View() string {
 		if ci {
 			re += "i"
 		}
-		if m.search.err != nil {
+		if m.searching {
+			status := fmt.Sprintf("%s searching...", m.spinner.View())
+			screen = append(screen, flex(m.termWidth, re, status)...)
+		} else if m.search.err != nil {
 			screen = append(screen, flex(m.termWidth, re, m.search.err.Error())...)
 		} else if len(m.search.results) == 0 {
 			screen = append(screen, flex(m.termWidth, re, "not found")...)

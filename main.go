@@ -358,6 +358,8 @@ type model struct {
 	searchInput           textinput.Model
 	search                *search
 	searchCache           *searchCache
+	searching             bool          // search in progress
+	searchCancel          chan struct{} // cancel channel for search
 	yank                  bool
 	showHelp              bool
 	help                  viewport.Model
@@ -392,6 +394,14 @@ type errorMsg struct {
 }
 
 type eofMsg struct{}
+
+type searchResultMsg struct {
+	query  string
+	search *search
+	re     *regexp.Regexp
+}
+
+type searchCancelledMsg struct{}
 
 func (m *model) Init() tea.Cmd {
 	return m.spinner.Tick
@@ -463,11 +473,26 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case spinner.TickMsg:
-		if !m.eof {
+		if !m.eof || m.searching {
 			var cmd tea.Cmd
 			m.spinner, cmd = m.spinner.Update(msg)
 			return m, cmd
 		}
+
+	case searchResultMsg:
+		m.searching = false
+		m.searchCancel = nil
+		if msg.search != nil {
+			m.search = msg.search
+			m.searchCache.put(msg.query, msg.re, msg.search)
+			m.selectSearchResult(0)
+		}
+		return m, nil
+
+	case searchCancelledMsg:
+		m.searching = false
+		m.searchCancel = nil
+		return m, nil
 
 	case tea.MouseMsg:
 		m.handlePendingDelete(msg)
@@ -664,15 +689,20 @@ func (m *model) handleSearchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch {
 	case msg.Type == tea.KeyEscape:
+		// Cancel ongoing search if any
+		if m.searchCancel != nil {
+			close(m.searchCancel)
+			m.searchCancel = nil
+			m.searching = false
+		}
 		m.searchInput.Blur()
 		m.searchInput.SetValue("")
-		m.doSearch("")
+		m.search = newSearch()
 		m.showCursor = true
 
 	case msg.Type == tea.KeyEnter:
 		m.searchInput.Blur()
-		m.doSearch(m.searchInput.Value())
-		m.recordHistory()
+		return m, m.doSearchAsync(m.searchInput.Value())
 
 	default:
 		m.searchInput, cmd = m.searchInput.Update(msg)
@@ -762,6 +792,20 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Suspend
 
 	case key.Matches(msg, keyMap.Quit):
+		// If search is in progress, cancel it instead of quitting
+		if m.searching && m.searchCancel != nil {
+			close(m.searchCancel)
+			m.searchCancel = nil
+			m.searching = false
+			return m, nil
+		}
+		// If search results are showing, clear them instead of quitting
+		if m.searchInput.Value() != "" {
+			m.searchInput.SetValue("")
+			m.search = newSearch()
+			m.showCursor = true
+			return m, nil
+		}
 		return m, tea.Quit
 
 	case key.Matches(msg, keyMap.Help):
@@ -1476,7 +1520,109 @@ func (m *model) currentTopNode() *Node {
 	return at
 }
 
-func (m *model) doSearch(s string) {
+func (m *model) doSearchAsync(s string) tea.Cmd {
+	if s == "" {
+		return nil
+	}
+
+	// Check cache first
+	if cachedSearch, _, found := m.searchCache.get(s); found {
+		m.search = cachedSearch
+		m.selectSearchResult(0)
+		m.recordHistory()
+		return nil
+	}
+
+	// Cancel any ongoing search
+	if m.searchCancel != nil {
+		close(m.searchCancel)
+	}
+
+	code, ci := regexCase(s)
+	if ci {
+		code = "(?i)" + code
+	}
+
+	re, err := regexp.Compile(code)
+	if err != nil {
+		m.search = newSearch()
+		m.search.err = err
+		return nil
+	}
+
+	m.searching = true
+	m.searchCancel = make(chan struct{})
+	cancel := m.searchCancel
+	top := m.top
+	query := s
+
+	return tea.Batch(m.spinner.Tick, func() tea.Msg {
+		result := newSearch()
+
+		n := top
+		searchIndex := 0
+		for n != nil {
+			// Check for cancellation
+			select {
+			case <-cancel:
+				return searchCancelledMsg{}
+			default:
+			}
+
+			if n.Key != "" {
+				indexes := re.FindAllStringIndex(n.Key, -1)
+				if len(indexes) > 0 {
+					for i, pair := range indexes {
+						result.results = append(result.results, n)
+						result.keys[n] = append(result.keys[n], match{start: pair[0], end: pair[1], index: searchIndex + i})
+					}
+					searchIndex += len(indexes)
+				}
+			}
+			indexes := re.FindAllStringIndex(n.Value, -1)
+			if len(indexes) > 0 {
+				for range indexes {
+					result.results = append(result.results, n)
+				}
+				if n.Chunk != "" {
+					// String can be split into chunks, so we need to map the indexes to the chunks.
+					chunks := []string{n.Chunk}
+					chunkNodes := []*Node{n}
+
+					it := n.Next
+					for it != nil {
+						chunkNodes = append(chunkNodes, it)
+						chunks = append(chunks, it.Chunk)
+						if it == n.ChunkEnd {
+							break
+						}
+						it = it.Next
+					}
+
+					chunkMatches := splitIndexesToChunks(chunks, indexes, searchIndex)
+					for i, matches := range chunkMatches {
+						result.values[chunkNodes[i]] = matches
+					}
+				} else {
+					for i, pair := range indexes {
+						result.values[n] = append(result.values[n], match{start: pair[0], end: pair[1], index: searchIndex + i})
+					}
+				}
+				searchIndex += len(indexes)
+			}
+
+			if n.IsCollapsed() {
+				n = n.Collapsed
+			} else {
+				n = n.Next
+			}
+		}
+
+		return searchResultMsg{query: query, search: result, re: re}
+	})
+}
+
+func (m *model) doSearchSync(s string) {
 	if s == "" {
 		return
 	}
@@ -1576,7 +1722,7 @@ func (m *model) selectSearchResult(i int) {
 func (m *model) redoSearch() {
 	if m.searchInput.Value() != "" && len(m.search.results) > 0 {
 		cursor := m.search.cursor
-		m.doSearch(m.searchInput.Value())
+		m.doSearchSync(m.searchInput.Value())
 		m.selectSearchResult(cursor)
 	}
 }
