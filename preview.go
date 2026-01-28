@@ -12,11 +12,6 @@ import (
 
 var reverseStyle = lipgloss.NewStyle().Reverse(true).Render
 
-func (m *model) setPreviewContentWithWrap(value string) {
-	view := lipgloss.NewStyle().Width(m.termWidth).Render(value)
-	m.preview.SetContent(view)
-}
-
 func (m *model) handlePreviewKey(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	if msg, ok := msg.(tea.KeyMsg); ok {
@@ -83,7 +78,7 @@ func (m *model) handlePreviewSearchInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.previewSearchInput.SetValue("")
 		m.previewSearchResults = nil
 		m.previewSearchCursor = -1
-		m.setPreviewContentWithWrap(m.previewValue)
+		m.preview.SetContent(m.wrapString(m.previewValue))
 		return m, nil
 
 	case msg.Type == tea.KeyEnter:
@@ -92,7 +87,7 @@ func (m *model) handlePreviewSearchInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if !found {
 			m.previewSearchResults = nil
 			m.previewSearchCursor = -1
-			m.setPreviewContentWithWrap(m.previewValue)
+			m.preview.SetContent(m.wrapString(m.previewValue))
 		}
 		return m, nil
 
@@ -118,7 +113,7 @@ func (m *model) doPreviewSearch(pattern string) bool {
 	}
 
 	content := m.previewValue
-	matches := re.FindAllStringIndex(content, 100)
+	matches := re.FindAllStringIndex(content, -1)
 
 	m.previewSearchResults = nil
 
@@ -155,7 +150,7 @@ func (m *model) doPreviewSearch(pattern string) bool {
 		// Add offset for wrapping within the line
 		if posInLine > 0 && m.termWidth > 0 && posInLine <= len(lines[origLineNum]) {
 			linePrefix := lines[origLineNum][:posInLine]
-			wrappedPrefix := lipgloss.NewStyle().Width(m.termWidth).Render(linePrefix)
+			wrappedPrefix := m.wrapString(linePrefix)
 			visualLineNum += strings.Count(wrappedPrefix, "\n")
 		}
 
@@ -177,7 +172,7 @@ func (m *model) doPreviewSearch(pattern string) bool {
 		result.WriteString(content[lastEnd:])
 	}
 
-	m.setPreviewContentWithWrap(result.String())
+	m.preview.SetContent(m.wrapString(result.String()))
 
 	// Jump to first match
 	m.previewSearchCursor = 0
@@ -223,4 +218,8 @@ func (m *model) previewSearchStatusBar() string {
 
 	cursor := fmt.Sprintf("found: [%v/%v]", m.previewSearchCursor+1, len(m.previewSearchResults))
 	return flex(m.termWidth, re, cursor)
+}
+
+func (m *model) wrapString(value string) string {
+	return lipgloss.NewStyle().Width(m.termWidth).Render(value)
 }
