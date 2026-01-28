@@ -702,7 +702,7 @@ func (m *model) handleSearchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case msg.Type == tea.KeyEnter:
 		m.searchInput.Blur()
-		return m, m.doSearchAsync(m.searchInput.Value())
+		return m, m.doSearch(m.searchInput.Value())
 
 	default:
 		m.searchInput, cmd = m.searchInput.Update(msg)
@@ -1520,7 +1520,7 @@ func (m *model) currentTopNode() *Node {
 	return at
 }
 
-func (m *model) doSearchAsync(s string) tea.Cmd {
+func (m *model) doSearch(s string) tea.Cmd {
 	if s == "" {
 		return nil
 	}
@@ -1538,18 +1538,6 @@ func (m *model) doSearchAsync(s string) tea.Cmd {
 		close(m.searchCancel)
 	}
 
-	code, ci := regexCase(s)
-	if ci {
-		code = "(?i)" + code
-	}
-
-	re, err := regexp.Compile(code)
-	if err != nil {
-		m.search = newSearch()
-		m.search.err = err
-		return nil
-	}
-
 	m.searching = true
 	m.searchCancel = make(chan struct{})
 	cancel := m.searchCancel
@@ -1557,150 +1545,18 @@ func (m *model) doSearchAsync(s string) tea.Cmd {
 	query := s
 
 	return tea.Batch(m.spinner.Tick, func() tea.Msg {
-		result := newSearch()
-
-		n := top
-		searchIndex := 0
-		for n != nil {
-			// Check for cancellation
-			select {
-			case <-cancel:
-				return searchCancelledMsg{}
-			default:
-			}
-
-			if n.Key != "" {
-				indexes := re.FindAllStringIndex(n.Key, -1)
-				if len(indexes) > 0 {
-					for i, pair := range indexes {
-						result.results = append(result.results, n)
-						result.keys[n] = append(result.keys[n], match{start: pair[0], end: pair[1], index: searchIndex + i})
-					}
-					searchIndex += len(indexes)
-				}
-			}
-			indexes := re.FindAllStringIndex(n.Value, -1)
-			if len(indexes) > 0 {
-				for range indexes {
-					result.results = append(result.results, n)
-				}
-				if n.Chunk != "" {
-					// String can be split into chunks, so we need to map the indexes to the chunks.
-					chunks := []string{n.Chunk}
-					chunkNodes := []*Node{n}
-
-					it := n.Next
-					for it != nil {
-						chunkNodes = append(chunkNodes, it)
-						chunks = append(chunks, it.Chunk)
-						if it == n.ChunkEnd {
-							break
-						}
-						it = it.Next
-					}
-
-					chunkMatches := splitIndexesToChunks(chunks, indexes, searchIndex)
-					for i, matches := range chunkMatches {
-						result.values[chunkNodes[i]] = matches
-					}
-				} else {
-					for i, pair := range indexes {
-						result.values[n] = append(result.values[n], match{start: pair[0], end: pair[1], index: searchIndex + i})
-					}
-				}
-				searchIndex += len(indexes)
-			}
-
-			if n.IsCollapsed() {
-				n = n.Collapsed
-			} else {
-				n = n.Next
-			}
+		result, re, err := executeSearch(top, query, cancel)
+		if err != nil {
+			errSearch := newSearch()
+			errSearch.err = err
+			return searchResultMsg{query: query, search: errSearch, re: nil}
 		}
-
+		if result == nil {
+			// Search was cancelled
+			return searchCancelledMsg{}
+		}
 		return searchResultMsg{query: query, search: result, re: re}
 	})
-}
-
-func (m *model) doSearchSync(s string) {
-	if s == "" {
-		return
-	}
-
-	// Check cache first
-	if cachedSearch, _, found := m.searchCache.get(s); found {
-		m.search = cachedSearch
-		return
-	}
-
-	m.search = newSearch()
-
-	code, ci := regexCase(s)
-	if ci {
-		code = "(?i)" + code
-	}
-
-	re, err := regexp.Compile(code)
-	if err != nil {
-		m.search.err = err
-		return
-	}
-
-	n := m.top
-	searchIndex := 0
-	for n != nil {
-		if n.Key != "" {
-			indexes := re.FindAllStringIndex(n.Key, -1)
-			if len(indexes) > 0 {
-				for i, pair := range indexes {
-					m.search.results = append(m.search.results, n)
-					m.search.keys[n] = append(m.search.keys[n], match{start: pair[0], end: pair[1], index: searchIndex + i})
-				}
-				searchIndex += len(indexes)
-			}
-		}
-		indexes := re.FindAllStringIndex(n.Value, -1)
-		if len(indexes) > 0 {
-			for range indexes {
-				m.search.results = append(m.search.results, n)
-			}
-			if n.Chunk != "" {
-				// String can be split into chunks, so we need to map the indexes to the chunks.
-				chunks := []string{n.Chunk}
-				chunkNodes := []*Node{n}
-
-				it := n.Next
-				for it != nil {
-					chunkNodes = append(chunkNodes, it)
-					chunks = append(chunks, it.Chunk)
-					if it == n.ChunkEnd {
-						break
-					}
-					it = it.Next
-				}
-
-				chunkMatches := splitIndexesToChunks(chunks, indexes, searchIndex)
-				for i, matches := range chunkMatches {
-					m.search.values[chunkNodes[i]] = matches
-				}
-			} else {
-				for i, pair := range indexes {
-					m.search.values[n] = append(m.search.values[n], match{start: pair[0], end: pair[1], index: searchIndex + i})
-				}
-			}
-			searchIndex += len(indexes)
-		}
-
-		if n.IsCollapsed() {
-			n = n.Collapsed
-		} else {
-			n = n.Next
-		}
-	}
-
-	m.searchCache.put(s, re, m.search)
-
-	m.selectSearchResult(0)
 }
 
 func (m *model) selectSearchResult(i int) {
@@ -1720,11 +1576,31 @@ func (m *model) selectSearchResult(i int) {
 }
 
 func (m *model) redoSearch() {
-	if m.searchInput.Value() != "" && len(m.search.results) > 0 {
-		cursor := m.search.cursor
-		m.doSearchSync(m.searchInput.Value())
-		m.selectSearchResult(cursor)
+	s := m.searchInput.Value()
+	if s == "" || len(m.search.results) == 0 {
+		return
 	}
+
+	cursor := m.search.cursor
+
+	// Check cache first
+	if cachedSearch, _, found := m.searchCache.get(s); found {
+		m.search = cachedSearch
+		m.selectSearchResult(cursor)
+		return
+	}
+
+	// Perform search synchronously (no cancellation needed for redo)
+	result, re, err := executeSearch(m.top, s, nil)
+	if err != nil {
+		m.search = newSearch()
+		m.search.err = err
+		return
+	}
+
+	m.search = result
+	m.searchCache.put(s, re, m.search)
+	m.selectSearchResult(cursor)
 }
 
 func (m *model) createKeysIndex() {

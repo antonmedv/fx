@@ -56,6 +56,85 @@ type piece struct {
 	index int
 }
 
+// executeSearch performs the core search logic and returns the results.
+// It can be cancelled via the cancel channel (pass nil for non-cancellable search).
+func executeSearch(top *Node, s string, cancel <-chan struct{}) (*search, *regexp.Regexp, error) {
+	code, ci := regexCase(s)
+	if ci {
+		code = "(?i)" + code
+	}
+
+	re, err := regexp.Compile(code)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	result := newSearch()
+	n := top
+	searchIndex := 0
+
+	for n != nil {
+		// Check for cancellation if channel provided
+		if cancel != nil {
+			select {
+			case <-cancel:
+				return nil, nil, nil // cancelled
+			default:
+			}
+		}
+
+		if n.Key != "" {
+			indexes := re.FindAllStringIndex(n.Key, -1)
+			if len(indexes) > 0 {
+				for i, pair := range indexes {
+					result.results = append(result.results, n)
+					result.keys[n] = append(result.keys[n], match{start: pair[0], end: pair[1], index: searchIndex + i})
+				}
+				searchIndex += len(indexes)
+			}
+		}
+		indexes := re.FindAllStringIndex(n.Value, -1)
+		if len(indexes) > 0 {
+			for range indexes {
+				result.results = append(result.results, n)
+			}
+			if n.Chunk != "" {
+				// String can be split into chunks, so we need to map the indexes to the chunks.
+				chunks := []string{n.Chunk}
+				chunkNodes := []*Node{n}
+
+				it := n.Next
+				for it != nil {
+					chunkNodes = append(chunkNodes, it)
+					chunks = append(chunks, it.Chunk)
+					if it == n.ChunkEnd {
+						break
+					}
+					it = it.Next
+				}
+
+				chunkMatches := splitIndexesToChunks(chunks, indexes, searchIndex)
+				for i, matches := range chunkMatches {
+					result.values[chunkNodes[i]] = matches
+				}
+			} else {
+				for i, pair := range indexes {
+					result.values[n] = append(result.values[n], match{start: pair[0], end: pair[1], index: searchIndex + i})
+				}
+			}
+			searchIndex += len(indexes)
+		}
+
+		if n.IsCollapsed() {
+			n = n.Collapsed
+		} else {
+			n = n.Next
+		}
+	}
+
+	return result, re, nil
+}
+
 func splitByIndexes(s string, indexes []match) []piece {
 	out := make([]piece, 0, 1)
 	pos := 0
