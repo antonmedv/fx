@@ -127,7 +127,7 @@ func (m *model) doPreviewSearch(pattern string) bool {
 	cumulative := 0
 	for i, line := range lines {
 		visualLineStarts[i] = cumulative
-		wrapped := lipgloss.NewStyle().Width(m.termWidth).Render(line)
+		wrapped := m.wrapString(line)
 		cumulative += strings.Count(wrapped, "\n") + 1
 	}
 
