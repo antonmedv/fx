@@ -166,6 +166,10 @@ function del(key) {
   }
 }
 
+function exit(code) {
+  __exit__(code)
+}
+
 function save(x) {
   if (typeof x === 'undefined') throw new Error('Cannot save undefined')
   __save__(__stringify__(x, null, 2))

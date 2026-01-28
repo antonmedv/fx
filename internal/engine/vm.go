@@ -12,6 +12,11 @@ import (
 // FilePath is the file being processed, empty if stdin.
 var FilePath string
 
+// ExitError is used by exit() to signal a specific exit code.
+type ExitError struct {
+	Code int
+}
+
 func NewVM(writeOut func(string)) *goja.Runtime {
 	vm := goja.New()
 
@@ -72,6 +77,12 @@ func NewVM(writeOut func(string)) *goja.Runtime {
 			return ""
 		}
 		return string(b)
+	}); err != nil {
+		panic(err)
+	}
+
+	if err := vm.Set("__exit__", func(code int) {
+		panic(ExitError{Code: code})
 	}); err != nil {
 		panic(err)
 	}

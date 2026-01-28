@@ -125,7 +125,10 @@ func Start(parser Parser, args []string, opts Options) int {
 		}
 
 		input := node.ToValue(vm)
-		output, err := main(goja.Undefined(), input)
+		output, exitCode, err := callMain(main, input)
+		if exitCode >= 0 {
+			return exitCode
+		}
 		if err != nil {
 			opts.WriteErr(errorToString(err))
 			return 1
@@ -138,6 +141,21 @@ func Start(parser Parser, args []string, opts Options) int {
 	}
 
 	return 0
+}
+
+func callMain(main goja.Callable, input goja.Value) (output goja.Value, exitCode int, err error) {
+	exitCode = -1
+	defer func() {
+		if r := recover(); r != nil {
+			if e, ok := r.(ExitError); ok {
+				exitCode = e.Code
+			} else {
+				panic(r)
+			}
+		}
+	}()
+	output, err = main(goja.Undefined(), input)
+	return
 }
 
 func validateSyntax(args []string, i int) error {

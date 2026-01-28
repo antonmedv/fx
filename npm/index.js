@@ -291,6 +291,10 @@ async function run(json, code) {
     }
   }
 
+  function exit(code) {
+    process.exit(code)
+  }
+
   function save(x) {
     if (!globalThis.__file__) throw new Error('Specify a file as the first argument to be able to save: fx file.json ...')
     fs.writeFileSync(globalThis.__file__, JSON.stringify(x, null, 2))
