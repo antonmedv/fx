@@ -126,10 +126,40 @@ func (m *model) doPreviewSearch(pattern string) bool {
 		return false
 	}
 
-	// Precalculate line number for each match
+	// Precalculate visual line numbers for each match, accounting for line wrapping
+	lines := strings.Split(content, "\n")
+	visualLineStarts := make([]int, len(lines))
+	cumulative := 0
+	for i, line := range lines {
+		visualLineStarts[i] = cumulative
+		wrapped := lipgloss.NewStyle().Width(m.termWidth).Render(line)
+		cumulative += strings.Count(wrapped, "\n") + 1
+	}
+
 	for _, match := range matches {
-		lineNum := strings.Count(content[:match[0]], "\n")
-		m.previewSearchResults = append(m.previewSearchResults, lineNum)
+		// Find original line number
+		origLineNum := strings.Count(content[:match[0]], "\n")
+
+		// Find position within the original line
+		lastNewline := strings.LastIndex(content[:match[0]], "\n")
+		var posInLine int
+		if lastNewline == -1 {
+			posInLine = match[0]
+		} else {
+			posInLine = match[0] - lastNewline - 1
+		}
+
+		// Calculate visual line: start of this original line + offset within wrapped line
+		visualLineNum := visualLineStarts[origLineNum]
+
+		// Add offset for wrapping within the line
+		if posInLine > 0 && m.termWidth > 0 && posInLine <= len(lines[origLineNum]) {
+			linePrefix := lines[origLineNum][:posInLine]
+			wrappedPrefix := lipgloss.NewStyle().Width(m.termWidth).Render(linePrefix)
+			visualLineNum += strings.Count(wrappedPrefix, "\n")
+		}
+
+		m.previewSearchResults = append(m.previewSearchResults, visualLineNum)
 	}
 
 	// Highlight all matches with Reverse style (once)
