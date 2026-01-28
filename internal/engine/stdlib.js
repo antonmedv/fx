@@ -49,7 +49,7 @@ function filter(fn) {
     if (Array.isArray(x)) {
       return x.filter((v, i) => !isFalsely(fn(v, i)))
     }
-    return isFalsely(fn(x))? skip : x
+    return isFalsely(fn(x)) ? skip : x
   }
 }
 
@@ -148,6 +148,22 @@ function list(x) {
     return skip
   }
   throw new Error(`Cannot list ${typeof x}`)
+}
+
+function del(key) {
+  return function (x) {
+    if (Array.isArray(x)) {
+      const copy = [...x]
+      copy.splice(key, 1)
+      return copy
+    }
+    if (typeof x === 'object' && x !== null) {
+      const copy = {...x}
+      delete copy[key]
+      return copy
+    }
+    throw new Error(`Cannot delete key from ${typeof x}`)
+  }
 }
 
 function save(x) {
