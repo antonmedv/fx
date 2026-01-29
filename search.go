@@ -4,8 +4,95 @@ import (
 	"regexp"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
+
 	. "github.com/antonmedv/fx/internal/jsonx"
 )
+
+func (m *model) doSearch(s string) tea.Cmd {
+	if s == "" {
+		return nil
+	}
+
+	// Check cache first
+	if cachedSearch, _, found := m.searchCache.get(s); found {
+		m.search = cachedSearch
+		m.selectSearchResult(0)
+		m.recordHistory()
+		return nil
+	}
+
+	// Cancel any ongoing search
+	if m.searchCancel != nil {
+		close(m.searchCancel)
+	}
+
+	m.searching = true
+	m.searchID++
+	m.searchCancel = make(chan struct{})
+	id := m.searchID
+	cancel := m.searchCancel
+	top := m.top
+	query := s
+
+	return tea.Batch(m.spinner.Tick, func() tea.Msg {
+		result, re, err := executeSearch(top, query, cancel)
+		if err != nil {
+			errSearch := newSearch()
+			errSearch.err = err
+			return searchResultMsg{id: id, query: query, search: errSearch, re: nil}
+		}
+		if result == nil {
+			// Search was cancelled
+			return searchCancelledMsg{}
+		}
+		return searchResultMsg{id: id, query: query, search: result, re: re}
+	})
+}
+
+func (m *model) selectSearchResult(i int) {
+	if len(m.search.results) == 0 {
+		return
+	}
+	if i < 0 {
+		i = len(m.search.results) - 1
+	}
+	if i >= len(m.search.results) {
+		i = 0
+	}
+	m.search.cursor = i
+	result := m.search.results[i]
+	m.selectNode(result)
+	m.showCursor = false
+}
+
+func (m *model) redoSearch() {
+	s := m.searchInput.Value()
+	if s == "" || len(m.search.results) == 0 {
+		return
+	}
+
+	cursor := m.search.cursor
+
+	// Check cache first
+	if cachedSearch, _, found := m.searchCache.get(s); found {
+		m.search = cachedSearch
+		m.selectSearchResult(cursor)
+		return
+	}
+
+	// Perform search synchronously (no cancellation needed for redo)
+	result, re, err := executeSearch(m.top, s, nil)
+	if err != nil {
+		m.search = newSearch()
+		m.search.err = err
+		return
+	}
+
+	m.search = result
+	m.searchCache.put(s, re, m.search)
+	m.selectSearchResult(cursor)
+}
 
 type search struct {
 	err     error
