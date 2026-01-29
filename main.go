@@ -360,6 +360,7 @@ type model struct {
 	searchCache           *searchCache
 	searching             bool          // search in progress
 	searchCancel          chan struct{} // cancel channel for search
+	searchID              uint64        // increments with each search to detect stale results
 	yank                  bool
 	showHelp              bool
 	help                  viewport.Model
@@ -396,6 +397,7 @@ type errorMsg struct {
 type eofMsg struct{}
 
 type searchResultMsg struct {
+	id     uint64
 	query  string
 	search *search
 	re     *regexp.Regexp
@@ -480,6 +482,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case searchResultMsg:
+		// Ignore stale results from a previous search
+		if msg.id != m.searchID {
+			return m, nil
+		}
 		m.searching = false
 		m.searchCancel = nil
 		if msg.search != nil {
@@ -1539,7 +1545,9 @@ func (m *model) doSearch(s string) tea.Cmd {
 	}
 
 	m.searching = true
+	m.searchID++
 	m.searchCancel = make(chan struct{})
+	id := m.searchID
 	cancel := m.searchCancel
 	top := m.top
 	query := s
@@ -1549,13 +1557,13 @@ func (m *model) doSearch(s string) tea.Cmd {
 		if err != nil {
 			errSearch := newSearch()
 			errSearch.err = err
-			return searchResultMsg{query: query, search: errSearch, re: nil}
+			return searchResultMsg{id: id, query: query, search: errSearch, re: nil}
 		}
 		if result == nil {
 			// Search was cancelled
 			return searchCancelledMsg{}
 		}
-		return searchResultMsg{query: query, search: result, re: re}
+		return searchResultMsg{id: id, query: query, search: result, re: re}
 	})
 }
 
