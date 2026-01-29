@@ -1,10 +1,7 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,14 +15,7 @@ func doSearch(m *model, s string) {
 		return
 	}
 
-	// Check cache first
-	if cachedSearch, _, found := m.searchCache.get(s); found {
-		m.search = cachedSearch
-		m.selectSearchResult(0)
-		return
-	}
-
-	result, re, err := executeSearch(m.top, s, nil)
+	result, err := executeSearch(m.top, s, nil)
 	if err != nil {
 		m.search = newSearch()
 		m.search.err = err
@@ -33,7 +23,6 @@ func doSearch(m *model, s string) {
 	}
 
 	m.search = result
-	m.searchCache.put(s, re, m.search)
 	m.selectSearchResult(0)
 }
 
@@ -50,10 +39,9 @@ func TestBasicSearch(t *testing.T) {
 	require.NoError(t, err)
 
 	m := &model{
-		top:         head,
-		head:        head,
-		search:      newSearch(),
-		searchCache: newSearchCache(1), // Disable caching for pure search tests
+		top:    head,
+		head:   head,
+		search: newSearch(),
 	}
 
 	testCases := []struct {
@@ -101,10 +89,9 @@ func TestRegexSearch(t *testing.T) {
 	require.NoError(t, err)
 
 	m := &model{
-		top:         head,
-		head:        head,
-		search:      newSearch(),
-		searchCache: newSearchCache(1),
+		top:    head,
+		head:   head,
+		search: newSearch(),
 	}
 
 	testCases := []struct {
@@ -165,10 +152,9 @@ func TestCaseInsensitiveSearch(t *testing.T) {
 	require.NoError(t, err)
 
 	m := &model{
-		top:         head,
-		head:        head,
-		search:      newSearch(),
-		searchCache: newSearchCache(1),
+		top:    head,
+		head:   head,
+		search: newSearch(),
 	}
 
 	testCases := []struct {
@@ -212,10 +198,9 @@ func TestSearchInDifferentNodeTypes(t *testing.T) {
 	require.NoError(t, err)
 
 	m := &model{
-		top:         head,
-		head:        head,
-		search:      newSearch(),
-		searchCache: newSearchCache(1),
+		top:    head,
+		head:   head,
+		search: newSearch(),
 	}
 
 	testCases := []struct {
@@ -253,10 +238,9 @@ func TestSearchResultDetails(t *testing.T) {
 	require.NoError(t, err)
 
 	m := &model{
-		top:         head,
-		head:        head,
-		search:      newSearch(),
-		searchCache: newSearchCache(1),
+		top:    head,
+		head:   head,
+		search: newSearch(),
 	}
 
 	// Test multiple matches in same value
@@ -291,10 +275,9 @@ func TestSearchNavigation(t *testing.T) {
 	require.NoError(t, err)
 
 	m := &model{
-		top:         head,
-		head:        head,
-		search:      newSearch(),
-		searchCache: newSearchCache(1),
+		top:    head,
+		head:   head,
+		search: newSearch(),
 	}
 
 	// Search for term with multiple matches
@@ -333,10 +316,9 @@ func TestSpecialCharacterSearch(t *testing.T) {
 	require.NoError(t, err)
 
 	m := &model{
-		top:         head,
-		head:        head,
-		search:      newSearch(),
-		searchCache: newSearchCache(1),
+		top:    head,
+		head:   head,
+		search: newSearch(),
 	}
 
 	testCases := []struct {
@@ -389,10 +371,9 @@ func TestEmptyAndEdgeCases(t *testing.T) {
 			require.NoError(t, err)
 
 			m := &model{
-				top:         head,
-				head:        head,
-				search:      newSearch(),
-				searchCache: newSearchCache(1),
+				top:    head,
+				head:   head,
+				search: newSearch(),
 			}
 
 			doSearch(m, tc.searchTerm)
@@ -435,10 +416,9 @@ func TestLargeJSONSearch(t *testing.T) {
 	require.NoError(t, err)
 
 	m := &model{
-		top:         head,
-		head:        head,
-		search:      newSearch(),
-		searchCache: newSearchCache(1),
+		top:    head,
+		head:   head,
+		search: newSearch(),
 	}
 
 	// Test that search completes in reasonable time
@@ -449,307 +429,6 @@ func TestLargeJSONSearch(t *testing.T) {
 	// Test repeated terms
 	doSearch(m, "test")
 	assert.Greater(t, len(m.search.results), 3, "Should find multiple instances of repeated term")
-}
-
-func TestSearchCaching(t *testing.T) {
-	jsonData := `{
-		"users": [
-			{"name": "Alice Johnson", "age": 30, "email": "alice@example.com", "role": "admin"},
-			{"name": "Bob Smith", "age": 25, "email": "bob@example.com", "role": "user"},
-			{"name": "Charlie Brown", "age": 35, "email": "charlie@example.com", "role": "moderator"},
-			{"name": "Diana Prince", "age": 28, "email": "diana@example.com", "role": "user"},
-			{"name": "Eve Adams", "age": 32, "email": "eve@example.com", "role": "admin"}
-		],
-		"metadata": {
-			"total_count": 5,
-			"last_updated": "2024-01-15T10:30:00Z",
-			"version": "1.2.3",
-			"features": ["search", "filter", "export", "admin_panel"]
-		},
-		"config": {
-			"max_users": 1000,
-			"allow_registration": true,
-			"theme": "dark",
-			"language": "en"
-		}
-	}`
-
-	head, err := Parse([]byte(jsonData))
-	require.NoError(t, err)
-
-	m := &model{
-		top:         head,
-		head:        head,
-		bottom:      head,
-		search:      newSearch(),
-		searchCache: newSearchCache(50),
-		wrap:        true,
-	}
-
-	searchTerm := "alice"
-	start := time.Now()
-	doSearch(m, searchTerm)
-	firstSearchTime := time.Since(start)
-
-	// Verify results found
-	assert.Greater(t, len(m.search.results), 0, "Should find search results for 'alice'")
-	assert.Nil(t, m.search.err, "Search should not have errors")
-
-	start = time.Now()
-	doSearch(m, searchTerm)
-	cachedSearchTime := time.Since(start)
-
-	assert.Less(t, cachedSearchTime, firstSearchTime/10, "Cached search should be at least 10x faster")
-	assert.Greater(t, len(m.search.results), 0, "Cached search should return same results")
-
-	start = time.Now()
-	doSearch(m, "admin")
-	secondSearchTime := time.Since(start)
-
-	assert.Greater(t, len(m.search.results), 0, "Should find results for 'admin'")
-
-	start = time.Now()
-	doSearch(m, searchTerm)
-	secondCachedTime := time.Since(start)
-
-	assert.Less(t, secondCachedTime, firstSearchTime/5, "Second cache hit should also be very fast")
-
-	fmt.Printf("Search Performance Results:\n")
-	fmt.Printf("  First search (miss): %v\n", firstSearchTime)
-	fmt.Printf("  Cached search (hit): %v\n", cachedSearchTime)
-	fmt.Printf("  Second search (miss): %v\n", secondSearchTime)
-	fmt.Printf("  Second cached (hit): %v\n", secondCachedTime)
-	fmt.Printf("  Cache speedup: %.1fx\n", float64(firstSearchTime)/float64(cachedSearchTime))
-}
-
-func TestSearchCacheWithComplexPatterns(t *testing.T) {
-	jsonData := `{
-		"products": [
-			{"id": "PROD-001", "name": "Laptop Pro", "price": 1299.99},
-			{"id": "PROD-002", "name": "Mouse Wireless", "price": 29.99},
-			{"id": "PROD-003", "name": "Keyboard Mechanical", "price": 149.99}
-		]
-	}`
-
-	head, err := Parse([]byte(jsonData))
-	require.NoError(t, err)
-
-	m := &model{
-		top:         head,
-		head:        head,
-		search:      newSearch(),
-		searchCache: newSearchCache(20),
-	}
-
-	testCases := []struct {
-		pattern     string
-		description string
-	}{
-		{"PROD-\\d+", "Product ID pattern"},
-		{"\\d+\\.\\d+", "Price pattern"},
-		{"(?i)laptop", "Case insensitive search"},
-		{"^\"name\"", "Key search pattern"},
-		{"Pro|Wireless", "OR pattern"},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.description, func(t *testing.T) {
-			start := time.Now()
-			doSearch(m, tc.pattern)
-			firstTime := time.Since(start)
-
-			assert.Nil(t, m.search.err, "Pattern should compile successfully: %s", tc.pattern)
-
-			start = time.Now()
-			doSearch(m, tc.pattern)
-			cachedTime := time.Since(start)
-
-			assert.Less(t, cachedTime, firstTime, "Cached search should be faster for pattern: %s", tc.pattern)
-		})
-	}
-}
-
-func TestSearchCacheInvalidation(t *testing.T) {
-	jsonData := `{"test": "value", "array": [1, 2, 3]}`
-
-	head, err := Parse([]byte(jsonData))
-	require.NoError(t, err)
-
-	m := &model{
-		top:         head,
-		head:        head,
-		search:      newSearch(),
-		searchCache: newSearchCache(10),
-		wrap:        true,
-		termWidth:   80,
-	}
-
-	doSearch(m, "test")
-	assert.Equal(t, 1, m.searchCache.size(), "Should have 1 cached entry")
-
-	m.searchCache.invalidate() // Simulates new JSON data arriving
-	_, _, found := m.searchCache.get("test")
-	assert.False(t, found, "Cache should be invalidated after new data")
-
-	doSearch(m, "test")
-	assert.Equal(t, 1, m.searchCache.size(), "Should cache again after invalidation")
-
-	m.searchCache.invalidate() // Simulates wrap toggle
-	_, _, found = m.searchCache.get("test")
-	assert.False(t, found, "Cache should be invalidated after wrap toggle")
-
-	doSearch(m, "test") // Re-cache
-	oldTermWidth := m.termWidth
-	m.termWidth = 120
-
-	if oldTermWidth != m.termWidth && m.wrap {
-		m.searchCache.invalidate()
-	}
-
-	_, _, found = m.searchCache.get("test")
-	assert.False(t, found, "Cache should be invalidated after width change with wrap enabled")
-}
-
-func TestSearchCacheLRUEviction(t *testing.T) {
-	jsonData := `{"a": 1, "b": 2, "c": 3, "d": 4, "e": 5}`
-
-	head, err := Parse([]byte(jsonData))
-	require.NoError(t, err)
-
-	m := &model{
-		top:         head,
-		head:        head,
-		search:      newSearch(),
-		searchCache: newSearchCache(3),
-	}
-
-	doSearch(m, "a")
-	doSearch(m, "b")
-	doSearch(m, "c")
-	assert.Equal(t, 3, m.searchCache.size(), "Cache should be full")
-
-	doSearch(m, "d")
-	assert.Equal(t, 3, m.searchCache.size(), "Cache should still be at max size")
-
-	// "a" should be evicted (oldest)
-	_, _, found := m.searchCache.get("a")
-	assert.False(t, found, "Oldest entry should be evicted")
-
-	_, _, found = m.searchCache.get("b")
-	assert.True(t, found, "Recent entries should remain")
-	_, _, found = m.searchCache.get("c")
-	assert.True(t, found, "Recent entries should remain")
-	_, _, found = m.searchCache.get("d")
-	assert.True(t, found, "New entry should be cached")
-}
-
-func BenchmarkSearchCaching(b *testing.B) {
-	// Create large JSON for meaningful benchmark
-	users := make([]map[string]interface{}, 1000)
-	for i := 0; i < 1000; i++ {
-		users[i] = map[string]interface{}{
-			"id":     fmt.Sprintf("user-%04d", i),
-			"name":   fmt.Sprintf("User %d", i),
-			"email":  fmt.Sprintf("user%d@example.com", i),
-			"active": i%2 == 0,
-		}
-	}
-
-	data := map[string]interface{}{
-		"users": users,
-		"meta":  map[string]interface{}{"total": 1000},
-	}
-
-	jsonBytes, _ := json.Marshal(data)
-	head, _ := Parse(jsonBytes)
-
-	b.Run("WithoutCache", func(b *testing.B) {
-		m := &model{
-			top:         head,
-			head:        head,
-			search:      newSearch(),
-			searchCache: newSearchCache(1), // Tiny cache to force misses
-		}
-
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			// Use different search terms to avoid cache hits
-			searchTerm := fmt.Sprintf("user-%d", i%100)
-			doSearch(m, searchTerm)
-		}
-	})
-
-	b.Run("WithCache", func(b *testing.B) {
-		m := &model{
-			top:         head,
-			head:        head,
-			search:      newSearch(),
-			searchCache: newSearchCache(100), // Large cache
-		}
-
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			// Reuse search terms to get cache hits
-			searchTerm := fmt.Sprintf("user-%d", i%10) // Only 10 different terms
-			doSearch(m, searchTerm)
-		}
-	})
-}
-
-func TestCacheDemo(t *testing.T) {
-	fmt.Println("\n=== FX Search Cache Demo ===")
-
-	// Load the test JSON
-	jsonData := `{
-		"products": [
-			{"name": "MacBook Pro", "price": 2399, "category": "laptops"},
-			{"name": "iPhone 15", "price": 999, "category": "phones"},
-			{"name": "AirPods Pro", "price": 249, "category": "audio"},
-			{"name": "MacBook Air", "price": 1199, "category": "laptops"}
-		],
-		"users": [
-			{"name": "Alice", "purchases": ["MacBook Pro", "iPhone 15"]},
-			{"name": "Bob", "purchases": ["MacBook Air", "AirPods Pro"]}
-		]
-	}`
-
-	head, _ := Parse([]byte(jsonData))
-
-	// Create model with cache
-	m := &model{
-		top:         head,
-		head:        head,
-		search:      newSearch(),
-		searchCache: newSearchCache(50),
-	}
-
-	// Demo different search patterns
-	searches := []string{
-		"MacBook",
-		"Pro",
-		"\\d+",      // Numbers
-		"(?i)alice", // Case insensitive
-		"laptops",
-	}
-
-	fmt.Println("\nFirst run (cache misses):")
-	for _, search := range searches {
-		start := time.Now()
-		doSearch(m, search)
-		duration := time.Since(start)
-		fmt.Printf("  Search '%s': %v (%d results)\n", search, duration, len(m.search.results))
-	}
-
-	fmt.Println("\nSecond run (cache hits):")
-	for _, search := range searches {
-		start := time.Now()
-		doSearch(m, search)
-		duration := time.Since(start)
-		fmt.Printf("  Search '%s': %v (%d results) [CACHED]\n", search, duration, len(m.search.results))
-	}
-
-	fmt.Printf("\nCache stats: %d entries cached\n", m.searchCache.size())
-	fmt.Println("=== Demo Complete ===")
 }
 
 func TestSearchInWrappedStrings(t *testing.T) {
@@ -765,12 +444,11 @@ func TestSearchInWrappedStrings(t *testing.T) {
 	Wrap(head, 40)
 
 	m := &model{
-		top:         head,
-		head:        head,
-		search:      newSearch(),
-		searchCache: newSearchCache(10),
-		wrap:        true,
-		termWidth:   40,
+		top:       head,
+		head:      head,
+		search:    newSearch(),
+		wrap:      true,
+		termWidth: 40,
 	}
 
 	testCases := []struct {
@@ -812,12 +490,11 @@ func TestSearchChunkBoundaryMatches(t *testing.T) {
 	Wrap(head, 30)
 
 	m := &model{
-		top:         head,
-		head:        head,
-		search:      newSearch(),
-		searchCache: newSearchCache(10),
-		wrap:        true,
-		termWidth:   30,
+		top:       head,
+		head:      head,
+		search:    newSearch(),
+		wrap:      true,
+		termWidth: 30,
 	}
 
 	// Verify chunks were created
@@ -860,12 +537,11 @@ func TestSearchMultipleMatchesInChunks(t *testing.T) {
 	Wrap(head, 35)
 
 	m := &model{
-		top:         head,
-		head:        head,
-		search:      newSearch(),
-		searchCache: newSearchCache(10),
-		wrap:        true,
-		termWidth:   35,
+		top:       head,
+		head:      head,
+		search:    newSearch(),
+		wrap:      true,
+		termWidth: 35,
 	}
 
 	// Search for pattern that should match multiple times
@@ -890,12 +566,11 @@ func TestSearchWrappedVsUnwrapped(t *testing.T) {
 
 	// First test without wrapping
 	m := &model{
-		top:         head,
-		head:        head,
-		search:      newSearch(),
-		searchCache: newSearchCache(10),
-		wrap:        false,
-		termWidth:   80,
+		top:       head,
+		head:      head,
+		search:    newSearch(),
+		wrap:      false,
+		termWidth: 80,
 	}
 
 	doSearch(m, "fox")
@@ -906,7 +581,6 @@ func TestSearchWrappedVsUnwrapped(t *testing.T) {
 	Wrap(head, 30)
 	m.wrap = true
 	m.termWidth = 30
-	m.searchCache.invalidate() // Clear cache since wrapping changed
 
 	doSearch(m, "fox")
 	wrappedResults := len(m.search.results)
@@ -925,12 +599,11 @@ func TestSearchChunkIndexMapping(t *testing.T) {
 	Wrap(head, 20)
 
 	m := &model{
-		top:         head,
-		head:        head,
-		search:      newSearch(),
-		searchCache: newSearchCache(10),
-		wrap:        true,
-		termWidth:   20,
+		top:       head,
+		head:      head,
+		search:    newSearch(),
+		wrap:      true,
+		termWidth: 20,
 	}
 
 	// Search for terms at different positions
@@ -979,12 +652,11 @@ func TestSearchEmptyAndShortStringsWithWrap(t *testing.T) {
 			Wrap(head, 30)
 
 			m := &model{
-				top:         head,
-				head:        head,
-				search:      newSearch(),
-				searchCache: newSearchCache(5),
-				wrap:        true,
-				termWidth:   30,
+				top:       head,
+				head:      head,
+				search:    newSearch(),
+				wrap:      true,
+				termWidth: 30,
 			}
 
 			doSearch(m, tc.searchTerm)
@@ -1009,12 +681,11 @@ func TestSearchRegexAcrossChunks(t *testing.T) {
 	Wrap(head, 25)
 
 	m := &model{
-		top:         head,
-		head:        head,
-		search:      newSearch(),
-		searchCache: newSearchCache(10),
-		wrap:        true,
-		termWidth:   25,
+		top:       head,
+		head:      head,
+		search:    newSearch(),
+		wrap:      true,
+		termWidth: 25,
 	}
 
 	testCases := []struct {

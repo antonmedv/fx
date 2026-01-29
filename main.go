@@ -11,7 +11,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"runtime/pprof"
 	"strconv"
 	"strings"
@@ -279,7 +278,6 @@ func main() {
 		commandInput:        commandInput,
 		searchInput:         searchInput,
 		search:              newSearch(),
-		searchCache:         newSearchCache(50), // Cache up to 50 search queries
 		previewSearchInput:  previewSearchInput,
 		previewSearchCursor: -1,
 		spinner:             spinnerModel,
@@ -357,7 +355,6 @@ type model struct {
 	commandInput          textinput.Model
 	searchInput           textinput.Model
 	search                *search
-	searchCache           *searchCache
 	searching             bool          // search in progress
 	searchCancel          chan struct{} // cancel channel for search
 	searchID              uint64        // increments with each search to detect stale results
@@ -400,10 +397,11 @@ type searchResultMsg struct {
 	id     uint64
 	query  string
 	search *search
-	re     *regexp.Regexp
 }
 
-type searchCancelledMsg struct{}
+type searchCancelledMsg struct {
+	id uint64
+}
 
 func (m *model) Init() tea.Cmd {
 	return m.spinner.Tick
@@ -411,7 +409,6 @@ func (m *model) Init() tea.Cmd {
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if msg, ok := msg.(tea.WindowSizeMsg); ok {
-		oldTermWidth := m.termWidth
 		m.termWidth = msg.Width
 		m.termHeight = msg.Height
 		m.help.Width = m.termWidth
@@ -419,10 +416,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.preview.Width = m.termWidth
 		m.preview.Height = m.termHeight - 1
 		Wrap(m.top, m.viewWidth())
-		// Only invalidate cache if terminal width changed and wrapping is enabled
-		if oldTermWidth != m.termWidth && m.wrap {
-			m.searchCache.invalidate()
-		}
 		m.redoSearch()
 	}
 
@@ -444,9 +437,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 
 	case nodeMsg:
-		// Invalidate search cache when new data arrives
-		m.searchCache.invalidate()
-
 		if m.wrap {
 			Wrap(msg.node, m.viewWidth())
 		}
@@ -482,7 +472,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case searchResultMsg:
-		// Ignore stale results from a previous search
 		if msg.id != m.searchID {
 			return m, nil
 		}
@@ -490,12 +479,14 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.searchCancel = nil
 		if msg.search != nil {
 			m.search = msg.search
-			m.searchCache.put(msg.query, msg.re, msg.search)
 			m.selectSearchResult(0)
 		}
 		return m, nil
 
 	case searchCancelledMsg:
+		if msg.id != m.searchID {
+			return m, nil
+		}
 		m.searching = false
 		m.searchCancel = nil
 		return m, nil
@@ -695,19 +686,14 @@ func (m *model) handleSearchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch {
 	case msg.Type == tea.KeyEscape:
-		// Cancel ongoing search if any
-		if m.searchCancel != nil {
-			close(m.searchCancel)
-			m.searchCancel = nil
-			m.searching = false
-		}
+		m.cancelSearch()
 		m.searchInput.Blur()
 		m.searchInput.SetValue("")
-		m.search = newSearch()
 		m.showCursor = true
 
 	case msg.Type == tea.KeyEnter:
 		m.searchInput.Blur()
+		m.cancelSearch()
 		return m, m.doSearch(m.searchInput.Value())
 
 	default:
@@ -798,20 +784,6 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Suspend
 
 	case key.Matches(msg, keyMap.Quit):
-		// If search is in progress, cancel it instead of quitting
-		if m.searching && m.searchCancel != nil {
-			close(m.searchCancel)
-			m.searchCancel = nil
-			m.searching = false
-			return m, nil
-		}
-		// If search results are showing, clear them instead of quitting
-		if m.searchInput.Value() != "" {
-			m.searchInput.SetValue("")
-			m.search = newSearch()
-			m.showCursor = true
-			return m, nil
-		}
 		return m, tea.Quit
 
 	case key.Matches(msg, keyMap.Help):
@@ -999,7 +971,6 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		} else {
 			DropWrapAll(m.top)
 		}
-		m.searchCache.invalidate()
 		if at.Chunk != "" && at.Value == "" {
 			at = at.Parent
 		}

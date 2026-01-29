@@ -47,7 +47,6 @@ func prepare(t *testing.T, opts ...options) *teatest.TestModel {
 		digInput:     textinput.New(),
 		searchInput:  textinput.New(),
 		search:       newSearch(),
-		searchCache:  newSearchCache(50),
 		commandInput: textinput.New(),
 	}
 
