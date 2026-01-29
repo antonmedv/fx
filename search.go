@@ -41,7 +41,6 @@ func (m *model) cancelSearch() {
 		close(m.searchCancel)
 		m.searchCancel = nil
 		m.searching = false
-		m.search = newSearch()
 	}
 }
 

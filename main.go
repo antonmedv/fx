@@ -408,7 +408,8 @@ func (m *model) Init() tea.Cmd {
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if msg, ok := msg.(tea.WindowSizeMsg); ok {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
 		m.termWidth = msg.Width
 		m.termHeight = msg.Height
 		m.help.Width = m.termWidth
@@ -417,17 +418,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.preview.Height = m.termHeight - 1
 		Wrap(m.top, m.viewWidth())
 		m.redoSearch()
-	}
 
-	if m.showHelp {
-		return m.handleHelpKey(msg)
-	}
-
-	if m.showPreview {
-		return m.handlePreviewKey(msg)
-	}
-
-	switch msg := msg.(type) {
 	case eofMsg:
 		m.eof = true
 		return m, nil
@@ -491,6 +482,20 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.searchCancel = nil
 		return m, nil
 
+	case tea.ResumeMsg:
+		m.suspending = false
+		return m, nil
+	}
+
+	if m.showHelp {
+		return m.handleHelpKey(msg)
+	}
+
+	if m.showPreview {
+		return m.handlePreviewKey(msg)
+	}
+
+	switch msg := msg.(type) {
 	case tea.MouseMsg:
 		m.handlePendingDelete(msg)
 
@@ -535,10 +540,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.recordHistory()
 			}
 		}
-
-	case tea.ResumeMsg:
-		m.suspending = false
-		return m, nil
 
 	case tea.KeyMsg:
 		if m.digInput.Focused() {
@@ -687,6 +688,7 @@ func (m *model) handleSearchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case msg.Type == tea.KeyEscape:
 		m.cancelSearch()
+		m.search = newSearch()
 		m.searchInput.Blur()
 		m.searchInput.SetValue("")
 		m.showCursor = true
@@ -694,6 +696,7 @@ func (m *model) handleSearchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case msg.Type == tea.KeyEnter:
 		m.searchInput.Blur()
 		m.cancelSearch()
+		m.search = newSearch()
 		return m, m.doSearch(m.searchInput.Value())
 
 	default:
