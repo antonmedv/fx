@@ -234,7 +234,7 @@ async function run(json, code) {
       const grouped = {}
       for (const item of x) {
         const key = typeof keyFn === 'function' ? keyFn(item) : item[keyFn]
-        if (!grouped.hasOwnProperty(key)) grouped[key] = []
+        if (!Object.prototype.hasOwnProperty.call(grouped, key)) grouped[key] = []
         grouped[key].push(item)
       }
       return grouped
