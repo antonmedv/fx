@@ -215,6 +215,20 @@ async function run(json, code) {
     }
   }
 
+  function sortKeys(x) {
+    if (Array.isArray(x)) {
+      return x.map(sortKeys)
+    }
+    if (typeof x === 'object' && x !== null) {
+      const sorted = {}
+      for (const key of Object.keys(x).sort()) {
+        sorted[key] = sortKeys(x[key])
+      }
+      return sorted
+    }
+    return x
+  }
+
   function groupBy(keyFn) {
     return function (x) {
       const grouped = {}
