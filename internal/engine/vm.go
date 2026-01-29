@@ -31,6 +31,9 @@ func NewVM(writeOut func(string)) *goja.Runtime {
 		if FilePath == "" {
 			return fmt.Errorf("specify a file as the first argument to be able to save: fx file.json ")
 		}
+		if info, err := os.Lstat(FilePath); err == nil && info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("cannot save to a symbolic link: %s", FilePath)
+		}
 		if err := os.WriteFile(FilePath, []byte(json), 0644); err != nil {
 			return err
 		}
