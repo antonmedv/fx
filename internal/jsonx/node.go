@@ -37,6 +37,16 @@ type Node struct {
 	LineNumber      int
 }
 
+type Tombstone struct {
+	Target   *Node
+	Parent   *Node
+	Prev     *Node
+	Next     *Node
+	EndOf    *Node
+	Index    int
+	HadComma bool
+}
+
 // Append ands a node as a child to the current node (body of {...} or [...]).
 func (n *Node) Append(child *Node) {
 	if n.End == nil {
@@ -390,4 +400,64 @@ func (n *Node) GetNodeToDelete() (*Node, bool) {
 		}
 	}
 	return node, true
+}
+
+func (n *Node) CreateTombstone() Tombstone {
+	endOf := n
+	if n.End != nil {
+		endOf = n.End
+	} else if n.ChunkEnd != nil {
+		endOf = n.ChunkEnd
+	}
+
+	t := Tombstone{
+		Target: n,
+		EndOf:  endOf,
+		Parent: n.Parent,
+		Prev:   n.Prev,
+		Next:   endOf.Next,
+		Index:  n.Index,
+	}
+
+	if t.Prev != nil && t.Prev != t.Parent {
+		t.HadComma = t.Prev.Comma
+	}
+
+	return t
+}
+
+func (t *Tombstone) DoUndo() {
+	if t.Prev != nil {
+		t.Prev.Next = t.Target
+	}
+	if t.Next != nil {
+		t.Next.Prev = t.EndOf
+	}
+
+	// if it was the first child
+	if t.Parent != nil && t.Parent.Next == t.Next {
+		t.Parent.Next = t.Target
+	}
+
+	// if DeleteNode cleared a comma
+	if t.Prev != nil && t.Prev != t.Parent {
+		t.Prev.Comma = t.HadComma
+	}
+
+	// Reverse Array/Size logic
+	if t.Parent != nil {
+		t.Parent.Size++
+		if t.Parent.Kind == Array {
+			for it := t.Next; it != nil && it != t.Parent.End; {
+				if it.Parent == t.Parent && it.Index >= 0 {
+					it.Index++
+				}
+				if it.HasChildren() {
+					it = it.End.Next
+				} else {
+					it = it.Next
+				}
+			}
+		}
+	}
 }
