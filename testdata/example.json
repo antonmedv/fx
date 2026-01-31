@@ -11,5 +11,6 @@
   "author": {
     "name": "John Doe",
     "email": "john@doe.com"
-  }
+  },
+  "hasAvatar": true
 }

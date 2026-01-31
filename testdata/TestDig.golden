@@ -1,4 +1,4 @@
-[?25l[?2004h[7m{[0m[K
+[?25l[?2004h{[K
   "title": "Lorem ipsum",[K
   "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusm
   od tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam
@@ -11,7 +11,7 @@
     "ipsum",[K
     null[K
   ],[K
-  "year": 3000,[K
+  [7m"year"[0m: 3000,[K
   "funny": true,[K
   "author": {[K
     "name": "John Doe",[K
@@ -37,4 +37,4 @@
 ~[K
 ~[K
 ~[K
-                                                                             1% [80D
+.year                                                                       56% [80D

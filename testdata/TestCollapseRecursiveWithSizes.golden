@@ -1,4 +1,4 @@
-[?25l[?2004h[7m{[0m (6 keys)[K
+[?25l[?2004h[7m{[0m (7 keys)[K
   "title": "Lorem ipsum",[K
   "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusm
   od tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam
@@ -9,9 +9,9 @@
   "tags": […], (3 items)[K
   "year": 3000,[K
   "funny": true,[K
-  "author": {"name":"John Doe",…} (2 keys)[K
+  "author": {"name":"John Doe",…}, (2 keys)[K
+  "hasAvatar": true[K
 }[K
-~[K
 ~[K
 ~[K
 ~[K
