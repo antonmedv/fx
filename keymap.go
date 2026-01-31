@@ -151,7 +151,7 @@ func init() {
 			key.WithHelp("", "delete node"),
 		),
 		Undo: key.NewBinding(
-			key.WithKeys("U"),
+			key.WithKeys("u"),
 			key.WithHelp("", "undo delete"),
 		),
 		Redo: key.NewBinding(
