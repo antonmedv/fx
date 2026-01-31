@@ -374,16 +374,6 @@ type location struct {
 	node *Node
 }
 
-type Tombstone struct {
-	Target   *Node
-	Parent   *Node
-	Prev     *Node
-	Next     *Node
-	EndOf    *Node
-	Index    int
-	HadComma bool
-}
-
 type nodeMsg struct {
 	node *Node
 }
@@ -1070,39 +1060,7 @@ func (m *model) undoDelete() {
 	t := m.undoStack[lastIdx]
 	m.undoStack = m.undoStack[:lastIdx]
 
-	if t.Prev != nil {
-		t.Prev.Next = t.Target
-	}
-	if t.Next != nil {
-		t.Next.Prev = t.EndOf
-	}
-
-	// if it was the first child
-	if t.Parent != nil && t.Parent.Next == t.Next {
-		t.Parent.Next = t.Target
-	}
-
-	// if DeleteNode cleared a comma
-	if t.Prev != nil && t.Prev != t.Parent {
-		t.Prev.Comma = t.HadComma
-	}
-
-	// Reverse Array/Size logic
-	if t.Parent != nil {
-		t.Parent.Size++
-		if t.Parent.Kind == Array {
-			for it := t.Next; it != nil && it != t.Parent.End; {
-				if it.Parent == t.Parent && it.Index >= 0 {
-					it.Index++
-				}
-				if it.HasChildren() {
-					it = it.End.Next
-				} else {
-					it = it.Next
-				}
-			}
-		}
-	}
+	t.DoUndo()
 
 	m.redoStack = append(m.redoStack, t)
 	m.selectNode(t.Target)
@@ -1562,35 +1520,11 @@ func (m *model) deleteAtCursor() {
 		return
 	}
 
-	ts := m.createTombstone(nodeToDelete)
+	ts := nodeToDelete.CreateTombstone()
 	m.recordDeleteHistory(ts)
 
 	if next, ok := DeleteNode(nodeToDelete); ok {
 		m.selectNode(next)
 		m.recordHistory()
 	}
-}
-
-func (m *model) createTombstone(at *Node) Tombstone {
-	endOf := at
-	if at.End != nil {
-		endOf = at.End
-	} else if at.ChunkEnd != nil {
-		endOf = at.ChunkEnd
-	}
-
-	t := Tombstone{
-		Target: at,
-		EndOf:  endOf,
-		Parent: at.Parent,
-		Prev:   at.Prev,
-		Next:   endOf.Next,
-		Index:  at.Index,
-	}
-
-	if t.Prev != nil && t.Prev != t.Parent {
-		t.HadComma = t.Prev.Comma
-	}
-
-	return t
 }
