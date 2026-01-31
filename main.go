@@ -224,15 +224,6 @@ func main() {
 		return
 	}
 
-	digInput := textinput.New()
-	digInput.Prompt = ""
-	digInput.TextStyle = lipgloss.NewStyle().
-		Background(lipgloss.Color("7")).
-		Foreground(lipgloss.Color("0"))
-	digInput.Cursor.Style = lipgloss.NewStyle().
-		Background(lipgloss.Color("15")).
-		Foreground(lipgloss.Color("0"))
-
 	commandInput := textinput.New()
 	commandInput.Prompt = ":"
 
@@ -273,7 +264,6 @@ func main() {
 		showSizes:           showSizes,
 		showLineNumbers:     showLineNumbers,
 		fileName:            fileName,
-		digInput:            digInput,
 		gotoSymbolInput:     gotoSymbolInput,
 		commandInput:        commandInput,
 		searchInput:         searchInput,
@@ -350,7 +340,6 @@ type model struct {
 	showLineNumbers       bool
 	totalLines            int
 	fileName              string
-	digInput              textinput.Model
 	gotoSymbolInput       textinput.Model
 	commandInput          textinput.Model
 	searchInput           textinput.Model
@@ -507,7 +496,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.down()
 
 		case msg.Button == tea.MouseButtonLeft && msg.Action == tea.MouseActionPress:
-			m.digInput.Blur()
 			m.showCursor = true
 			if msg.Y < m.viewHeight() {
 				if m.cursor == msg.Y {
@@ -542,9 +530,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tea.KeyMsg:
-		if m.digInput.Focused() {
-			return m.handleDigKey(msg)
-		}
 		if m.commandInput.Focused() {
 			return m.handleGotoLineKey(msg)
 		}
@@ -563,92 +548,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleKey(msg)
 	}
 	return m, nil
-}
-
-func (m *model) handleDigKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
-	switch {
-	case key.Matches(msg, arrowUp):
-		m.up()
-		m.digInput.SetValue(m.cursorPath())
-		m.digInput.CursorEnd()
-
-	case key.Matches(msg, arrowDown):
-		m.down()
-		m.digInput.SetValue(m.cursorPath())
-		m.digInput.CursorEnd()
-
-	case msg.Type == tea.KeyEscape:
-		m.digInput.Blur()
-
-	case msg.Type == tea.KeyTab:
-		m.digInput.SetValue(m.cursorPath())
-		m.digInput.CursorEnd()
-
-	case msg.Type == tea.KeyEnter:
-		m.digInput.Blur()
-		digPath, ok := jsonpath.Split(m.digInput.Value())
-		if ok {
-			n := m.findByPath(digPath)
-			if n != nil {
-				m.selectNode(n)
-			}
-		}
-
-	case key.Matches(msg, key.NewBinding(key.WithKeys("ctrl+w"))):
-		digPath, ok := jsonpath.Split(m.digInput.Value())
-		if ok {
-			if len(digPath) > 0 {
-				digPath = digPath[:len(digPath)-1]
-			}
-			n := m.findByPath(digPath)
-			if n != nil {
-				m.selectNode(n)
-				m.digInput.SetValue(m.cursorPath())
-				m.digInput.CursorEnd()
-			}
-		}
-
-	case key.Matches(msg, textinput.DefaultKeyMap.WordBackward):
-		value := m.digInput.Value()
-		pth, ok := jsonpath.Split(value[0:m.digInput.Position()])
-		if ok {
-			if len(pth) > 0 {
-				pth = pth[:len(pth)-1]
-				m.digInput.SetCursor(len(jsonpath.Join(pth)))
-			} else {
-				m.digInput.CursorStart()
-			}
-		}
-
-	case key.Matches(msg, textinput.DefaultKeyMap.WordForward):
-		value := m.digInput.Value()
-		fullPath, ok1 := jsonpath.Split(value)
-		pth, ok2 := jsonpath.Split(value[0:m.digInput.Position()])
-		if ok1 && ok2 {
-			if len(pth) < len(fullPath) {
-				pth = append(pth, fullPath[len(pth)])
-				m.digInput.SetCursor(len(jsonpath.Join(pth)))
-			} else {
-				m.digInput.CursorEnd()
-			}
-		}
-
-	default:
-		if key.Matches(msg, key.NewBinding(key.WithKeys("."))) {
-			if m.digInput.Position() == len(m.digInput.Value()) {
-				m.digInput.SetValue(m.cursorPath())
-				m.digInput.CursorEnd()
-			}
-		}
-
-		m.digInput, cmd = m.digInput.Update(msg)
-		n := m.dig(m.digInput.Value())
-		if n != nil {
-			m.selectNode(n)
-		}
-	}
-	return m, cmd
 }
 
 func (m *model) handleHelpKey(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -1011,22 +910,6 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keyMap.Open):
 		return m, m.open()
-
-	case key.Matches(msg, keyMap.Dig):
-		at, ok := m.cursorPointsTo()
-		if !ok {
-			return m, nil
-		}
-		if at.Kind == Err {
-			nextJson := at.FindNextNonErr()
-			if nextJson != nil {
-				m.selectNode(nextJson)
-			}
-		}
-		m.digInput.SetValue(m.cursorPath() + ".")
-		m.digInput.CursorEnd()
-		m.digInput.Width = m.termWidth - 1
-		m.digInput.Focus()
 
 	case key.Matches(msg, keyMap.GotoSymbol):
 		m.gotoSymbolInput.CursorEnd()

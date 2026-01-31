@@ -30,8 +30,6 @@ type KeyMap struct {
 	Preview             key.Binding `category:"Actions"`
 	Print               key.Binding `category:"Actions"`
 	Open                key.Binding `category:"Actions"`
-	Dig                 key.Binding `category:"Actions"`
-	JsQuery             key.Binding `category:"Actions"`
 	ToggleWrap          key.Binding `category:"View"`
 	ShowSelector        key.Binding `category:"View"`
 	GoBack              key.Binding `category:"Navigation"`
@@ -185,10 +183,6 @@ func init() {
 		GoForward: key.NewBinding(
 			key.WithKeys("]"),
 			key.WithHelp("", "go forward"),
-		),
-		Dig: key.NewBinding(
-			key.WithKeys("."),
-			key.WithHelp("", "dig"),
 		),
 	}
 }

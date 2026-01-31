@@ -44,7 +44,6 @@ func prepare(t *testing.T, opts ...options) *teatest.TestModel {
 		eof:          true,
 		wrap:         true,
 		showCursor:   true,
-		digInput:     textinput.New(),
 		searchInput:  textinput.New(),
 		search:       newSearch(),
 		commandInput: textinput.New(),
@@ -91,18 +90,6 @@ func TestNavigation(t *testing.T) {
 	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
 	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
 	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
-	teatest.RequireEqualOutput(t, read(t, tm))
-
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
-	tm.WaitFinished(t, teatest.WithFinalTimeout(time.Second))
-}
-
-func TestDig(t *testing.T) {
-	tm := prepare(t)
-
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(".")})
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("year")})
-	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
 	teatest.RequireEqualOutput(t, read(t, tm))
 
 	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})

@@ -162,8 +162,6 @@ func (m *model) View() string {
 			matchedStr = append(matchedStr, theme.CurrentTheme.StatusBar(strings.Repeat(" ", repeatCount))...)
 		}
 		screen = append(screen, matchedStr...)
-	} else if m.digInput.Focused() {
-		screen = append(screen, m.digInput.View()...)
 	} else {
 		statusBarWidth := m.termWidth
 		var indicator string
