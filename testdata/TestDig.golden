@@ -16,7 +16,8 @@
   "author": {[K
     "name": "John Doe",[K
     "email": "john@doe.com"[K
-  }[K
+  },[K
+  "hasAvatar": true[K
 }[K
 ~[K
 ~[K
@@ -36,5 +37,4 @@
 ~[K
 ~[K
 ~[K
-~[K
-.year                                                                       60% [80D
+.year                                                                       56% [80D
