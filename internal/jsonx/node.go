@@ -367,3 +367,27 @@ func (n *Node) ForEach(cb func(*Node)) {
 		}
 	}
 }
+
+func (n *Node) GetNodeToDelete() (*Node, bool) {
+	if n == nil {
+		return nil, false
+	}
+	// Avoid closing bracket nodes (Index == -1 used for brackets)
+	if n.Index == -1 {
+		return nil, false
+	}
+	parent := n.Parent
+	if parent == nil { // avoid deleting root
+		return nil, false
+	}
+	// If current points to a wrap placeholder, move to its parent value
+	node := n
+	if n.Chunk != "" && n.Value == "" && n.Parent != nil {
+		node = node.Parent
+		parent = node.Parent
+		if parent == nil {
+			return nil, false
+		}
+	}
+	return node, true
+}

@@ -360,6 +360,8 @@ type model struct {
 	printErrorOnExit      error
 	spinner               spinner.Model
 	locationHistory       []location
+	undoStack             []Tombstone
+	redoStack             []Tombstone
 	locationIndex         int // position in locationHistory
 	keysIndex             []string
 	keysIndexNodes        []*Node
@@ -370,6 +372,16 @@ type model struct {
 type location struct {
 	head *Node
 	node *Node
+}
+
+type Tombstone struct {
+	Target   *Node
+	Parent   *Node
+	Prev     *Node
+	Next     *Node
+	EndOf    *Node
+	Index    int
+	HadComma bool
 }
 
 type nodeMsg struct {
@@ -976,7 +988,12 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keyMap.Delete):
 		m.deletePending = true
+	case key.Matches(msg, keyMap.Undo):
+		m.undoDelete()
+	case key.Matches(msg, keyMap.Redo): // Make sure Redo is defined in your keyMap
+		m.redoDelete()
 	}
+
 	return m, nil
 }
 
@@ -1033,6 +1050,78 @@ func (m *model) recordHistory() {
 		node: at,
 	})
 	m.locationIndex = len(m.locationHistory)
+}
+
+func (m *model) recordDeleteHistory(ts Tombstone) {
+	m.undoStack = append(m.undoStack, ts)
+	m.redoStack = []Tombstone{}
+
+	if len(m.undoStack) > 100 {
+		m.undoStack = m.undoStack[1:]
+	}
+}
+
+func (m *model) undoDelete() {
+	if len(m.undoStack) == 0 {
+		return
+	}
+
+	lastIdx := len(m.undoStack) - 1
+	t := m.undoStack[lastIdx]
+	m.undoStack = m.undoStack[:lastIdx]
+
+	if t.Prev != nil {
+		t.Prev.Next = t.Target
+	}
+	if t.Next != nil {
+		t.Next.Prev = t.EndOf
+	}
+
+	// if it was the first child
+	if t.Parent != nil && t.Parent.Next == t.Next {
+		t.Parent.Next = t.Target
+	}
+
+	// if DeleteNode cleared a comma
+	if t.Prev != nil && t.Prev != t.Parent {
+		t.Prev.Comma = t.HadComma
+	}
+
+	// Reverse Array/Size logic
+	if t.Parent != nil {
+		t.Parent.Size++
+		if t.Parent.Kind == Array {
+			for it := t.Next; it != nil && it != t.Parent.End; {
+				if it.Parent == t.Parent && it.Index >= 0 {
+					it.Index++
+				}
+				if it.HasChildren() {
+					it = it.End.Next
+				} else {
+					it = it.Next
+				}
+			}
+		}
+	}
+
+	m.redoStack = append(m.redoStack, t)
+	m.selectNode(t.Target)
+}
+
+func (m *model) redoDelete() {
+	if len(m.redoStack) == 0 {
+		return
+	}
+
+	t := m.redoStack[len(m.redoStack)-1]
+	m.redoStack = m.redoStack[:len(m.redoStack)-1]
+
+	if next, ok := DeleteNode(t.Target); ok {
+		m.selectNode(next)
+		m.recordHistory()
+	}
+
+	m.undoStack = append(m.undoStack, t)
 }
 
 func (m *model) scrollToBottom() {
@@ -1467,8 +1556,41 @@ func (m *model) deleteAtCursor() {
 	if !ok || at == nil {
 		return
 	}
-	if next, ok := DeleteNode(at); ok {
+
+	nodeToDelete, ok := at.GetNodeToDelete()
+	if !ok {
+		return
+	}
+
+	ts := m.createTombstone(nodeToDelete)
+	m.recordDeleteHistory(ts)
+
+	if next, ok := DeleteNode(nodeToDelete); ok {
 		m.selectNode(next)
 		m.recordHistory()
 	}
+}
+
+func (m *model) createTombstone(at *Node) Tombstone {
+	endOf := at
+	if at.End != nil {
+		endOf = at.End
+	} else if at.ChunkEnd != nil {
+		endOf = at.ChunkEnd
+	}
+
+	t := Tombstone{
+		Target: at,
+		EndOf:  endOf,
+		Parent: at.Parent,
+		Prev:   at.Prev,
+		Next:   endOf.Next,
+		Index:  at.Index,
+	}
+
+	if t.Prev != nil && t.Prev != t.Parent {
+		t.HadComma = t.Prev.Comma
+	}
+
+	return t
 }
