@@ -147,7 +147,7 @@ func (m *model) View() string {
 		screen = append(screen, '\n')
 	}
 
-	if m.queryInput.Focused() {
+	if m.queryInput.Focused() || m.queryInput.Value() != "" {
 		screen = append(screen, m.queryInput.View()...)
 	} else {
 		if m.gotoSymbolInput.Focused() && m.fuzzyMatch != nil {

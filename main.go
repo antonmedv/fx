@@ -567,12 +567,13 @@ func (m *model) handleQueryKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch {
 	case msg.Type == tea.KeyEscape:
+		m.showCursor = true
 		m.queryInput.Blur()
 
 	case msg.Type == tea.KeyEnter:
+		m.showCursor = true
 		m.queryInput.Blur()
 		command := m.queryInput.Value()
-		m.queryInput.SetValue("")
 		return m.runCommand(command)
 
 	default:
@@ -1009,8 +1010,12 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.deletePending = true
 
 	case key.Matches(msg, keyMap.Query):
+		m.showCursor = false
 		m.queryInput.CursorEnd()
 		m.queryInput.Width = m.termWidth - 1 // -1 for the cursor
+		if m.queryInput.Value() == "" {
+			m.queryInput.SetValue(".")
+		}
 		m.queryInput.Focus()
 	}
 	return m, nil
