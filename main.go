@@ -211,13 +211,18 @@ func main() {
 	}
 
 	if len(args) > 0 || flagSlurp {
-		opts := engine.Options{
-			Slurp:      flagSlurp,
-			WithInline: !flagNoInline,
-			WriteOut:   func(s string) { fmt.Println(s) },
-			WriteErr:   func(s string) { fmt.Fprintln(os.Stderr, s) },
+		var err error
+
+		if flagSlurp {
+			parser, err = engine.Slurp(parser)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
 		}
-		exitCode := engine.Start(parser, args, opts)
+
+		// TODO: Create channels and output out/err from engine.
+		exitCode := engine.Start(parser, args)
 		if exitCode != 0 {
 			os.Exit(exitCode)
 		}
@@ -573,8 +578,7 @@ func (m *model) handleQueryKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case msg.Type == tea.KeyEnter:
 		m.showCursor = true
 		m.queryInput.Blur()
-		command := m.queryInput.Value()
-		return m.runCommand(command)
+		m.doQuery(m.queryInput.Value())
 
 	default:
 		m.queryInput, cmd = m.queryInput.Update(msg)

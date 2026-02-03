@@ -50,7 +50,6 @@ func TestEngine(t *testing.T) {
 			writeErr := func(s string) { errs = append(errs, s) }
 
 			opts := engine.Options{
-				Slurp:      false,
 				WithInline: false,
 				WriteOut:   writeOut,
 				WriteErr:   writeErr,
@@ -73,7 +72,6 @@ func TestStart_InvalidJSON(t *testing.T) {
 	writeErr := func(s string) { errs = append(errs, s) }
 
 	opts := engine.Options{
-		Slurp:      false,
 		WithInline: false,
 		WriteOut:   writeOut,
 		WriteErr:   writeErr,
@@ -93,7 +91,6 @@ func TestStart_FastPath_InvalidJSON(t *testing.T) {
 	writeErr := func(s string) { errs = append(errs, s) }
 
 	opts := engine.Options{
-		Slurp:      false,
 		WithInline: false,
 		WriteOut:   writeOut,
 		WriteErr:   writeErr,
@@ -113,7 +110,6 @@ func TestStart_EscapeSequences(t *testing.T) {
 	writeErr := func(s string) { errs = append(errs, s) }
 
 	opts := engine.Options{
-		Slurp:      false,
 		WithInline: false,
 		WriteOut:   writeOut,
 		WriteErr:   writeErr,
@@ -134,7 +130,6 @@ func TestStart_EscapeSequences_in_key(t *testing.T) {
 	writeErr := func(s string) { errs = append(errs, s) }
 
 	opts := engine.Options{
-		Slurp:      false,
 		WithInline: false,
 		WriteOut:   writeOut,
 		WriteErr:   writeErr,
