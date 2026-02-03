@@ -233,6 +233,9 @@ func main() {
 		return
 	}
 
+	queryInput := textinput.New()
+	queryInput.Prompt = ""
+
 	commandInput := textinput.New()
 	commandInput.Prompt = ":"
 
@@ -273,6 +276,7 @@ func main() {
 		showSizes:           showSizes,
 		showLineNumbers:     showLineNumbers,
 		fileName:            fileName,
+		queryInput:          queryInput,
 		gotoSymbolInput:     gotoSymbolInput,
 		commandInput:        commandInput,
 		searchInput:         searchInput,
@@ -349,6 +353,7 @@ type model struct {
 	showLineNumbers       bool
 	totalLines            int
 	fileName              string
+	queryInput            textinput.Model
 	gotoSymbolInput       textinput.Model
 	commandInput          textinput.Model
 	searchInput           textinput.Model
@@ -539,6 +544,14 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tea.KeyMsg:
+		// Quit on Ctrl-C, no matter what.
+		if key.Matches(msg, ctrlC) {
+			return m, tea.Quit
+		}
+
+		if m.queryInput.Focused() {
+			return m.handleQueryKey(msg)
+		}
 		if m.commandInput.Focused() {
 			return m.handleGotoLineKey(msg)
 		}
@@ -557,6 +570,24 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleKey(msg)
 	}
 	return m, nil
+}
+
+func (m *model) handleQueryKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	switch {
+	case msg.Type == tea.KeyEscape:
+		m.queryInput.Blur()
+
+	case msg.Type == tea.KeyEnter:
+		m.queryInput.Blur()
+		command := m.queryInput.Value()
+		m.queryInput.SetValue("")
+		return m.runCommand(command)
+
+	default:
+		m.queryInput, cmd = m.queryInput.Update(msg)
+	}
+	return m, cmd
 }
 
 func (m *model) handleHelpKey(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -985,6 +1016,11 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keyMap.Delete):
 		m.deletePending = true
+
+	case key.Matches(msg, keyMap.Query):
+		m.queryInput.CursorEnd()
+		m.queryInput.Width = m.termWidth - 1 // -1 for the cursor
+		m.queryInput.Focus()
 	}
 	return m, nil
 }
