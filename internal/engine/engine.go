@@ -41,6 +41,12 @@ func Start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error,
 	// Fast path.
 	if isPrettyPrintArg {
 		for {
+			select {
+			case <-cancel:
+				return 0
+			default:
+			}
+
 			node, err := parser.Parse()
 
 			if err != nil {
@@ -100,6 +106,12 @@ func Start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error,
 	}
 
 	for {
+		select {
+		case <-cancel:
+			return 0
+		default:
+		}
+
 		node, err := parser.Parse()
 		if err != nil {
 			if err == io.EOF {
