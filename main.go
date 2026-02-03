@@ -911,6 +911,16 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keyMap.Open):
 		return m, m.open()
 
+	case key.Matches(msg, keyMap.DecodeJSON):
+		if m.decodeJSONString() {
+			m.recordHistory()
+		}
+
+	case key.Matches(msg, keyMap.EncodeJSON):
+		if m.encodeJSONValue() {
+			m.recordHistory()
+		}
+
 	case key.Matches(msg, keyMap.GotoSymbol):
 		m.gotoSymbolInput.CursorEnd()
 		m.gotoSymbolInput.Width = m.termWidth - 2 // -1 for the prompt, -1 for the cursor
@@ -1365,6 +1375,59 @@ func (m *model) cursorKey() string {
 		return v
 	}
 	return strconv.Itoa(at.Index)
+}
+
+func (m *model) editableNode() (*Node, bool) {
+	node, ok := m.cursorPointsTo()
+	if !ok || node == nil {
+		return nil, false
+	}
+	if node.IsWrap() && node.Parent != nil {
+		node = node.Parent
+	}
+	return node, true
+}
+
+func (m *model) decodeJSONString() bool {
+	node, ok := m.editableNode()
+	if !ok || node.Kind != String {
+		return false
+	}
+	raw, err := utils.Unquote(node.Value)
+	if err != nil {
+		return false
+	}
+	parsed, err := Parse([]byte(raw))
+	if err != nil {
+		return false
+	}
+	ReplaceNode(node, parsed)
+	Wrap(node, m.viewWidth())
+	m.redoSearch()
+	m.selectNode(node)
+	return true
+}
+
+func (m *model) encodeJSONValue() bool {
+	node, ok := m.editableNode()
+	if !ok || node.Kind == String {
+		return false
+	}
+	serialized := SerializeNode(node)
+	if serialized == "" {
+		return false
+	}
+	comma := ClearChildren(node)
+	node.Kind = String
+	node.Value = strconv.Quote(serialized)
+	node.Size = 0
+	node.Collapsed = nil
+	node.End = nil
+	node.Comma = comma
+	Wrap(node, m.viewWidth())
+	m.redoSearch()
+	m.selectNode(node)
+	return true
 }
 
 func (m *model) findByPath(path []any) *Node {

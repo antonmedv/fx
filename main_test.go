@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -61,6 +62,38 @@ func prepare(t *testing.T, opts ...options) *teatest.TestModel {
 	return tm
 }
 
+func newTestModelFromJSON(t *testing.T, data string) *model {
+	head, err := jsonx.Parse([]byte(data))
+	require.NoError(t, err)
+
+	m := &model{
+		top:          head,
+		head:         head,
+		bottom:       head,
+		totalLines:   head.Bottom().LineNumber,
+		eof:          true,
+		wrap:         true,
+		showCursor:   true,
+		searchInput:  textinput.New(),
+		search:       newSearch(),
+		commandInput: textinput.New(),
+	}
+	return m
+}
+
+func findChildByKey(n *jsonx.Node, key string) *jsonx.Node {
+	if n == nil {
+		return nil
+	}
+	keys, nodes := n.Children()
+	for i, k := range keys {
+		if k == key {
+			return nodes[i]
+		}
+	}
+	return nil
+}
+
 func read(t *testing.T, tm *teatest.TestModel) []byte {
 	var out []byte
 	teatest.WaitFor(t,
@@ -114,4 +147,18 @@ func TestCollapseRecursiveWithSizes(t *testing.T) {
 
 	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
 	tm.WaitFinished(t, teatest.WithFinalTimeout(time.Second))
+}
+
+func TestDecodeEncodeJSONNode(t *testing.T) {
+	m := newTestModelFromJSON(t, `{"args":"{\"requestId\":\"id\",\"content\":\"123\"}","cost":16}`)
+	args := findChildByKey(m.top, "args")
+	require.NotNil(t, args)
+	m.selectNode(args)
+	require.True(t, m.decodeJSONString())
+	require.Equal(t, jsonx.Object, args.Kind)
+	require.True(t, args.HasChildren())
+	require.True(t, m.encodeJSONValue())
+	require.Equal(t, jsonx.String, args.Kind)
+	expected := `{"requestId":"id","content":"123"}`
+	require.Equal(t, strconv.Quote(expected), args.Value)
 }
