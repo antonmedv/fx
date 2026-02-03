@@ -25,7 +25,7 @@ func extractErrorMessage(s string) string {
 	return s
 }
 
-func errorToString(err error) string {
+func gojaErrorToString(err error) string {
 	if exception, ok := err.(*goja.Exception); ok {
 		message := exception.Value().String()
 		message = extractErrorMessage(message)
