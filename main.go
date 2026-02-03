@@ -14,6 +14,7 @@ import (
 	"runtime/pprof"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/antonmedv/clipboard"
 	"github.com/charmbracelet/bubbles/key"
@@ -29,6 +30,7 @@ import (
 	"github.com/antonmedv/fx/internal/fuzzy"
 	"github.com/antonmedv/fx/internal/jsonpath"
 	. "github.com/antonmedv/fx/internal/jsonx"
+	"github.com/antonmedv/fx/internal/pretty"
 	"github.com/antonmedv/fx/internal/theme"
 	"github.com/antonmedv/fx/internal/toml"
 	"github.com/antonmedv/fx/internal/utils"
@@ -221,8 +223,36 @@ func main() {
 			}
 		}
 
-		// TODO: Create channels and output out/err from engine.
-		exitCode := engine.Start(parser, args)
+		out := make(chan *Node)
+		errCh := make(chan error)
+		cancel := make(chan struct{})
+
+		var wg sync.WaitGroup
+		wg.Add(2)
+
+		go func() {
+			defer wg.Done()
+			for node := range out {
+				if node.Kind == String {
+					fmt.Println(node.Value)
+				} else {
+					fmt.Println(pretty.Print(node, !flagNoInline))
+				}
+			}
+		}()
+
+		go func() {
+			defer wg.Done()
+			for err := range errCh {
+				fmt.Fprintln(os.Stderr, err)
+			}
+		}()
+
+		exitCode := engine.Start(parser, args, out, errCh, cancel)
+		close(out)
+		close(errCh)
+		wg.Wait()
+
 		if exitCode != 0 {
 			os.Exit(exitCode)
 		}
