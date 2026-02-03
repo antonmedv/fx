@@ -30,6 +30,8 @@ type KeyMap struct {
 	Preview             key.Binding `category:"Actions"`
 	Print               key.Binding `category:"Actions"`
 	Open                key.Binding `category:"Actions"`
+	DecodeJSON          key.Binding `category:"Actions"`
+	EncodeJSON          key.Binding `category:"Actions"`
 	ToggleWrap          key.Binding `category:"View"`
 	ShowSelector        key.Binding `category:"View"`
 	GoBack              key.Binding `category:"Navigation"`
@@ -175,6 +177,14 @@ func init() {
 		Open: key.NewBinding(
 			key.WithKeys("v"),
 			key.WithHelp("", "open in editor"),
+		),
+		DecodeJSON: key.NewBinding(
+			key.WithKeys("r"),
+			key.WithHelp("r", "decode JSON string"),
+		),
+		EncodeJSON: key.NewBinding(
+			key.WithKeys("R"),
+			key.WithHelp("R", "encode value as string"),
 		),
 		GoBack: key.NewBinding(
 			key.WithKeys("["),
