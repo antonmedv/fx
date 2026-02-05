@@ -360,6 +360,8 @@ type model struct {
 	printErrorOnExit      error
 	spinner               spinner.Model
 	locationHistory       []location
+	undoStack             []Tombstone
+	redoStack             []Tombstone
 	locationIndex         int // position in locationHistory
 	keysIndex             []string
 	keysIndexNodes        []*Node
@@ -976,7 +978,12 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keyMap.Delete):
 		m.deletePending = true
+	case key.Matches(msg, keyMap.Undo):
+		m.undoDelete()
+	case key.Matches(msg, keyMap.Redo): // Make sure Redo is defined in your keyMap
+		m.redoDelete()
 	}
+
 	return m, nil
 }
 
@@ -1033,6 +1040,46 @@ func (m *model) recordHistory() {
 		node: at,
 	})
 	m.locationIndex = len(m.locationHistory)
+}
+
+func (m *model) recordDeleteHistory(ts Tombstone) {
+	m.undoStack = append(m.undoStack, ts)
+	m.redoStack = []Tombstone{}
+
+	if len(m.undoStack) > 100 {
+		m.undoStack = m.undoStack[1:]
+	}
+}
+
+func (m *model) undoDelete() {
+	if len(m.undoStack) == 0 {
+		return
+	}
+
+	lastIdx := len(m.undoStack) - 1
+	t := m.undoStack[lastIdx]
+	m.undoStack = m.undoStack[:lastIdx]
+
+	t.DoUndo()
+
+	m.redoStack = append(m.redoStack, t)
+	m.selectNode(t.Target)
+}
+
+func (m *model) redoDelete() {
+	if len(m.redoStack) == 0 {
+		return
+	}
+
+	t := m.redoStack[len(m.redoStack)-1]
+	m.redoStack = m.redoStack[:len(m.redoStack)-1]
+
+	if next, ok := DeleteNode(t.Target); ok {
+		m.selectNode(next)
+		m.recordHistory()
+	}
+
+	m.undoStack = append(m.undoStack, t)
 }
 
 func (m *model) scrollToBottom() {
@@ -1467,7 +1514,16 @@ func (m *model) deleteAtCursor() {
 	if !ok || at == nil {
 		return
 	}
-	if next, ok := DeleteNode(at); ok {
+
+	nodeToDelete, ok := at.GetNodeToDelete()
+	if !ok {
+		return
+	}
+
+	ts := nodeToDelete.CreateTombstone()
+	m.recordDeleteHistory(ts)
+
+	if next, ok := DeleteNode(nodeToDelete); ok {
 		m.selectNode(next)
 		m.recordHistory()
 	}
