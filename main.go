@@ -14,6 +14,7 @@ import (
 	"runtime/pprof"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/antonmedv/clipboard"
 	"github.com/charmbracelet/bubbles/key"
@@ -29,6 +30,7 @@ import (
 	"github.com/antonmedv/fx/internal/fuzzy"
 	"github.com/antonmedv/fx/internal/jsonpath"
 	. "github.com/antonmedv/fx/internal/jsonx"
+	"github.com/antonmedv/fx/internal/pretty"
 	"github.com/antonmedv/fx/internal/theme"
 	"github.com/antonmedv/fx/internal/toml"
 	"github.com/antonmedv/fx/internal/utils"
@@ -211,18 +213,54 @@ func main() {
 	}
 
 	if len(args) > 0 || flagSlurp {
-		opts := engine.Options{
-			Slurp:      flagSlurp,
-			WithInline: !flagNoInline,
-			WriteOut:   func(s string) { fmt.Println(s) },
-			WriteErr:   func(s string) { fmt.Fprintln(os.Stderr, s) },
+		var err error
+
+		if flagSlurp {
+			parser, err = engine.Slurp(parser)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
 		}
-		exitCode := engine.Start(parser, args, opts)
+
+		out := make(chan *Node)
+		errCh := make(chan error)
+		cancel := make(chan struct{})
+
+		var wg sync.WaitGroup
+		wg.Add(2)
+
+		go func() {
+			defer wg.Done()
+			for node := range out {
+				if node.Kind == String {
+					fmt.Println(node.Value)
+				} else {
+					fmt.Println(pretty.Print(node, !flagNoInline))
+				}
+			}
+		}()
+
+		go func() {
+			defer wg.Done()
+			for err := range errCh {
+				fmt.Fprintln(os.Stderr, err)
+			}
+		}()
+
+		exitCode := engine.Start(parser, args, out, errCh, cancel)
+		close(out)
+		close(errCh)
+		wg.Wait()
+
 		if exitCode != 0 {
 			os.Exit(exitCode)
 		}
 		return
 	}
+
+	queryInput := textinput.New()
+	queryInput.Prompt = ""
 
 	commandInput := textinput.New()
 	commandInput.Prompt = ":"
@@ -264,6 +302,7 @@ func main() {
 		showSizes:           showSizes,
 		showLineNumbers:     showLineNumbers,
 		fileName:            fileName,
+		queryInput:          queryInput,
 		gotoSymbolInput:     gotoSymbolInput,
 		commandInput:        commandInput,
 		searchInput:         searchInput,
@@ -340,6 +379,7 @@ type model struct {
 	showLineNumbers       bool
 	totalLines            int
 	fileName              string
+	queryInput            textinput.Model
 	gotoSymbolInput       textinput.Model
 	commandInput          textinput.Model
 	searchInput           textinput.Model
@@ -530,6 +570,14 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tea.KeyMsg:
+		// Quit on Ctrl-C, no matter what.
+		if key.Matches(msg, ctrlC) {
+			return m, tea.Quit
+		}
+
+		if m.queryInput.Focused() {
+			return m.handleQueryKey(msg)
+		}
 		if m.commandInput.Focused() {
 			return m.handleGotoLineKey(msg)
 		}
@@ -548,6 +596,24 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleKey(msg)
 	}
 	return m, nil
+}
+
+func (m *model) handleQueryKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	switch {
+	case msg.Type == tea.KeyEscape:
+		m.showCursor = true
+		m.queryInput.Blur()
+
+	case msg.Type == tea.KeyEnter:
+		m.showCursor = true
+		m.queryInput.Blur()
+		m.doQuery(m.queryInput.Value())
+
+	default:
+		m.queryInput, cmd = m.queryInput.Update(msg)
+	}
+	return m, cmd
 }
 
 func (m *model) handleHelpKey(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -976,6 +1042,15 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keyMap.Delete):
 		m.deletePending = true
+
+	case key.Matches(msg, keyMap.Query):
+		m.showCursor = false
+		m.queryInput.CursorEnd()
+		m.queryInput.Width = m.termWidth - 1 // -1 for the cursor
+		if m.queryInput.Value() == "" {
+			m.queryInput.SetValue(".")
+		}
+		m.queryInput.Focus()
 	}
 	return m, nil
 }
