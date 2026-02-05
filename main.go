@@ -1447,7 +1447,7 @@ func (m *model) open() tea.Cmd {
 		strings.Split(lookup([]string{"FX_EDITOR", "EDITOR"}, "vim"), " "),
 		engine.FilePath,
 	)
-	if command[0] == "vi" || command[0] == "vim" {
+	if command[0] == "vi" || command[0] == "vim" || command[0] == "hx" {
 		at, ok := m.cursorPointsTo()
 		if ok {
 			tail := command[1:]
