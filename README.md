@@ -6,6 +6,16 @@
 
 See full documentation at [fx.wtf](https://fx.wtf).
 
+<hr>
+<p>
+  <a href="https://crow.watch"><img align="left" src="https://crow.watch/static/logo-rounded.png" alt="Crow Watch" width="140" height="140"></a>
+  <h3>Crow Watch</h3>
+  A computing-focused community.
+</p>
+<p>Join at <strong><a href="https://crow.watch/join/fx">crow.watch/join/fx</a></strong></p>
+<p>Share great links, cool code, and new tools.</p>
+<hr>
+
 ## Related
 
 - [walk](https://github.com/antonmedv/walk) – terminal file manager
