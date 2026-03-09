@@ -147,38 +147,42 @@ func (m *model) View() string {
 		screen = append(screen, '\n')
 	}
 
-	if m.gotoSymbolInput.Focused() && m.fuzzyMatch != nil {
-		var matchedStr []byte
-		str := m.fuzzyMatch.Str
-		for i := 0; i < len(str); i++ {
-			if utils.Contains(i, m.fuzzyMatch.Pos) {
-				matchedStr = append(matchedStr, theme.CurrentTheme.Search(string(str[i]))...)
-			} else {
-				matchedStr = append(matchedStr, theme.CurrentTheme.StatusBar(string(str[i]))...)
-			}
-		}
-		repeatCount := m.termWidth - len(str)
-		if repeatCount > 0 {
-			matchedStr = append(matchedStr, theme.CurrentTheme.StatusBar(strings.Repeat(" ", repeatCount))...)
-		}
-		screen = append(screen, matchedStr...)
+	if m.queryInput.Focused() || m.queryInput.Value() != "" {
+		screen = append(screen, m.queryInput.View()...)
 	} else {
-		statusBarWidth := m.termWidth
-		var indicator string
-		if m.eof {
-			percent := int(float64(cursorLineNumber) / float64(m.totalLines) * 100)
-			if cursorLineNumber == 1 {
-				percent = min(1, percent)
+		if m.gotoSymbolInput.Focused() && m.fuzzyMatch != nil {
+			var matchedStr []byte
+			str := m.fuzzyMatch.Str
+			for i := 0; i < len(str); i++ {
+				if utils.Contains(i, m.fuzzyMatch.Pos) {
+					matchedStr = append(matchedStr, theme.CurrentTheme.Search(string(str[i]))...)
+				} else {
+					matchedStr = append(matchedStr, theme.CurrentTheme.StatusBar(string(str[i]))...)
+				}
 			}
-			indicator = fmt.Sprintf("%d%%", percent)
+			repeatCount := m.termWidth - len(str)
+			if repeatCount > 0 {
+				matchedStr = append(matchedStr, theme.CurrentTheme.StatusBar(strings.Repeat(" ", repeatCount))...)
+			}
+			screen = append(screen, matchedStr...)
 		} else {
-			indicator = fmt.Sprintf(" %s", m.spinner.View())
-			statusBarWidth += 2 // adjust for spinner
-		}
+			statusBarWidth := m.termWidth
+			var indicator string
+			if m.eof {
+				percent := int(float64(cursorLineNumber) / float64(m.totalLines) * 100)
+				if cursorLineNumber == 1 {
+					percent = min(1, percent)
+				}
+				indicator = fmt.Sprintf("%d%%", percent)
+			} else {
+				indicator = fmt.Sprintf(" %s", m.spinner.View())
+				statusBarWidth += 2 // adjust for spinner
+			}
 
-		info := fmt.Sprintf("%s %s", indicator, m.fileName)
-		statusBar := flex(statusBarWidth, m.cursorPath(), info)
-		screen = append(screen, theme.CurrentTheme.StatusBar(statusBar)...)
+			info := fmt.Sprintf("%s %s", indicator, m.fileName)
+			statusBar := flex(statusBarWidth, m.cursorPath(), info)
+			screen = append(screen, theme.CurrentTheme.StatusBar(statusBar)...)
+		}
 	}
 
 	if m.yank {
