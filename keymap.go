@@ -30,6 +30,8 @@ type KeyMap struct {
 	Preview             key.Binding `category:"Actions"`
 	Print               key.Binding `category:"Actions"`
 	Open                key.Binding `category:"Actions"`
+	Undo                key.Binding `category:"Actions"`
+	Redo                key.Binding `category:"Actions"`
 	ToggleWrap          key.Binding `category:"View"`
 	ShowSelector        key.Binding `category:"View"`
 	GoBack              key.Binding `category:"Navigation"`
@@ -147,6 +149,14 @@ func init() {
 		Delete: key.NewBinding(
 			key.WithKeys("d"),
 			key.WithHelp("", "delete node"),
+		),
+		Undo: key.NewBinding(
+			key.WithKeys("u"),
+			key.WithHelp("", "undo delete"),
+		),
+		Redo: key.NewBinding(
+			key.WithKeys("ctrl+r"),
+			key.WithHelp("", "redo delete"),
 		),
 		CommandLine: key.NewBinding(
 			key.WithKeys(":"),

@@ -10,8 +10,9 @@
 [90m 4[0m    "tags": […],[K
 [90m 9[0m    "year": 3000,[K
 [90m10[0m    "funny": true,[K
-[90m11[0m    "author": {"name":"John Doe",…}[K
-[90m15[0m  }[K
+[90m11[0m    "author": {"name":"John Doe",…},[K
+[90m15[0m    "hasAvatar": true[K
+[90m16[0m  }[K
 ~[K
 ~[K
 ~[K
@@ -36,5 +37,4 @@
 ~[K
 ~[K
 ~[K
-~[K
-.text                                                                       20% [80D
+.text                                                                       18% [80D
