@@ -18,16 +18,17 @@ func readFxrc() (string, error) {
 	paths := []string{filepath.Join(cwd, ".fxrc.js")}
 
 	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("get home: %w", err)
+	if err == nil {
+		paths = append(paths, filepath.Join(home, ".fxrc.js"))
 	}
-	paths = append(paths, filepath.Join(home, ".fxrc.js"))
 
 	xdgHome := os.Getenv("XDG_CONFIG_HOME")
-	if xdgHome == "" {
+	if xdgHome == "" && home != "" {
 		xdgHome = filepath.Join(home, ".config")
 	}
-	paths = append(paths, filepath.Join(xdgHome, "fx", ".fxrc.js"))
+	if xdgHome != "" {
+		paths = append(paths, filepath.Join(xdgHome, "fx", ".fxrc.js"))
+	}
 
 	xdgDirs := os.Getenv("XDG_CONFIG_DIRS")
 	if xdgDirs == "" {
