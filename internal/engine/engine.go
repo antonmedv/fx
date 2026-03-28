@@ -4,13 +4,11 @@ import (
 	_ "embed"
 	"io"
 	"reflect"
-	"strconv"
 	"strings"
 
 	"github.com/dop251/goja"
 
 	"github.com/antonmedv/fx/internal/jsonx"
-	"github.com/antonmedv/fx/internal/pretty"
 )
 
 //go:embed stdlib.js
@@ -29,46 +27,37 @@ type Parser interface {
 	Recover() *jsonx.Node
 }
 
-type Options struct {
-	Slurp      bool
-	WithInline bool
-	WriteOut   func(string)
-	WriteErr   func(string)
+type Error struct {
+	error string
 }
 
-func Start(parser Parser, args []string, opts Options) int {
-	if opts.Slurp {
-		var ok bool
-		parser, ok = Slurp(parser, opts.WriteErr)
-		if !ok {
-			return 1
-		}
-	}
+func (e *Error) Error() string {
+	return e.error
+}
 
+func Start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error, cancel <-chan struct{}) int {
 	isPrettyPrintArg := len(args) == 1 && (args[0] == "." || args[0] == "this" || args[0] == "x")
 
 	// Fast path.
 	if isPrettyPrintArg {
 		for {
+			select {
+			case <-cancel:
+				return 0
+			default:
+			}
+
 			node, err := parser.Parse()
 
 			if err != nil {
 				if err == io.EOF {
 					break
 				}
-				opts.WriteErr(err.Error())
+				errCh <- err
 				return 1
 			}
 
-			if node.Kind == jsonx.String {
-				unquoted, err := strconv.Unquote(node.Value)
-				if err != nil {
-					panic(err)
-				}
-				opts.WriteOut(unquoted)
-			} else {
-				opts.WriteOut(pretty.Print(node, opts.WithInline))
-			}
+			out <- node
 		}
 
 		return 0
@@ -78,8 +67,8 @@ func Start(parser Parser, args []string, opts Options) int {
 		if err := validateSyntax(args, i); err != nil {
 			jsCode := transpile(args[i])
 			snippet := formatErr(args, i, jsCode)
-			message := errorToString(err)
-			opts.WriteErr(snippet + message)
+			message := gojaErrorToString(err)
+			errCh <- &Error{snippet + message}
 			return 1
 		}
 	}
@@ -88,9 +77,11 @@ func Start(parser Parser, args []string, opts Options) int {
 	code.WriteString(Stdlib)
 	code.WriteString(JS(args))
 
-	vm := NewVM(opts.WriteOut)
+	vm := NewVM(func(s string) {
+		out <- &jsonx.Node{Kind: jsonx.Err, Value: s}
+	})
 	if _, err := vm.RunString(code.String()); err != nil {
-		opts.WriteErr(errorToString(err))
+		errCh <- &Error{gojaErrorToString(err)}
 		return 1
 	}
 
@@ -101,26 +92,32 @@ func Start(parser Parser, args []string, opts Options) int {
 	echo := func(output goja.Value) {
 		rtype := output.ExportType()
 		if output.StrictEquals(undefined) {
-			opts.WriteErr("undefined")
+			errCh <- &Error{"undefined"}
 		} else if rtype != nil && rtype.Kind() == reflect.String {
-			opts.WriteOut(output.String())
+			out <- &jsonx.Node{Kind: jsonx.String, Value: output.String()}
 		} else {
 			jsonOut := Stringify(output, vm, 0)
 			nodeOut, err := jsonx.Parse([]byte(jsonOut))
 			if err != nil {
 				panic(err)
 			}
-			opts.WriteOut(pretty.Print(nodeOut, opts.WithInline))
+			out <- nodeOut
 		}
 	}
 
 	for {
+		select {
+		case <-cancel:
+			return 0
+		default:
+		}
+
 		node, err := parser.Parse()
 		if err != nil {
 			if err == io.EOF {
 				break
 			}
-			opts.WriteErr(err.Error())
+			errCh <- err
 			return 1
 		}
 
@@ -130,7 +127,7 @@ func Start(parser Parser, args []string, opts Options) int {
 			return exitCode
 		}
 		if err != nil {
-			opts.WriteErr(errorToString(err))
+			errCh <- &Error{gojaErrorToString(err)}
 			return 1
 		}
 
