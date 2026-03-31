@@ -115,3 +115,35 @@ func TestCollapseRecursiveWithSizes(t *testing.T) {
 	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
 	tm.WaitFinished(t, teatest.WithFinalTimeout(time.Second))
 }
+
+func TestUndoRedoInteraction(t *testing.T) {
+	tm := prepare(t)
+	targetKey := []byte(`"title"`)
+
+	// Leave root, then delete (first key)
+	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
+	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("d")})
+	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("d")})
+
+	// Verify the node is gone from the output
+	teatest.WaitFor(t, tm.Output(), func(b []byte) bool {
+		return !bytes.Contains(b, targetKey)
+	}, teatest.WithDuration(time.Second))
+
+	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("u")})
+
+	// Verify the node reappeared
+	teatest.WaitFor(t, tm.Output(), func(b []byte) bool {
+		return bytes.Contains(b, targetKey)
+	}, teatest.WithDuration(time.Second))
+
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlR})
+
+	// Verify it is gone again
+	teatest.WaitFor(t, tm.Output(), func(b []byte) bool {
+		return !bytes.Contains(b, targetKey)
+	}, teatest.WithDuration(time.Second))
+
+	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
+	tm.WaitFinished(t)
+}

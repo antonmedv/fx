@@ -17,8 +17,9 @@
 [90m11[0m    "author": {[K
 [90m12[0m      "name": "John Doe",[K
 [90m13[0m      "email": "john@doe.com"[K
-[90m14[0m    }[K
-[90m15[0m  }[K
+[90m14[0m    },[K
+[90m15[0m    "hasAvatar": true[K
+[90m16[0m  }[K
 ~[K
 ~[K
 ~[K
@@ -36,5 +37,4 @@
 ~[K
 ~[K
 ~[K
-~[K
-.tags                                                                       26% [80D
+.tags                                                                       25% [80D
