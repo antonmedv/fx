@@ -1308,7 +1308,7 @@ func (m *model) cursorValue() string {
 	}
 
 	if at.Kind == String {
-		str, err := strconv.Unquote(at.Value)
+		str, err := utils.Unquote(at.Value)
 		if err == nil {
 			return str
 		}

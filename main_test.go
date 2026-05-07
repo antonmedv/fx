@@ -84,6 +84,26 @@ func TestOutput(t *testing.T) {
 	tm.WaitFinished(t, teatest.WithFinalTimeout(time.Second))
 }
 
+// TestCursorValueDecodesJsonEscapesInWrappedArrayString verifies that preview
+// and print decode JSON string escapes even after the viewer wraps an array item.
+func TestCursorValueDecodesJsonEscapesInWrappedArrayString(t *testing.T) {
+	head, err := jsonx.Parse([]byte(`["before\ud83d\udd55\nsecond line after"]`))
+	require.NoError(t, err)
+
+	jsonx.Wrap(head, 12)
+	require.NotNil(t, head.Next)
+	require.NotNil(t, head.Next.ChunkEnd)
+
+	m := &model{
+		head:   head,
+		cursor: 1,
+	}
+	require.Equal(t, "before\U0001F555\nsecond line after", m.cursorValue())
+
+	m.cursor = 2
+	require.Equal(t, "before\U0001F555\nsecond line after", m.cursorValue())
+}
+
 func TestNavigation(t *testing.T) {
 	tm := prepare(t)
 
