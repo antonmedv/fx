@@ -2,7 +2,7 @@ module github.com/antonmedv/fx
 
 go 1.23.0
 
-toolchain go1.23.6
+toolchain go1.25.7
 
 require (
 	github.com/antonmedv/clipboard v1.0.1
