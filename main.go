@@ -157,10 +157,19 @@ func main() {
 	fd := os.Stdin.Fd()
 	stdinIsTty := isatty.IsTerminal(fd) || isatty.IsCygwinTerminal(fd)
 
+	// Check if stdin is actually piped/redirected input, not just non-TTY
+	// Default to false (treat as file/code mode) if we can't stat stdin
+	stdinIsInput := false
+	if stat, err := os.Stdin.Stat(); err == nil {
+		// ModeCharDevice is 0 for regular files and pipes, meaning actual data
+		stdinIsInput = (stat.Mode() & os.ModeCharDevice) == 0
+	}
+
 	var fileName string
 	var src io.Reader
 
-	if stdinIsTty {
+	// Use file mode when stdin is TTY or when stdin is a non-input device (e.g., /dev/null in launch agents)
+	if stdinIsTty || !stdinIsInput {
 		if len(args) == 0 {
 			// $ fx
 			fmt.Println(usage())
