@@ -97,7 +97,7 @@ The edited data will be saved to the same `file.json` file.
 
 ### Syntactic Sugar
 
-Fx has a shortcut for the map function. Fox example, `this.map(x => x.commit.message)`
+Fx has a shortcut for the map function. For example, `this.map(x => x.commit.message)`
 can be rewritten without leading dot and without `x => x` parts.  
 
 ```sh
@@ -108,7 +108,7 @@ curl https://api.github.com/repos/antonmedv/fx/commits | fx 'map(.commit.message
 echo '[{"name": "world"}]' | fx 'map(`Hello, ${x.name}!`)'
 ```
 
-Fx has a special syntax for the flatMap function. Fox example,
+Fx has a special syntax for the flatMap function. For example,
 `.issues.flatMap(x => x.labels.flatMap(x => x))` can be rewritten in the next way.
 
 ```sh
