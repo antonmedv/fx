@@ -39,18 +39,14 @@ func NewJsonParser(rd io.Reader, strict bool) *JsonParser {
 	header := make([]byte, 3)
 	n, _ := io.ReadFull(rd, header) // We ignore the error; if the file is < 3 bytes, n handles it
 
-	// Get stream to read
-	var finalReader io.Reader
-	if n == 3 && header[0] == '\xef' && header[1] == '\xbb' && header[2] == '\xbf' {
-		// It IS a BOM! throw the header away and proceed with the remaining stream
-		finalReader = rd
-	} else {
-		// Not a BOM - stitch the bytes we just read back onto the front of the stream
-		finalReader = io.MultiReader(bytes.NewReader(header[:n]), rd)
+	// Replace stream with stitched stream if BOM isn't detected
+	if n != 3 || header[0] != '\xef' || header[1] != '\xbb' || header[2] != '\xbf' {
+		rd = io.MultiReader(bytes.NewReader(header[:n]), rd)
 	}
+
 	p := &JsonParser{
 		strict:         strict,
-		rd:             finalReader,
+		rd:             rd,
 		buf:            make([]byte, 4096),
 		lineNumber:     1,
 		realLineNumber: 1,
