@@ -1,0 +1,19 @@
+# fx
+
+> A terminal JSON viewer and processor. Interactively explore JSON/YAML/TOML in a TUI, or use fx non-interactively to query and transform data with a JavaScript-based expression syntax.
+
+## Getting Started
+
+- [Usage](https://github.com/antonmedv/fx#readme): `fx data.json`, `fx data.json .field`, `curl ... | fx` — basic invocation patterns, also shown in `fx --help`.
+- [Install](https://fx.wtf/install): Homebrew, Snap, Scoop, pacman, `go install`, npm, Deno, Docker, Nix, or the install script (`curl https://fx.wtf/install.sh | sh`).
+- [Full documentation](https://fx.wtf): Complete guides and reference beyond what's in this repo's README.
+
+## Usage
+
+- [CLI flags](https://github.com/antonmedv/fx/blob/master/help.go): `--raw`, `--slurp`, `--yaml`, `--toml`, `--strict`, `--no-inline`, `--comp <shell>` for completion, `--themes`, and more — see `fx --help` for the authoritative list.
+- [Key bindings](https://github.com/antonmedv/fx/blob/master/keymap.go): Navigation, Expand/Collapse, Search, Actions, and View bindings; press `?` inside fx for the live help screen.
+
+## Optional
+
+- [Related tools](https://github.com/antonmedv/fx#related): [walk](https://github.com/antonmedv/walk) (terminal file manager), [howto](https://github.com/antonmedv/howto) (terminal command LLM helper), [countdown](https://github.com/antonmedv/countdown).
+- [License](https://github.com/antonmedv/fx/blob/master/LICENSE): MIT.
