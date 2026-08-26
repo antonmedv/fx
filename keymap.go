@@ -34,6 +34,7 @@ type KeyMap struct {
 	ShowSelector        key.Binding `category:"View"`
 	GoBack              key.Binding `category:"Navigation"`
 	GoForward           key.Binding `category:"Navigation"`
+	Query               key.Binding `category:"Other"`
 	Help                key.Binding `category:"Other"`
 	CommandLine         key.Binding `category:"Other"`
 	Quit                key.Binding `category:"Other"`
@@ -91,6 +92,10 @@ func init() {
 		Up: key.NewBinding(
 			key.WithKeys("up", "k"),
 			key.WithHelp("", "up"),
+		),
+		Query: key.NewBinding(
+			key.WithKeys("."),
+			key.WithHelp("", "open query input"),
 		),
 		Help: key.NewBinding(
 			key.WithKeys("?"),
@@ -193,8 +198,7 @@ var (
 	yankKey         = key.NewBinding(key.WithKeys("k"))
 	yankPath        = key.NewBinding(key.WithKeys("p"))
 	yankKeyValue    = key.NewBinding(key.WithKeys("b"))
-	arrowUp         = key.NewBinding(key.WithKeys("up"))
-	arrowDown       = key.NewBinding(key.WithKeys("down"))
 	showSizes       = key.NewBinding(key.WithKeys("s"))
 	showLineNumbers = key.NewBinding(key.WithKeys("l"))
+	ctrlC           = key.NewBinding(key.WithKeys("ctrl+c"))
 )
