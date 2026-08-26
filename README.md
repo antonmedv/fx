@@ -11,6 +11,7 @@ See full documentation at [fx.wtf](https://fx.wtf).
 - [walk](https://github.com/antonmedv/walk) – terminal file manager
 - [howto](https://github.com/antonmedv/howto) – terminal command LLM helper
 - [countdown](https://github.com/antonmedv/countdown) – terminal countdown timer
+- Online demo: <a href="https://build.demoshell.com/launch?snapshot=demoshell%2Ftui%3Afx"><img src="https://build.demoshell.com/v1/embed/badge.svg" alt="Live demo by Demoshell" align="absmiddle"></a>
 
 ## License
 
