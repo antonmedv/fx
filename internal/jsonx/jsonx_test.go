@@ -56,6 +56,9 @@ func TestJsonParser_Parse_error(t *testing.T) {
 	tests := []struct {
 		input string
 	}{
+		{``},
+		{`   `},
+		{"\n\t\n"},
 		{`"abc`},
 		{`truth`},
 		{`1e`},

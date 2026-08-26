@@ -52,10 +52,11 @@ func (p *JsonParser) Parse() (node *Node, err error) {
 			err = p.errorSnippet(fmt.Sprintf("%v", r))
 		}
 	}()
-	if p.count > 0 {
-		p.skipWhitespace()
-	}
+	p.skipWhitespace()
 	if p.eof {
+		if p.count == 0 {
+			return nil, fmt.Errorf("empty input")
+		}
 		return nil, io.EOF
 	}
 	node = p.parseValue(true)
@@ -79,7 +80,7 @@ func (p *JsonParser) Recover() *Node {
 	}
 
 	end := p.end - 1
-	if p.data[end-1] == '\n' {
+	if end > 0 && p.data[end-1] == '\n' {
 		end-- // Trim trailing newline.
 	}
 

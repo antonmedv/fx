@@ -104,6 +104,33 @@ func TestStart_FastPath_InvalidJSON(t *testing.T) {
 	assert.Len(t, errs, 1, "Expected one error message")
 }
 
+func TestStart_EmptyInput(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{"empty", ""},
+		{"whitespace", "   "},
+		{"newlines", "\n\t\n"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			parser := jsonx.NewJsonParser(strings.NewReader(tc.input), false)
+
+			var errs []string
+			opts := engine.Options{
+				WriteOut: func(s string) {},
+				WriteErr: func(s string) { errs = append(errs, s) },
+			}
+			exitCode := engine.Start(parser, []string{"."}, opts)
+
+			assert.Equal(t, 1, exitCode)
+			assert.Len(t, errs, 1)
+		})
+	}
+}
+
 func TestStart_EscapeSequences(t *testing.T) {
 	input := `{"emoji": "\ud83d\ude80"}`
 	parser := jsonx.NewJsonParser(strings.NewReader(input), false)
