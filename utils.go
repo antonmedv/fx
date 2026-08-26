@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path"
 	"regexp"
 	"strconv"
@@ -25,6 +26,19 @@ func lookup(names []string, defaultEditor string) string {
 		}
 	}
 	return defaultEditor
+}
+
+// previewTransform pipes value through the shell command and returns its
+// stdout. Used by the preview action when FX_PREVIEW is set so nested JSON,
+// markdown, etc. inside a string can be rendered without leaving fx.
+func previewTransform(command, value string) (string, error) {
+	cmd := exec.Command("sh", "-c", command)
+	cmd.Stdin = strings.NewReader(value)
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimRight(string(out), "\n"), nil
 }
 
 func open(filePath string, flagYaml, flagToml *bool) *os.File {

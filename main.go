@@ -905,6 +905,11 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 		if view == "" {
+			if transform := lookup([]string{"FX_PREVIEW"}, ""); transform != "" {
+				if out, err := previewTransform(transform, value); err == nil {
+					value = out
+				}
+			}
 			view = lipgloss.NewStyle().Width(m.termWidth).Render(value)
 		}
 		m.previewValue = value
