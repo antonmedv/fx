@@ -42,6 +42,7 @@ var (
 	flagComp     bool
 	flagStrict   bool
 	flagNoInline bool
+	flagNoPaging bool
 )
 
 var flags = []string{
@@ -54,6 +55,7 @@ var flags = []string{
 	"--toml",
 	"--strict",
 	"--no-inline",
+	"--no-paging",
 }
 
 func init() {
@@ -121,6 +123,8 @@ func main() {
 			flagStrict = true
 		case "--no-inline":
 			flagNoInline = true
+		case "--no-paging":
+			flagNoPaging = true
 		case "--game-of-life":
 			utils.GameOfLife()
 			return
@@ -217,6 +221,11 @@ func main() {
 		parser = NewLineParser(src)
 	} else {
 		parser = NewJsonParser(src, flagStrict)
+	}
+
+	_, noPager := os.LookupEnv("FX_NO_PAGER")
+	if (flagNoPaging || noPager) && len(args) == 0 {
+		args = []string{"."}
 	}
 
 	if len(args) > 0 || flagSlurp {
