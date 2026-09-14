@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/charmbracelet/x/term"
 	"github.com/goccy/go-yaml"
 
 	"github.com/antonmedv/fx/internal/jsonpath"
@@ -25,6 +26,19 @@ func lookup(names []string, defaultEditor string) string {
 		}
 	}
 	return defaultEditor
+}
+
+// reenterRawMode puts the terminal back into raw mode. Some programs piped into
+// fx (e.g. node) save the terminal state on startup and restore it on exit,
+// undoing the raw mode set by bubbletea and leaving the TUI unresponsive.
+// Their output reaches EOF only after that restore, so it's safe to redo here.
+func reenterRawMode() {
+	tty, err := os.Open("/dev/tty")
+	if err != nil {
+		return
+	}
+	defer tty.Close()
+	_, _ = term.MakeRaw(tty.Fd())
 }
 
 func open(filePath string, flagYaml, flagToml *bool) *os.File {

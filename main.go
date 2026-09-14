@@ -419,6 +419,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case eofMsg:
 		m.eof = true
+		reenterRawMode()
 		return m, nil
 
 	case errorMsg:
