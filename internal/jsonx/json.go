@@ -43,6 +43,24 @@ func NewJsonParser(rd io.Reader, strict bool) *JsonParser {
 		realLineNumber: 1,
 	}
 	p.next() // Should be called here, to support streaming.
+
+	if p.char == 0xEF {
+		p.next()
+		if p.char == 0xBB {
+			p.next()
+			if p.char == 0xBF {
+				p.next()
+			} else {
+				p.back()
+				p.back()
+				p.char = 0xEF
+			}
+		} else {
+			p.back()
+			p.char = 0xEF
+		}
+	}
+
 	return p
 }
 

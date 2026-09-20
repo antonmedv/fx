@@ -11,6 +11,7 @@ type KeyMap struct {
 	HalfPageDown        key.Binding `category:"Navigation"`
 	GotoTop             key.Binding `category:"Navigation"`
 	GotoBottom          key.Binding `category:"Navigation"`
+	GotoMatchingBracket key.Binding `category:"Navigation"`
 	NextSibling         key.Binding `category:"Navigation"`
 	PrevSibling         key.Binding `category:"Navigation"`
 	Expand              key.Binding `category:"Expand / Collapse"`
@@ -75,6 +76,10 @@ func init() {
 		GotoBottom: key.NewBinding(
 			key.WithKeys("G", "end"),
 			key.WithHelp("", "goto bottom"),
+		),
+		GotoMatchingBracket: key.NewBinding(
+			key.WithKeys("%"),
+			key.WithHelp("%", "goto matching bracket"),
 		),
 		GotoSymbol: key.NewBinding(
 			key.WithKeys("@"),

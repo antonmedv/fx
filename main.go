@@ -177,6 +177,11 @@ func main() {
 		} else {
 			// $ fx file.json arg*
 			filePath := args[0]
+			if strings.ContainsAny(filePath, "*?[") {
+				if matches, _ := filepath.Glob(filePath); len(matches) > 0 {
+					filePath = matches[0]
+				}
+			}
 			src = open(filePath, &flagYaml, &flagToml)
 			engine.FilePath = filePath
 			fileName = filepath.Base(filePath)
@@ -219,7 +224,13 @@ func main() {
 		parser = NewJsonParser(src, flagStrict)
 	}
 
-	if len(args) > 0 || flagSlurp {
+	stdoutIsTty := isatty.IsTerminal(os.Stdout.Fd()) || isatty.IsCygwinTerminal(os.Stdout.Fd())
+	_, noPager := os.LookupEnv("FX_NO_PAGER")
+
+	if len(args) > 0 || flagSlurp || !stdoutIsTty || noPager {
+		if len(args) == 0 {
+			args = []string{"."}
+		}
 		opts := engine.Options{
 			Slurp:      flagSlurp,
 			WithInline: !flagNoInline,
@@ -289,11 +300,18 @@ func main() {
 		withMouse = tea.WithAltScreen()
 	}
 
-	p := tea.NewProgram(m,
+	pOpts := []tea.ProgramOption{
 		tea.WithAltScreen(),
 		withMouse,
 		tea.WithOutput(os.Stderr),
-	)
+	}
+	if !stdinIsTty {
+		if tty, err := openTTY(); err == nil {
+			pOpts = append(pOpts, tea.WithInput(tty))
+		}
+	}
+
+	p := tea.NewProgram(m, pOpts...)
 
 	go func() {
 		firstOk := false
@@ -301,6 +319,10 @@ func main() {
 			node, err := parser.Parse()
 			if err != nil {
 				if err == io.EOF {
+					if !firstOk {
+						p.Send(errorMsg{err: errors.New("empty file")})
+						break
+					}
 					p.Send(eofMsg{})
 					break
 				}
@@ -741,6 +763,17 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keyMap.GotoBottom):
 		m.scrollToBottom()
 		m.recordHistory()
+
+	case key.Matches(msg, keyMap.GotoMatchingBracket):
+		pointsTo, ok := m.cursorPointsTo()
+		if ok {
+			if pointsTo.End != nil && pointsTo.End != pointsTo {
+				m.selectNode(pointsTo.End)
+			} else if pointsTo.Parent != nil && pointsTo.Parent.End == pointsTo {
+				m.selectNode(pointsTo.Parent)
+			}
+			m.recordHistory()
+		}
 
 	case key.Matches(msg, keyMap.NextSibling):
 		pointsTo, ok := m.cursorPointsTo()

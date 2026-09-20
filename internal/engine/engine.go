@@ -49,17 +49,23 @@ func Start(parser Parser, args []string, opts Options) int {
 
 	// Fast path.
 	if isPrettyPrintArg {
+		count := 0
 		for {
 			node, err := parser.Parse()
 
 			if err != nil {
 				if err == io.EOF {
+					if count == 0 {
+						opts.WriteErr("empty file")
+						return 1
+					}
 					break
 				}
 				opts.WriteErr(err.Error())
 				return 1
 			}
 
+			count++
 			if node.Kind == jsonx.String {
 				unquoted, err := strconv.Unquote(node.Value)
 				if err != nil {
@@ -114,15 +120,21 @@ func Start(parser Parser, args []string, opts Options) int {
 		}
 	}
 
+	count := 0
 	for {
 		node, err := parser.Parse()
 		if err != nil {
 			if err == io.EOF {
+				if count == 0 {
+					opts.WriteErr("empty file")
+					return 1
+				}
 				break
 			}
 			opts.WriteErr(err.Error())
 			return 1
 		}
+		count++
 
 		input := node.ToValue(vm)
 		output, exitCode, err := callMain(main, input)
