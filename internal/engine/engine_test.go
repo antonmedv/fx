@@ -4,12 +4,14 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/antonmedv/fx/internal/engine"
 	"github.com/antonmedv/fx/internal/jsonx"
 	"github.com/antonmedv/fx/internal/pretty"
+	"github.com/antonmedv/fx/internal/utils"
 )
 
 // runEngine runs the engine with the given parser and args, collecting outputs and errors.
@@ -26,7 +28,11 @@ func runEngine(parser engine.Parser, args []string) (exitCode int, outs []string
 		defer wg.Done()
 		for node := range out {
 			if node.Kind == jsonx.String {
-				outs = append(outs, node.Value)
+				unquoted, err := utils.Unquote(node.Value)
+				if err != nil {
+					panic(err)
+				}
+				outs = append(outs, unquoted)
 			} else {
 				outs = append(outs, pretty.Print(node, false))
 			}
@@ -60,7 +66,7 @@ func TestEngine(t *testing.T) {
 			name:     "fast path: string as raw",
 			input:    `"Hello, world!"`,
 			args:     []string{"."},
-			expects:  []string{"\"Hello, world!\""},
+			expects:  []string{"Hello, world!"},
 			errCount: 0,
 		},
 		{
@@ -151,4 +157,46 @@ func TestStart_Cancel(t *testing.T) {
 
 	// Should return 0 on cancellation
 	assert.Equal(t, 0, exitCode)
+}
+
+func TestStart_StringNodeIsQuoted(t *testing.T) {
+	parser := jsonx.NewJsonParser(strings.NewReader(`{"a": "x\"y"}`), false)
+
+	out := make(chan *jsonx.Node, 10)
+	errCh := make(chan error, 10)
+	exitCode := engine.Start(parser, []string{".a"}, out, errCh, make(chan struct{}))
+	close(out)
+	close(errCh)
+
+	assert.Equal(t, 0, exitCode)
+	node := <-out
+	assert.Equal(t, jsonx.String, node.Kind)
+	assert.Equal(t, `"x\"y"`, node.Value)
+}
+
+func TestStart_CancelWhileBlockedOnSend(t *testing.T) {
+	for _, args := range [][]string{{"."}, {"x + 1"}, {"x => undefined"}} {
+		t.Run(args[0], func(t *testing.T) {
+			parser := jsonx.NewJsonParser(strings.NewReader("1 2 3 4 5"), false)
+
+			// Unbuffered and never read: Start blocks on the first send.
+			out := make(chan *jsonx.Node)
+			errCh := make(chan error)
+			cancel := make(chan struct{})
+
+			done := make(chan int)
+			go func() {
+				done <- engine.Start(parser, args, out, errCh, cancel)
+			}()
+
+			close(cancel)
+
+			select {
+			case exitCode := <-done:
+				assert.Equal(t, 0, exitCode)
+			case <-time.After(2 * time.Second):
+				t.Fatal("Start did not return after cancel")
+			}
+		})
+	}
 }
