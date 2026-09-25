@@ -14,7 +14,6 @@ import (
 	"runtime/pprof"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/antonmedv/clipboard"
 	"github.com/charmbracelet/bubbles/key"
@@ -236,31 +235,32 @@ func main() {
 		errCh := make(chan error)
 		cancel := make(chan struct{})
 
-		var wg sync.WaitGroup
-		wg.Add(2)
-
+		// Single consumer keeps stdout/stderr order identical to engine order.
+		done := make(chan int)
 		go func() {
-			defer wg.Done()
-			for node := range out {
+			done <- engine.Start(parser, args, out, errCh, cancel)
+		}()
+
+		var exitCode int
+	loop:
+		for {
+			select {
+			case node := <-out:
 				if node.Kind == String {
-					fmt.Println(node.Value)
+					unquoted, err := utils.Unquote(node.Value)
+					if err != nil {
+						panic(err)
+					}
+					fmt.Println(unquoted)
 				} else {
 					fmt.Println(pretty.Print(node, !flagNoInline))
 				}
-			}
-		}()
-
-		go func() {
-			defer wg.Done()
-			for err := range errCh {
+			case err := <-errCh:
 				fmt.Fprintln(os.Stderr, err)
+			case exitCode = <-done:
+				break loop
 			}
-		}()
-
-		exitCode := engine.Start(parser, args, out, errCh, cancel)
-		close(out)
-		close(errCh)
-		wg.Wait()
+		}
 
 		if exitCode != 0 {
 			os.Exit(exitCode)

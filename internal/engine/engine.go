@@ -53,11 +53,13 @@ func Start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error,
 				if err == io.EOF {
 					break
 				}
-				errCh <- err
+				sendErr(errCh, err, cancel)
 				return 1
 			}
 
-			out <- node
+			if !send(out, node, cancel) {
+				return 0
+			}
 		}
 
 		return 0
@@ -68,7 +70,7 @@ func Start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error,
 			jsCode := transpile(args[i])
 			snippet := formatErr(args, i, jsCode)
 			message := gojaErrorToString(err)
-			errCh <- &Error{snippet + message}
+			sendErr(errCh, &Error{snippet + message}, cancel)
 			return 1
 		}
 	}
@@ -78,10 +80,10 @@ func Start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error,
 	code.WriteString(JS(args))
 
 	vm := NewVM(func(s string) {
-		out <- &jsonx.Node{Kind: jsonx.Err, Value: s}
+		send(out, &jsonx.Node{Kind: jsonx.Err, Value: s}, cancel)
 	})
 	if _, err := vm.RunString(code.String()); err != nil {
-		errCh <- &Error{gojaErrorToString(err)}
+		sendErr(errCh, &Error{gojaErrorToString(err)}, cancel)
 		return 1
 	}
 
@@ -89,19 +91,20 @@ func Start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error,
 	undefined := vm.Get("undefined")
 	main, _ := goja.AssertFunction(vm.Get("__main__"))
 
-	echo := func(output goja.Value) {
+	// echo returns false if cancelled.
+	echo := func(output goja.Value) bool {
 		rtype := output.ExportType()
 		if output.StrictEquals(undefined) {
-			errCh <- &Error{"undefined"}
+			return sendErr(errCh, &Error{"undefined"}, cancel)
 		} else if rtype != nil && rtype.Kind() == reflect.String {
-			out <- &jsonx.Node{Kind: jsonx.String, Value: output.String()}
+			return send(out, &jsonx.Node{Kind: jsonx.String, Value: Quote(output.String())}, cancel)
 		} else {
 			jsonOut := Stringify(output, vm, 0)
 			nodeOut, err := jsonx.Parse([]byte(jsonOut))
 			if err != nil {
 				panic(err)
 			}
-			out <- nodeOut
+			return send(out, nodeOut, cancel)
 		}
 	}
 
@@ -117,7 +120,7 @@ func Start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error,
 			if err == io.EOF {
 				break
 			}
-			errCh <- err
+			sendErr(errCh, err, cancel)
 			return 1
 		}
 
@@ -127,17 +130,39 @@ func Start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error,
 			return exitCode
 		}
 		if err != nil {
-			errCh <- &Error{gojaErrorToString(err)}
+			sendErr(errCh, &Error{gojaErrorToString(err)}, cancel)
 			return 1
 		}
 
 		if output.StrictEquals(skip) {
 			continue
 		}
-		echo(output)
+		if !echo(output) {
+			return 0
+		}
 	}
 
 	return 0
+}
+
+// send delivers node to out, returns false if cancelled.
+func send(out chan *jsonx.Node, node *jsonx.Node, cancel <-chan struct{}) bool {
+	select {
+	case out <- node:
+		return true
+	case <-cancel:
+		return false
+	}
+}
+
+// sendErr delivers err to errCh, returns false if cancelled.
+func sendErr(errCh chan error, err error, cancel <-chan struct{}) bool {
+	select {
+	case errCh <- err:
+		return true
+	case <-cancel:
+		return false
+	}
 }
 
 func callMain(main goja.Callable, input goja.Value) (output goja.Value, exitCode int, err error) {
