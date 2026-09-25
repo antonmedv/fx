@@ -20,6 +20,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.2.3
 	github.com/rivo/uniseg v0.4.7
 	github.com/stretchr/testify v1.9.0
+	gopkg.in/edn.v1 v1.0.0-20180723231152-d2d5b26ce027
 )
 
 require (

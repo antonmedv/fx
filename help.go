@@ -31,6 +31,7 @@ func usage() string {
     -s, --slurp           read all inputs into an array
     --yaml                parse input as YAML
     --toml                parse input as TOML
+    --edn                 parse input as EDN
     --strict              strict mode
     --no-inline           disable inlining in output
     --game-of-life        play the game of life
