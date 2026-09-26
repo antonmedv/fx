@@ -454,6 +454,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case eofMsg:
 		m.eof = true
+		if m.query != nil {
+			m.query.parser.setEOF()
+		}
 		return m, nil
 
 	case errorMsg:
@@ -461,6 +464,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 
 	case nodeMsg:
+		if m.original != nil {
+			m.appendOriginal(msg.node)
+			return m, nil
+		}
 		m.appendNode(msg.node)
 		m.totalLines = msg.node.Bottom().LineNumber
 		return m, nil

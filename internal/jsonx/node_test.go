@@ -2,6 +2,7 @@ package jsonx
 
 import (
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -97,4 +98,20 @@ func TestNode_ForEach_SkipsNested(t *testing.T) {
 		}
 	})
 	assert.Equal(t, []string{"a", "c"}, keys)
+}
+
+func TestNode_AdjacentKeepsWrapChunks(t *testing.T) {
+	n, err := Parse([]byte(`"` + strings.Repeat("word ", 30) + `"`))
+	require.NoError(t, err)
+	Wrap(n, 20)
+	require.NotNil(t, n.ChunkEnd)
+	chunkEnd := n.ChunkEnd
+
+	next, err := Parse([]byte(`1`))
+	require.NoError(t, err)
+	n.Adjacent(next)
+
+	require.Same(t, next, chunkEnd.Next)
+	require.Same(t, chunkEnd, next.Prev)
+	require.NotSame(t, next, n.Next, "chunks must stay between the string and the next document")
 }
