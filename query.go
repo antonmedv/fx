@@ -575,29 +575,34 @@ func snapshot(top *Node) []byte {
 		if doc.Kind == Err {
 			continue
 		}
-		for it := doc; it != nil; {
-			if !it.IsWrap() {
-				if it.Key != "" {
-					b.WriteString(it.Key)
-					b.WriteByte(':')
-				}
-				b.WriteString(it.Value)
-				if it.Comma && it != doc.End {
-					b.WriteByte(',')
-				}
-			}
-			if it == doc.End || doc.End == nil {
-				break
-			}
-			if it.IsCollapsed() {
-				it = it.Collapsed
-			} else {
-				it = it.Next
-			}
-		}
-		b.WriteByte('\n')
+		writeDoc(&b, doc)
 	}
 	return b.Bytes()
+}
+
+// writeDoc serializes the top-level document doc as a JSON line.
+func writeDoc(b *bytes.Buffer, doc *Node) {
+	for it := doc; it != nil; {
+		if !it.IsWrap() {
+			if it.Key != "" {
+				b.WriteString(it.Key)
+				b.WriteByte(':')
+			}
+			b.WriteString(it.Value)
+			if it.Comma && it != doc.End {
+				b.WriteByte(',')
+			}
+		}
+		if it == doc.End || doc.End == nil {
+			break
+		}
+		if it.IsCollapsed() {
+			it = it.Collapsed
+		} else {
+			it = it.Next
+		}
+	}
+	b.WriteByte('\n')
 }
 
 const queryHistorySize = 100
@@ -684,9 +689,8 @@ func (m *model) queryInputView() string {
 		v.WriteString(tokenColor(kinds[i])(string(value[i:j])))
 		i = j
 	}
-	if pos == len(value) && showCursor {
-		cursor.SetChar(" ")
-		v.WriteString(cursor.View())
+	if pos == len(value) {
+		v.WriteString(m.ghostView(value[start:end], showCursor))
 	}
 	return m.queryInput.Prompt + v.String()
 }

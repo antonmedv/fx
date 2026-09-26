@@ -43,14 +43,6 @@ func isFile(path string) bool {
 	return !info.IsDir()
 }
 
-func dropTail(s string) string {
-	parts := strings.Split(s, ".")
-	if len(parts) == 1 {
-		return s
-	}
-	return strings.Join(parts[:len(parts)-1], ".")
-}
-
 func balanceBrackets(code string) string {
 	var stack []rune
 	brackets := map[rune]rune{')': '(', '}': '{', ']': '['}

@@ -397,6 +397,7 @@ type model struct {
 	queryHistory          []string   // applied queries, oldest first
 	queryHistoryIndex     int        // browsed entry; len(queryHistory) means the draft
 	queryHistoryDraft     string     // text typed before browsing history
+	completion            completion // autocompletion of the query input
 	gotoSymbolInput       textinput.Model
 	commandInput          textinput.Model
 	searchInput           textinput.Model
@@ -488,11 +489,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case nodeMsg:
 		if m.original != nil {
 			m.appendOriginal(msg.node)
-			return m, nil
+			return m, m.completionDocsArrived()
 		}
 		m.appendNode(msg.node)
 		m.totalLines = msg.node.Bottom().LineNumber
-		return m, nil
+		return m, m.completionDocsArrived()
 
 	case queryResultMsg:
 		return m, m.handleQueryResult(msg)
@@ -505,6 +506,16 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case previewTickMsg:
 		return m, m.handlePreviewTick(msg)
+
+	case completeTickMsg:
+		return m, m.handleCompleteTick(msg)
+
+	case completeEngineMsg:
+		m.handleCompleteEngine(msg)
+		return m, nil
+
+	case completeStreamMsg:
+		return m, m.handleCompleteStream()
 
 	case spinner.TickMsg:
 		if !m.eof || m.searching || m.restoring {
@@ -628,6 +639,7 @@ func (m *model) handleQueryKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.showCursor = true
 		m.queryInput.Blur()
 		m.cancelPreview()
+		m.stopCompletion()
 		m.queryInput.SetValue("")
 		cmd = m.clearQuery()
 
@@ -635,20 +647,37 @@ func (m *model) handleQueryKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.showCursor = true
 		m.queryInput.Blur()
 		m.cancelPreview()
+		m.stopCompletion()
 		m.addQueryHistory(m.queryInput.Value())
 		cmd = m.doQuery(m.queryInput.Value())
 
 	case msg.Type == tea.KeyUp:
 		m.queryHistoryPrev()
+		cmd = m.updateCompletion()
 
 	case msg.Type == tea.KeyDown:
 		m.queryHistoryNext()
+		cmd = m.updateCompletion()
+
+	case msg.Type == tea.KeyTab:
+		cmd = m.completeKey(+1)
+
+	case msg.Type == tea.KeyShiftTab:
+		cmd = m.completeKey(-1)
 
 	default:
-		before := m.queryInput.Value()
+		if msg.Type == tea.KeyRight || msg.Type == tea.KeyEnd || msg.Type == tea.KeyCtrlE {
+			if cmd, ok := m.acceptGhost(); ok {
+				return m, cmd
+			}
+		}
+		before, pos := m.queryInput.Value(), m.queryInput.Position()
 		m.queryInput, cmd = m.queryInput.Update(msg)
 		if m.queryInput.Value() != before {
 			cmd = tea.Batch(cmd, m.schedulePreview())
+		}
+		if m.queryInput.Value() != before || m.queryInput.Position() != pos || m.completion.menu {
+			cmd = tea.Batch(cmd, m.updateCompletion())
 		}
 	}
 	return m, cmd
@@ -1090,6 +1119,7 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		m.queryHistoryIndex = len(m.queryHistory)
 		m.queryInput.Focus()
+		return m, m.resetCompletion()
 	}
 	return m, nil
 }
@@ -1329,7 +1359,7 @@ func (m *model) viewHeight() int {
 		return m.termHeight - 2
 	}
 	if m.queryInput.Focused() || m.queryInput.Value() != "" {
-		return m.termHeight - 2
+		return m.termHeight - 2 - m.completionRows()
 	}
 	if m.yank {
 		return m.termHeight - 2

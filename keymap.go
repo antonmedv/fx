@@ -95,7 +95,7 @@ func init() {
 		),
 		Query: key.NewBinding(
 			key.WithKeys("."),
-			key.WithHelp("", "open query input"),
+			key.WithHelp("", "open query input (tab completes keys)"),
 		),
 		Help: key.NewBinding(
 			key.WithKeys("?"),

@@ -197,6 +197,10 @@ func (m *model) View() string {
 		screen = append(screen, '\n')
 		screen = append(screen, m.searchInput.View()...)
 	} else if m.queryInput.Focused() {
+		for _, line := range m.completionGridView() {
+			screen = append(screen, '\n')
+			screen = append(screen, line...)
+		}
 		screen = append(screen, '\n')
 		screen = append(screen, m.queryInputView()...)
 	} else if m.searchInput.Value() != "" {
