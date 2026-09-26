@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"strings"
 	"testing"
@@ -703,4 +704,61 @@ func TestSnapshot(t *testing.T) {
 		"s",
 		2.0,
 	}, docs)
+}
+
+func up(m *model)   { m.Update(tea.KeyMsg{Type: tea.KeyUp}) }
+func down(m *model) { m.Update(tea.KeyMsg{Type: tea.KeyDown}) }
+
+func TestHistory_UpDownAndDraft(t *testing.T) {
+	m := newQueryModel(t, `{"a": 1, "b": 2}`)
+	typeKeys(m, ".a")
+	enter(m)
+	typeKeys(m, ".")
+	m.queryInput.SetValue(".b")
+	enter(m)
+
+	typeKeys(m, ".")
+	m.queryInput.SetValue(".dra")
+	up(m)
+	require.Equal(t, ".b", m.queryInput.Value())
+	up(m)
+	require.Equal(t, ".a", m.queryInput.Value())
+	up(m)
+	require.Equal(t, ".a", m.queryInput.Value(), "stays at oldest")
+	down(m)
+	require.Equal(t, ".b", m.queryInput.Value())
+	down(m)
+	require.Equal(t, ".dra", m.queryInput.Value(), "draft restored")
+	down(m)
+	require.Equal(t, ".dra", m.queryInput.Value())
+	require.Equal(t, []string{"2"}, lines(m), "browsing must not apply")
+}
+
+func TestHistory_AddRules(t *testing.T) {
+	m := newQueryModel(t)
+	for _, q := range []string{".a", ".a", " .a ", ".", "", "x", ".b", ".a"} {
+		m.addQueryHistory(q)
+	}
+	require.Equal(t, []string{".a", ".b", ".a"}, m.queryHistory)
+
+	for i := 0; i < queryHistorySize+10; i++ {
+		m.addQueryHistory(fmt.Sprintf(".k%d", i))
+	}
+	require.Len(t, m.queryHistory, queryHistorySize)
+	require.Equal(t, fmt.Sprintf(".k%d", queryHistorySize+9), m.queryHistory[queryHistorySize-1])
+}
+
+func TestHistory_BrowsingDoesNotPreview(t *testing.T) {
+	m := newQueryModel(t, `{"a": 1, "b": 2}`)
+	m.addQueryHistory(".a")
+	typeKeys(m, ".")
+	m.queryInput.SetValue(".b")
+	m.schedulePreview()
+	pending := m.previewSeq
+
+	up(m)
+	require.Equal(t, ".a", m.queryInput.Value())
+	require.Nil(t, m.handlePreviewTick(previewTickMsg{seq: pending}), "pending tick dropped")
+	require.Nil(t, m.livePreview)
+	require.Nil(t, m.original)
 }

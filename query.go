@@ -534,3 +534,51 @@ func snapshot(top *Node) []byte {
 	}
 	return b.Bytes()
 }
+
+const queryHistorySize = 100
+
+func (m *model) addQueryHistory(query string) {
+	query = strings.TrimSpace(query)
+	if isIdentityQuery(query) {
+		return
+	}
+	if n := len(m.queryHistory); n > 0 && m.queryHistory[n-1] == query {
+		return
+	}
+	m.queryHistory = append(m.queryHistory, query)
+	if len(m.queryHistory) > queryHistorySize {
+		m.queryHistory = m.queryHistory[len(m.queryHistory)-queryHistorySize:]
+	}
+}
+
+// queryHistoryPrev shows the previous history entry. Browsing does not
+// trigger a live preview.
+func (m *model) queryHistoryPrev() {
+	if m.queryHistoryIndex == 0 {
+		return
+	}
+	if m.queryHistoryIndex == len(m.queryHistory) {
+		m.queryHistoryDraft = m.queryInput.Value()
+	}
+	m.queryHistoryIndex--
+	m.setQueryInput(m.queryHistory[m.queryHistoryIndex])
+}
+
+func (m *model) queryHistoryNext() {
+	if m.queryHistoryIndex >= len(m.queryHistory) {
+		return
+	}
+	m.queryHistoryIndex++
+	if m.queryHistoryIndex == len(m.queryHistory) {
+		m.setQueryInput(m.queryHistoryDraft)
+	} else {
+		m.setQueryInput(m.queryHistory[m.queryHistoryIndex])
+	}
+}
+
+func (m *model) setQueryInput(value string) {
+	m.previewSeq++ // Drop a pending preview tick.
+	m.stopPreview()
+	m.queryInput.SetValue(value)
+	m.queryInput.CursorEnd()
+}

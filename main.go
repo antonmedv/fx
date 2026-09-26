@@ -387,6 +387,9 @@ type model struct {
 	queryErrors           map[*Node]struct{} // error lines in the result view
 	livePreview           *queryRun          // running live preview, nil if none
 	previewSeq            uint64             // increments with each keystroke to debounce previews
+	queryHistory          []string           // applied queries, oldest first
+	queryHistoryIndex     int                // browsed entry; len(queryHistory) means the draft
+	queryHistoryDraft     string             // text typed before browsing history
 	gotoSymbolInput       textinput.Model
 	commandInput          textinput.Model
 	searchInput           textinput.Model
@@ -613,7 +616,14 @@ func (m *model) handleQueryKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.showCursor = true
 		m.queryInput.Blur()
 		m.stopPreview()
+		m.addQueryHistory(m.queryInput.Value())
 		cmd = m.doQuery(m.queryInput.Value())
+
+	case msg.Type == tea.KeyUp:
+		m.queryHistoryPrev()
+
+	case msg.Type == tea.KeyDown:
+		m.queryHistoryNext()
 
 	default:
 		before := m.queryInput.Value()
@@ -1059,6 +1069,7 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.queryInput.Value() == "" {
 			m.queryInput.SetValue(".")
 		}
+		m.queryHistoryIndex = len(m.queryHistory)
 		m.queryInput.Focus()
 	}
 	return m, nil
