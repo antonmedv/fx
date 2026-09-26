@@ -74,14 +74,23 @@ func closer(c byte) byte {
 // skipGroup returns the index after the closing bracket end, starting inside
 // the group at s[i].
 func skipGroup(s string, i int, end byte) int {
+	if j := findClose(s, i, end); j >= 0 {
+		return j + 1
+	}
+	return len(s)
+}
+
+// findClose returns the index of the closing bracket end, starting inside
+// the group at s[i], or -1 if the group is unterminated.
+func findClose(s string, i int, end byte) int {
 	start := i
 	for i < len(s) {
 		if s[i] == end {
-			return i + 1
+			return i
 		}
 		i = skipToken(s, i, s[start:i])
 	}
-	return i
+	return -1
 }
 
 func skipString(s string, i int) int {

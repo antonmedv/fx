@@ -1083,3 +1083,66 @@ func TestQuery_SearchTextSavedWithResults(t *testing.T) {
 	require.Same(t, original, m.search)
 	require.Equal(t, "bar", m.searchInput.Value())
 }
+
+// markTokenColors makes the query highlight colors visible in the output.
+func markTokenColors(t *testing.T) {
+	saved := theme.CurrentTheme
+	t.Cleanup(func() { theme.CurrentTheme = saved })
+	mark := func(name string) theme.Color {
+		return func(s string) string { return name + "(" + s + ")" }
+	}
+	theme.CurrentTheme.Key = mark("key")
+	theme.CurrentTheme.String = mark("str")
+	theme.CurrentTheme.Number = mark("num")
+	theme.CurrentTheme.Boolean = mark("bool")
+	theme.CurrentTheme.Null = mark("null")
+	theme.CurrentTheme.Syntax = mark("syn")
+	theme.CurrentTheme.Preview = mark("dim")
+}
+
+func newQueryInputModel(t *testing.T, value string) *model {
+	markTokenColors(t)
+	m := newQueryModel(t, `{}`)
+	m.queryInput.Prompt = ""
+	m.queryInput.SetValue(value)
+	return m
+}
+
+func TestQueryInputView_Highlights(t *testing.T) {
+	m := newQueryInputModel(t, `@.name x => x.a ?? "b" typeof 1 null // c`)
+	require.Equal(t,
+		`syn(@.)key(name) x syn(=>) xsyn(.)key(a) syn(??) str("b") bool(typeof) num(1) null(null) dim(// c)`,
+		m.queryInputView())
+}
+
+func TestQueryInputView_Unicode(t *testing.T) {
+	m := newQueryInputModel(t, `.ключ "日本 語" ok`)
+	require.Equal(t, `syn(.)key(ключ) str("日本 語") ok`, m.queryInputView())
+}
+
+func TestQueryInputView_Scrolls(t *testing.T) {
+	m := newQueryInputModel(t, "aaaaa bbbbb")
+	m.queryInput.Width = 5
+
+	m.queryInput.CursorEnd()
+	require.Equal(t, "bbbbb", m.queryInputView(), "end: last 5 columns, cursor after")
+
+	m.queryInput.SetCursor(8)
+	require.Equal(t, "bbbbb", m.queryInputView(), "cursor inside the window: no scroll")
+
+	m.queryInput.SetCursor(2)
+	require.Equal(t, "aaa b", m.queryInputView(), "cursor left of the window: scroll to it")
+
+	m.queryInput.SetCursor(0)
+	require.Equal(t, "aaaaa", m.queryInputView())
+
+	m.queryInput.SetCursor(7)
+	require.Equal(t, "aa bb", m.queryInputView(), "cursor right of the window: scroll to it")
+}
+
+func TestQueryInputView_WideRunes(t *testing.T) {
+	m := newQueryInputModel(t, `"日本語"`)
+	m.queryInput.Width = 4
+	m.queryInput.CursorEnd()
+	require.Equal(t, `str(語")`, m.queryInputView())
+}

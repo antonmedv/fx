@@ -387,6 +387,7 @@ type model struct {
 	showLineNumbers       bool
 	fileName              string
 	queryInput            textinput.Model
+	queryInputOffset      int        // first rune of the query shown, when it is wider than the input
 	query                 *queryRun  // running or last finished query, nil if none
 	original              *savedView // saved original view while a query result is shown
 	runningQueries        int        // engine goroutines still reading the original

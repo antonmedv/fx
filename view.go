@@ -198,7 +198,7 @@ func (m *model) View() string {
 		screen = append(screen, m.searchInput.View()...)
 	} else if m.queryInput.Focused() {
 		screen = append(screen, '\n')
-		screen = append(screen, m.queryInput.View()...)
+		screen = append(screen, m.queryInputView()...)
 	} else if m.searchInput.Value() != "" {
 		screen = append(screen, '\n')
 		re, ci := regexCase(m.searchInput.Value())
@@ -219,7 +219,7 @@ func (m *model) View() string {
 		}
 	} else if m.queryInput.Value() != "" {
 		screen = append(screen, '\n')
-		screen = append(screen, m.queryInput.View()...)
+		screen = append(screen, m.queryInputView()...)
 	}
 
 	return string(screen)

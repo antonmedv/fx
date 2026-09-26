@@ -7,11 +7,14 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/mattn/go-runewidth"
 
 	"github.com/antonmedv/fx/internal/engine"
 	. "github.com/antonmedv/fx/internal/jsonx"
+	"github.com/antonmedv/fx/internal/theme"
 )
 
 // savedView is the original view, set aside while a query result is shown.
@@ -603,4 +606,97 @@ func (m *model) setQueryInput(value string) {
 	m.cancelPreview()
 	m.queryInput.SetValue(value)
 	m.queryInput.CursorEnd()
+}
+
+// queryInputView renders the query input with its JS syntax highlighted.
+// It replaces the textinput view, which can style the text only as a whole.
+func (m *model) queryInputView() string {
+	query := m.queryInput.Value()
+	value := []rune(query)
+	pos := m.queryInput.Position()
+	start, end := m.queryInputWindow(value, pos)
+
+	// Token kind of every rune; whitespace is TokenPlain.
+	kinds := make([]engine.TokenKind, len(value))
+	r, b := 0, 0 // rune and byte index
+	for _, t := range engine.Tokenize(query) {
+		for ; r < len(value) && b < t.End; r++ {
+			if b >= t.Start {
+				kinds[r] = t.Kind
+			}
+			b += utf8.RuneLen(value[r])
+		}
+	}
+
+	var v strings.Builder
+	cursor := m.queryInput.Cursor
+	showCursor := m.queryInput.Focused() && !cursor.Blink
+	for i := start; i < end; {
+		if i == pos && showCursor {
+			cursor.SetChar(string(value[i]))
+			v.WriteString(cursor.View())
+			i++
+			continue
+		}
+		j := i + 1
+		for j < end && kinds[j] == kinds[i] && !(j == pos && showCursor) {
+			j++
+		}
+		v.WriteString(tokenColor(kinds[i])(string(value[i:j])))
+		i = j
+	}
+	if pos == len(value) && showCursor {
+		cursor.SetChar(" ")
+		v.WriteString(cursor.View())
+	}
+	return m.queryInput.Prompt + v.String()
+}
+
+func tokenColor(kind engine.TokenKind) theme.Color {
+	t := theme.CurrentTheme
+	switch kind {
+	case engine.TokenString:
+		return t.String
+	case engine.TokenNumber:
+		return t.Number
+	case engine.TokenKeyword, engine.TokenBoolean:
+		return t.Boolean
+	case engine.TokenNull:
+		return t.Null
+	case engine.TokenProperty:
+		return t.Key
+	case engine.TokenPunct:
+		return t.Syntax
+	case engine.TokenComment:
+		return t.Preview
+	}
+	return func(s string) string { return s }
+}
+
+// queryInputWindow returns the runes [start, end) of the query shown in the
+// input, scrolling it like the textinput does: the window moves only as far
+// as needed to keep the cursor visible.
+func (m *model) queryInputWindow(value []rune, pos int) (start, end int) {
+	width := m.queryInput.Width
+	if width <= 0 || runewidth.StringWidth(string(value)) <= width {
+		m.queryInputOffset = 0
+		return 0, len(value)
+	}
+	start = min(m.queryInputOffset, pos)
+	end, w := start, 0
+	for end < len(value) && w+runewidth.RuneWidth(value[end]) <= width {
+		w += runewidth.RuneWidth(value[end])
+		end++
+	}
+	if pos >= end {
+		// Align the window's right edge with the cursor.
+		end = min(pos+1, len(value))
+		start, w = end, 0
+		for start > 0 && w+runewidth.RuneWidth(value[start-1]) <= width {
+			w += runewidth.RuneWidth(value[start-1])
+			start--
+		}
+	}
+	m.queryInputOffset = start
+	return start, end
 }
