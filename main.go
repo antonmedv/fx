@@ -1315,6 +1315,9 @@ func (m *model) viewHeight() int {
 	if m.searchInput.Focused() || m.searchInput.Value() != "" {
 		return m.termHeight - 2
 	}
+	if m.queryInput.Focused() || m.queryInput.Value() != "" {
+		return m.termHeight - 2
+	}
 	if m.yank {
 		return m.termHeight - 2
 	}

@@ -762,3 +762,32 @@ func TestHistory_BrowsingDoesNotPreview(t *testing.T) {
 	require.Nil(t, m.livePreview)
 	require.Nil(t, m.original)
 }
+
+func TestQuery_StatusBarKept(t *testing.T) {
+	m := newQueryModel(t, `{"a": [1, 2]}`)
+	m.fileName = "file.json"
+	m.termHeight = 10
+
+	screenLines := func() []string {
+		return strings.Split(m.View(), "\n")
+	}
+
+	typeKeys(m, ".a")
+	got := screenLines()
+	require.Len(t, got, m.termHeight)
+	require.Contains(t, got[len(got)-2], "file.json", "status bar while editing")
+	require.Contains(t, got[len(got)-1], ".a", "query line while editing")
+
+	enter(m)
+	got = screenLines()
+	require.Len(t, got, m.termHeight)
+	require.Contains(t, got[len(got)-2], "file.json", "status bar while query applied")
+	require.Contains(t, got[len(got)-1], ".a", "query line while query applied")
+
+	typeKeys(m, ".")
+	m.queryInput.SetValue(".")
+	enter(m)
+	got = screenLines()
+	require.Len(t, got, m.termHeight)
+	require.Contains(t, got[len(got)-1], "file.json", "status bar is last line after clear")
+}
