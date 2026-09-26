@@ -687,7 +687,7 @@ func (m *model) handleHelpKey(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	if msg, ok := msg.(tea.KeyMsg); ok {
 		switch {
-		case key.Matches(msg, keyMap.Quit), key.Matches(msg, keyMap.Help):
+		case key.Matches(msg, keyMap.Quit), key.Matches(msg, keyMap.Help), key.Matches(msg, escKey):
 			m.showHelp = false
 		}
 	}

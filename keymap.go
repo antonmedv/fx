@@ -46,7 +46,7 @@ var keyMap KeyMap
 func init() {
 	keyMap = KeyMap{
 		Quit: key.NewBinding(
-			key.WithKeys("q", "ctrl+c", "esc"),
+			key.WithKeys("q", "ctrl+c"),
 			key.WithHelp("", "exit program"),
 		),
 		Suspend: key.NewBinding(
@@ -201,4 +201,5 @@ var (
 	showSizes       = key.NewBinding(key.WithKeys("s"))
 	showLineNumbers = key.NewBinding(key.WithKeys("l"))
 	ctrlC           = key.NewBinding(key.WithKeys("ctrl+c"))
+	escKey          = key.NewBinding(key.WithKeys("esc"))
 )

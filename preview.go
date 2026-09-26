@@ -20,7 +20,8 @@ func (m *model) handlePreviewKey(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		switch {
 		case key.Matches(msg, keyMap.Quit),
-			key.Matches(msg, keyMap.Preview):
+			key.Matches(msg, keyMap.Preview),
+			key.Matches(msg, escKey):
 			m.showPreview = false
 			return m, nil
 
