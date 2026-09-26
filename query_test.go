@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/antonmedv/fx/internal/jsonx"
+	"github.com/antonmedv/fx/internal/theme"
 )
 
 // docList links documents the same way nodeMsg does.
@@ -475,4 +476,96 @@ func TestNodesParser_SkipsRecoveredText(t *testing.T) {
 
 	p := newNodesParser(l.head, l.bottom, true)
 	require.Equal(t, []string{"1", "2"}, parseAll(t, p))
+}
+
+func TestQuery_ErrorStopsAndIsShownBelowResults(t *testing.T) {
+	m := newQueryModel(t, `{"n": {"x": 1}}`, `{"n": {"x": 2}}`, `{"id": 3}`, `{"n": {"x": 4}}`)
+
+	typeKeys(m, ".")
+	m.queryInput.SetValue("x => x.n.x * 10")
+	enter(m)
+
+	got := lines(m)
+	require.Equal(t, []string{"10", "20"}, got[:2])
+	require.Greater(t, len(got), 2)
+	require.NotContains(t, got, "40", "engine must stop at the failing document")
+	require.Contains(t, strings.Join(got[2:], "\n"), "TypeError")
+
+	require.False(t, m.isQueryError(m.top))
+	errLine := m.top.Next.Next
+	require.True(t, m.isQueryError(errLine))
+	require.Equal(t, theme.CurrentTheme.Error(errLine.Value), m.prettyPrint(errLine, false, false))
+
+	// The query is kept for fixing.
+	typeKeys(m, ".")
+	require.True(t, m.queryInput.Focused())
+	require.Equal(t, "x => x.n.x * 10", m.queryInput.Value())
+}
+
+func TestQuery_PrintlnIsNotStyledAsError(t *testing.T) {
+	m := newQueryModel(t, `1`)
+	drain(m, m.doQuery("x => (console.log('hello'), x)"))
+	require.Equal(t, []string{"hello", "1"}, lines(m))
+	require.False(t, m.isQueryError(m.top))
+}
+
+func TestQuery_WrappedErrorLineIsStyled(t *testing.T) {
+	m := newQueryModel(t, `1`)
+	m.wrap = true
+	m.termWidth = 20
+	drain(m, m.doQuery("x => { throw new Error('"+strings.Repeat("long ", 20)+"') }"))
+
+	wrapped := 0
+	for it := m.top; it != nil; it = it.Next {
+		if it.IsWrap() {
+			wrapped++
+			require.True(t, m.isQueryError(it))
+		}
+	}
+	require.Greater(t, wrapped, 0)
+}
+
+func TestQuery_EscKeepsEditedText(t *testing.T) {
+	m := newQueryModel(t, `{"a": 1, "ab": 2}`)
+	typeKeys(m, ".a")
+	enter(m)
+	require.Equal(t, []string{"1"}, lines(m))
+
+	typeKeys(m, ".b")
+	require.Equal(t, ".ab", m.queryInput.Value())
+	m.Update(tea.KeyMsg{Type: tea.KeyEscape})
+
+	require.False(t, m.queryInput.Focused())
+	require.Equal(t, ".ab", m.queryInput.Value())
+	require.Equal(t, []string{"1"}, lines(m), "Esc must not apply")
+}
+
+func TestQuery_ClearDropsErrorStyles(t *testing.T) {
+	m := newQueryModel(t, `1`)
+	drain(m, m.doQuery("x => x.y.z"))
+	require.NotNil(t, m.queryErrors)
+	drain(m, m.doQuery("."))
+	require.Nil(t, m.queryErrors)
+}
+
+func TestQuery_IdentityQueriesShowOriginal(t *testing.T) {
+	for _, q := range []string{"", ".", "x", "this", " x "} {
+		m := newQueryModel(t, `{"a": 1}`)
+		top := m.top
+		require.Nil(t, m.doQuery(q), q)
+		require.Nil(t, m.original, q)
+		require.Same(t, top, m.top, q)
+	}
+}
+
+func TestQuery_ViewEveryLine(t *testing.T) {
+	m := newQueryModel(t, `{"n": {"x": 1}}`, `{"n": {"x": 2}}`, `{"id": 3}`)
+	m.wrap = true
+	drain(m, m.doQuery(".n.x.toFixed(1)"))
+	for it := m.top; it != nil; it = it.Next {
+		require.NotZero(t, it.LineNumber, "%q", it.Value)
+	}
+	for m.cursor = 0; m.cursor < len(lines(m)); m.cursor++ {
+		require.NotPanics(t, func() { m.View() })
+	}
 }

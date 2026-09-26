@@ -97,7 +97,7 @@ func Start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error,
 		if output.StrictEquals(undefined) {
 			return sendErr(errCh, &Error{"undefined"}, cancel)
 		} else if rtype != nil && rtype.Kind() == reflect.String {
-			return send(out, &jsonx.Node{Kind: jsonx.String, Value: Quote(output.String())}, cancel)
+			return send(out, &jsonx.Node{Kind: jsonx.String, Value: Quote(output.String()), LineNumber: 1}, cancel)
 		} else {
 			jsonOut := Stringify(output, vm, 0)
 			nodeOut, err := jsonx.Parse([]byte(jsonOut))
