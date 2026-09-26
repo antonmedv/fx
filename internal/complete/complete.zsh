@@ -26,7 +26,8 @@ _fx() {
             compadd -f -d display_files -a insert_files
         fi
         if (( ${#insert_other} )); then
-            compadd -S '' -d display_other -a insert_other
+            # -U: fx matches the word itself, and `.items.` completes to `.items[].key`.
+            compadd -U -S '' -d display_other -a insert_other
         fi
     fi
 }

@@ -1,7 +1,13 @@
 package complete
 
 import (
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/antonmedv/fx/internal/jsonx"
 )
@@ -229,4 +235,34 @@ func TestKeysComplete_DisplayVsValue(t *testing.T) {
 			}
 		})
 	}
+}
+
+// doCompleteOutput runs doComplete on a file holding json and returns what
+// it prints, one reply per line.
+func doCompleteOutput(t *testing.T, json, words string) []string {
+	file := filepath.Join(t.TempDir(), "file.json")
+	require.NoError(t, os.WriteFile(file, []byte(json), 0644))
+
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	stdout := os.Stdout
+	os.Stdout = w
+	line := "fx " + file + " " + words
+	doComplete(line, lastWord(line), false)
+	os.Stdout = stdout
+	require.NoError(t, w.Close())
+	out, err := io.ReadAll(r)
+	require.NoError(t, err)
+	if len(out) == 0 {
+		return nil
+	}
+	return strings.Split(string(out), "\n")
+}
+
+func TestDoComplete_ArrayRewrite(t *testing.T) {
+	json := `{"users": [{"name": 1}, {"age": 2}], "user": {"id": 1}}`
+	// `.users[].name` does not start with the typed `.users.`, but replaces it.
+	require.Equal(t, []string{".users[].name", ".users[].age"}, doCompleteOutput(t, json, ".users."))
+	require.Equal(t, []string{".users", ".user"}, doCompleteOutput(t, json, ".us"))
+	require.Equal(t, []string{"map"}, doCompleteOutput(t, json, "ma"))
 }

@@ -172,7 +172,9 @@ func doComplete(compLine string, compWord string, withDisplay bool) {
 		reply = KeysComplete(nil, args, compWord) // Globals only.
 	}
 
-	compReply(filterReply(reply, compWord), withDisplay)
+	// Replies already match the word; filtering by prefix would drop the
+	// rewrite of `.items.` to `.items[].key`.
+	compReply(reply, withDisplay)
 }
 
 // KeysComplete completes compWord, the last of the command line args
