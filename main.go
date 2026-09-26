@@ -389,6 +389,8 @@ type model struct {
 	totalLines            int
 	fileName              string
 	queryInput            textinput.Model
+	query                 *queryRun  // running or last finished query, nil if none
+	original              *viewState // saved original view while a query result is shown
 	gotoSymbolInput       textinput.Model
 	commandInput          textinput.Model
 	searchInput           textinput.Model
@@ -466,32 +468,18 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 
 	case nodeMsg:
-		if m.wrap {
-			Wrap(msg.node, m.viewWidth())
-		}
-		if m.collapsed {
-			msg.node.CollapseRecursively()
-		}
+		m.appendNode(msg.node)
 		m.totalLines = msg.node.Bottom().LineNumber
-
-		if m.head == nil {
-			m.head = msg.node
-			m.top = msg.node
-			m.bottom = msg.node
-		} else {
-			to, ok := m.cursorPointsTo()
-			if !ok {
-				return m, nil
-			}
-			scrollToBottom := to == m.bottom.Bottom()
-			msg.node.Index = -1 // To fix the statusbar path (to show .key instead of [0].key).
-			m.bottom.Adjacent(msg.node)
-			m.bottom = msg.node
-			if scrollToBottom {
-				m.scrollToBottom()
-			}
-		}
 		return m, nil
+
+	case queryResultMsg:
+		return m, m.handleQueryResult(msg)
+
+	case queryErrorMsg:
+		return m, m.handleQueryError(msg)
+
+	case queryDoneMsg:
+		return m, m.handleQueryDone(msg)
 
 	case spinner.TickMsg:
 		if !m.eof || m.searching {
@@ -617,7 +605,7 @@ func (m *model) handleQueryKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case msg.Type == tea.KeyEnter:
 		m.showCursor = true
 		m.queryInput.Blur()
-		m.doQuery(m.queryInput.Value())
+		cmd = m.doQuery(m.queryInput.Value())
 
 	default:
 		m.queryInput, cmd = m.queryInput.Update(msg)
@@ -1117,6 +1105,31 @@ func (m *model) recordHistory() {
 		node: at,
 	})
 	m.locationIndex = len(m.locationHistory)
+}
+
+// appendNode attaches a new top-level document to the displayed list.
+func (m *model) appendNode(node *Node) {
+	if m.wrap {
+		Wrap(node, m.viewWidth())
+	}
+	if m.collapsed {
+		node.CollapseRecursively()
+	}
+
+	if m.head == nil {
+		m.head = node
+		m.top = node
+		m.bottom = node
+	} else {
+		to, ok := m.cursorPointsTo()
+		scrollToBottom := ok && to == m.bottom.Bottom()
+		node.Index = -1 // To fix the statusbar path (to show .key instead of [0].key).
+		m.bottom.Adjacent(node)
+		m.bottom = node
+		if scrollToBottom {
+			m.scrollToBottom()
+		}
+	}
 }
 
 func (m *model) scrollToBottom() {
