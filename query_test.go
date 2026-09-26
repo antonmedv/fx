@@ -791,3 +791,91 @@ func TestQuery_StatusBarKept(t *testing.T) {
 	require.Len(t, got, m.termHeight)
 	require.Contains(t, got[len(got)-1], "file.json", "status bar is last line after clear")
 }
+
+func TestQuery_ClearNeverEndingQuery(t *testing.T) {
+	m := newQueryModel(t, `1`)
+	top := m.top
+	cmd := m.doQuery("x => { while (true) {} }")
+	time.Sleep(50 * time.Millisecond)
+	m.doQuery(".")
+
+	done := make(chan struct{})
+	go func() {
+		drain(m, cmd)
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("restore blocked by a never-ending query")
+	}
+	require.Nil(t, m.original)
+	require.Same(t, top, m.top)
+	require.Empty(t, lines(m)[1:], "no error for a cancelled run")
+}
+
+func TestPreview_NeverEndingQueryStops(t *testing.T) {
+	m := newQueryModel(t, `1`)
+	typeKeys(m, ".")
+	m.queryInput.SetValue("x => { while (true) {} }")
+	m.schedulePreview()
+	cmd := m.handlePreviewTick(previewTickMsg{seq: m.previewSeq})
+	run := m.livePreview
+	time.Sleep(50 * time.Millisecond)
+	m.Update(tea.KeyMsg{Type: tea.KeyEscape})
+
+	done := make(chan struct{})
+	go func() {
+		drain(m, cmd)
+		close(done)
+	}()
+	select {
+	case <-done:
+		require.True(t, run.done)
+	case <-time.After(2 * time.Second):
+		t.Fatal("preview goroutine still running")
+	}
+}
+
+func TestQuery_RestoreAfterWrapToggle(t *testing.T) {
+	long := `{"s": "` + strings.Repeat("word ", 30) + `"}`
+	hasChunks := func(top *jsonx.Node) bool {
+		for it := top; it != nil; it = it.Next {
+			if it.IsWrap() {
+				return true
+			}
+		}
+		return false
+	}
+	toggleWrap := func(m *model) {
+		m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(keyMap.ToggleWrap.Keys()[0])})
+	}
+
+	t.Run("turned off", func(t *testing.T) {
+		m := newQueryModel(t, long)
+		m.wrap = true
+		jsonx.Wrap(m.top, m.viewWidth())
+		m.head = m.top.Next.Next // Scrolled to a chunk.
+		m.cursor = 0
+		require.True(t, m.head.IsWrap())
+
+		drain(m, m.doQuery(".s"))
+		toggleWrap(m)
+		require.False(t, m.wrap)
+		drain(m, m.doQuery("."))
+
+		require.False(t, hasChunks(m.top), "original must be unwrapped")
+		require.False(t, m.head.IsWrap(), "scroll position must not be a dropped chunk")
+		require.NotPanics(t, func() { m.View() })
+	})
+
+	t.Run("turned on", func(t *testing.T) {
+		m := newQueryModel(t, long)
+		m.wrap = false
+		drain(m, m.doQuery(".s"))
+		toggleWrap(m)
+		require.True(t, m.wrap)
+		drain(m, m.doQuery("."))
+		require.True(t, hasChunks(m.top), "original must be wrapped")
+	})
+}

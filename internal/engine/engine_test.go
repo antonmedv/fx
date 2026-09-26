@@ -210,3 +210,25 @@ func TestStart_StringNodeHasLineNumber(t *testing.T) {
 	close(out)
 	require.Equal(t, 1, (<-out).LineNumber)
 }
+
+func TestStart_CancelInterruptsRunningJS(t *testing.T) {
+	parser := jsonx.NewJsonParser(strings.NewReader("1"), false)
+	out := make(chan *jsonx.Node)
+	errCh := make(chan error)
+	cancel := make(chan struct{})
+
+	done := make(chan int)
+	go func() {
+		done <- engine.Start(parser, []string{"x => { while (true) {} }"}, out, errCh, cancel)
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+	close(cancel)
+
+	select {
+	case exitCode := <-done:
+		assert.Equal(t, 0, exitCode)
+	case <-time.After(2 * time.Second):
+		t.Fatal("Start did not return after cancel")
+	}
+}
