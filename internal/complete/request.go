@@ -285,6 +285,26 @@ func isSpace(c byte) bool {
 
 var identRe = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]*$`)
 
+// quoteSingle is engine.Quote with single quotes: control characters are
+// escaped too, as a string literal cannot hold a raw newline.
+func quoteSingle(key string) string {
+	var b strings.Builder
+	b.WriteByte('\'')
+	for _, r := range key {
+		switch r {
+		case '\'':
+			b.WriteString(`\'`)
+		case '"':
+			b.WriteByte('"')
+		default:
+			q := engine.Quote(string(r))
+			b.WriteString(q[1 : len(q)-1])
+		}
+	}
+	b.WriteByte('\'')
+	return b.String()
+}
+
 // accessor returns the JS to access key: `.key`, or `["key"]` if key is not
 // an identifier. dot is prepended to a bracket, for `.["key"]` at the start.
 func accessor(key string, dot bool, quote byte) string {
@@ -293,7 +313,7 @@ func accessor(key string, dot bool, quote byte) string {
 	}
 	var s string
 	if quote == '\'' {
-		s = "'" + strings.ReplaceAll(strings.ReplaceAll(key, `\`, `\\`), `'`, `\'`) + "'"
+		s = quoteSingle(key)
 	} else {
 		s = engine.Quote(key)
 	}

@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"io"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/dop251/goja"
 	"github.com/stretchr/testify/require"
 
 	"github.com/antonmedv/fx/internal/jsonx"
@@ -339,4 +341,28 @@ func TestReplies_BuiltinsIfNoStdlibMatches(t *testing.T) {
 		r, _ := ParseQuery(query)
 		require.ElementsMatch(t, want, values(Replies(r, sliceDocs(&docs))), query)
 	}
+}
+
+// TestAccessorRoundTrip checks that the JS of every accessor evaluates back
+// to its key, in both quote styles.
+func TestAccessorRoundTrip(t *testing.T) {
+	keys := []string{"hello\nworld", "tab\there", "cr\rbs\bff\f", "nul\x00del\x7f", "esc\x1b[0m",
+		`back\slash`, `dq"`, `sq'`, `both'"\`, "日本 語", "line sep"}
+	for _, key := range keys {
+		for _, quote := range []byte{'"', '\''} {
+			a := accessor(key, false, quote)
+			for _, c := range a {
+				require.False(t, c < 0x20 || c == 0x7f, "raw control character in %q", a)
+			}
+			v, err := goja.New().RunString("({[" + strconv.Quote(key) + "]: 1})" + a)
+			require.NoError(t, err, a)
+			require.Equal(t, int64(1), v.Export(), "%s does not access %q", a, key)
+		}
+	}
+}
+
+func TestReplies_SingleQuotedControlCharacters(t *testing.T) {
+	docs := parseDocs(t, `{"hello\nworld": 1}`)
+	r, _ := ParseQuery(`.['h`)
+	require.Equal(t, []string{`.['hello\nworld']`}, values(Replies(r, sliceDocs(&docs))))
 }

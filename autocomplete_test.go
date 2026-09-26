@@ -290,3 +290,12 @@ func TestComplete_GridFitsShortTerminal(t *testing.T) {
 	require.Len(t, m.completionGridView(), m.completionRows())
 	require.Len(t, strings.Split(m.View(), "\n"), m.termHeight)
 }
+
+func TestComplete_SingleQuotedControlCharacters(t *testing.T) {
+	m := newQueryModel(t, `{"hello\nworld": 42}`)
+	typeQuery(m, `.['h`)
+	press(m, tea.KeyTab)
+	require.Equal(t, `.['hello\nworld']`, m.queryInput.Value())
+	enter(m)
+	require.Equal(t, []string{"42"}, lines(m), "the key is found")
+}
