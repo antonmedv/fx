@@ -29,6 +29,7 @@ type completion struct {
 	selected int  // reply inserted by the menu
 	seq      uint64
 	cancel   chan struct{} // stops the running engine, nil if none
+	engine   bool          // the replies come from the engine, not the documents
 	dirty    bool          // documents arrived since the replies were computed
 	ticking  bool          // a refresh for streamed documents is scheduled
 	first    *firstDoc
@@ -96,7 +97,8 @@ func (m *model) completionDocs() complete.Docs {
 // documents may have changed (deleted) since the last time.
 func (m *model) resetCompletion() tea.Cmd {
 	m.stopCompletion()
-	m.completion = completion{}
+	// seq keeps counting, so ticks of the previous input stay stale.
+	m.completion = completion{seq: m.completion.seq}
 	return m.updateCompletion()
 }
 
@@ -133,6 +135,7 @@ func (m *model) updateCompletion() tea.Cmd {
 	c.start, c.word = start, r.Word
 	replies, needEngine := c.cache.Complete(r, m.completionDocs())
 	c.setReplies(replies)
+	c.engine = needEngine
 	if !needEngine {
 		return nil
 	}
@@ -204,7 +207,9 @@ func (m *model) completionDocsArrived() tea.Cmd {
 func (m *model) handleCompleteStream() tea.Cmd {
 	c := &m.completion
 	c.ticking = false
-	if !c.dirty || !m.queryInput.Focused() || c.menu || c.cancel != nil {
+	// The engine reads only the first document, so streamed ones change
+	// nothing; refreshing would restart its debounce, forever while streaming.
+	if !c.dirty || !m.queryInput.Focused() || c.menu || c.engine {
 		return nil
 	}
 	return m.updateCompletion()
@@ -343,11 +348,12 @@ func (m *model) completionGridView() []string {
 	}
 	c := &m.completion
 	first, shown := 0, g.shown
-	if g.rows > g.shown {
-		shown = max(1, g.shown-1)
-		if c.menu {
-			first = max(0, min(c.selected/g.cols-shown/2, g.rows-shown))
-		}
+	status := g.rows > g.shown && g.shown >= 2 // a single row has no room for it
+	if status {
+		shown--
+	}
+	if g.rows > shown && c.menu {
+		first = max(0, min(c.selected/g.cols-shown/2, g.rows-shown))
 	}
 	var lines []string
 	for row := first; row < first+shown; row++ {
@@ -369,9 +375,9 @@ func (m *model) completionGridView() []string {
 		}
 		lines = append(lines, line.String())
 	}
-	if shown < g.rows {
-		status := fmt.Sprintf("rows %d to %d of %d", first+1, first+shown, g.rows)
-		lines = append(lines, theme.CurrentTheme.Preview(status))
+	if status {
+		text := fmt.Sprintf("rows %d to %d of %d", first+1, first+shown, g.rows)
+		lines = append(lines, theme.CurrentTheme.Preview(text))
 	}
 	return lines
 }

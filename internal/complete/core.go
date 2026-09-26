@@ -46,7 +46,7 @@ func (c *Cache) Complete(r *Request, docs Docs) (replies []Reply, needEngine boo
 		if !k.engine {
 			return nil, true
 		}
-		return r.replies(k, path{}), false
+		return r.replies(k, path{empty: base.empty}), false
 	}
 	k.walk(docs, args, base)
 	return r.replies(k, base), false

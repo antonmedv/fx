@@ -192,6 +192,13 @@ func TestComplete_GridScrolls(t *testing.T) {
 	require.Equal(t, "rows 15 to 23 of 23", grid[len(grid)-1])
 }
 
+// typeQuery opens the query input and types query in place of its ".".
+func typeQuery(m *model, query string) {
+	typeKeys(m, ".")
+	press(m, tea.KeyBackspace)
+	typeKeys(m, query)
+}
+
 func plain(lines []string) []string {
 	if lines == nil {
 		return nil
@@ -233,4 +240,53 @@ func BenchmarkComplete_Keystroke(b *testing.B) {
 			m.handleCompleteStream()
 		}
 	})
+}
+
+func TestComplete_StreamingKeepsEngineScheduled(t *testing.T) {
+	m := newQueryModel(t, `{"a-b": 1, "c": 2}`)
+	m.eof = false
+	typeQuery(m, "x => x .")
+	require.True(t, m.completion.engine)
+	seq := m.completion.seq
+
+	_, cmd := m.Update(nodeMsg{node: parseDoc(t, `{"d": 3}`)})
+	drain(m, cmd)
+	require.Equal(t, seq, m.completion.seq, "streaming restarted the engine debounce")
+
+	drain(m, m.handleCompleteTick(completeTickMsg{seq: seq}))
+	require.Equal(t, []string{`.["a-b"]`, ".c"}, replyValues(m))
+}
+
+func TestComplete_EngineEmptyBaseBracket(t *testing.T) {
+	for query, want := range map[string][]string{
+		"x => x .":  {`.["a-b"]`, ".c"},
+		"x => x .[": {`.["a-b"]`, `.["c"]`},
+		"x => x ":   {`.["a-b"]`, ".c"},
+	} {
+		t.Run(query, func(t *testing.T) {
+			docs := []string{`{"a-b": 1, "c": 2}`}
+			m := newQueryModel(t, docs...)
+			typeQuery(m, query)
+			drain(m, m.handleCompleteTick(completeTickMsg{seq: m.completion.seq}))
+			require.Equal(t, want, replyValues(m))
+		})
+	}
+}
+
+func TestComplete_ReopenDropsOldTick(t *testing.T) {
+	m := newQueryModel(t, completeData)
+	typeKeys(m, ".items.map(x => x.")
+	old := completeTickMsg{seq: m.completion.seq}
+	press(m, tea.KeyEscape)
+	typeKeys(m, ".items.map(x => x.")
+	require.Nil(t, m.handleCompleteTick(old), "a tick of the closed input started an engine")
+}
+
+func TestComplete_GridFitsShortTerminal(t *testing.T) {
+	m := newQueryModel(t, completeData)
+	m.termWidth, m.termHeight = 20, 7
+	typeKeys(m, ".")
+	require.Greater(t, m.layoutGrid().rows, 1)
+	require.Len(t, m.completionGridView(), m.completionRows())
+	require.Len(t, strings.Split(m.View(), "\n"), m.termHeight)
 }
