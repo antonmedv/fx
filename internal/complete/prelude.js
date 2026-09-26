@@ -1,32 +1,33 @@
-const __keys = new Set()
+const __keys = new Set() // own properties
+const __methods = new Set() // offered only if no own property matches
+
+function __addOwn(set, x, skip = []) {
+  for (const name of Object.getOwnPropertyNames(x)) {
+    if (name === 'constructor' || name.startsWith('__') || skip.includes(name)) continue
+    set.add(name)
+  }
+}
 
 Object.prototype.__keys = function () {
-  if (Array.isArray(this)) return
-  if (typeof this === 'string') return
-  if (this instanceof String) return
   if (this === globalThis) return
-  if (typeof this === 'object' && this !== null)
-    Object.keys(this).forEach(x => __keys.add(x))
+  if (Array.isArray(this)) return __addOwn(__methods, Array.prototype)
+  if (this instanceof String) return __addOwn(__methods, String.prototype)
+  if (this instanceof Number) return __addOwn(__methods, Number.prototype)
+  if (this instanceof Boolean) return
+  if (typeof this === 'function') return __addOwn(__keys, this, ['length', 'name', 'prototype'])
+  if (typeof this === 'object' && this !== null) __addOwn(__keys, this)
 }
 
 function __autocomplete() {
-  const keys = []
-  for (const key of Object.keys(globalThis)) {
-    if (key.startsWith('__')) continue
-    keys.push(key)
+  const own = x => {
+    const set = new Set()
+    __addOwn(set, x)
+    return Array.from(set)
   }
-  keys.push(
-    'JSON.stringify',
-    'JSON.parse',
-    'YAML.stringify',
-    'YAML.parse',
-    'Object.keys',
-    'Object.values',
-    'Object.entries',
-    'Object.fromEntries',
-    'Array.isArray',
-    'Array.from',
-    'console.log',
-  )
-  return keys
+  return {
+    stdlib: Object.keys(globalThis).filter(name => !name.startsWith('__')),
+    string: own(String.prototype),
+    number: own(Number.prototype),
+    array: own(Array.prototype),
+  }
 }

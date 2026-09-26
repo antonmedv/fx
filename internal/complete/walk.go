@@ -1,6 +1,7 @@
 package complete
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 
@@ -252,10 +253,13 @@ func (s *keySet) addAll(keys []string) {
 // baseKeys is what can follow a base: keys of its objects, and keys of the
 // elements of its arrays.
 type baseKeys struct {
-	obj    keySet
-	elem   keySet
-	arrays bool // an array was seen, so `[]` may follow
-	engine bool // obj holds keys from EngineKeys
+	obj     keySet
+	elem    keySet
+	arrays  bool     // an array was seen, so `[]` may follow
+	strings bool     // a string was seen, so its methods may follow
+	numbers bool     // a number was seen
+	engine  bool     // obj and methods come from EngineKeys
+	methods []string // from EngineKeys
 
 	first, last *jsonx.Node // documents walked, for incremental walks
 }
@@ -271,7 +275,35 @@ func (k *baseKeys) collect(v value) {
 				k.elem.addChildren(e.node)
 			}
 		})
+	} else if v.node != nil && v.node.Kind == jsonx.String {
+		k.strings = true
+	} else if v.node != nil && v.node.Kind == jsonx.Number {
+		k.numbers = true
 	}
+}
+
+// methodNames returns the methods of the values seen, sorted.
+func (k *baseKeys) methodNames() []string {
+	if k.engine {
+		return sortStrings(slices.Clone(k.methods))
+	}
+	n := jsNames()
+	var lists [][]string
+	if k.arrays {
+		lists = append(lists, n.array)
+	}
+	if k.strings {
+		lists = append(lists, n.string)
+	}
+	if k.numbers {
+		lists = append(lists, n.number)
+	}
+	if len(lists) == 1 {
+		return lists[0]
+	}
+	names := slices.Concat(lists...)
+	slices.Sort(names)
+	return slices.Compact(names)
 }
 
 // walk adds the keys after base for documents not walked yet.

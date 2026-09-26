@@ -78,7 +78,7 @@ type completeTickMsg struct {
 type completeEngineMsg struct {
 	seq     uint64
 	request *complete.Request
-	keys    []string
+	keys    complete.Names
 	cancel  chan struct{}
 }
 
@@ -164,7 +164,7 @@ func (m *model) handleCompleteTick(msg completeTickMsg) tea.Cmd {
 	doc, cancel, seq := c.first, make(chan struct{}), c.seq
 	c.cancel = cancel
 	return func() tea.Msg {
-		var keys []string
+		var keys complete.Names
 		if node := doc.parse(); node != nil {
 			keys = r.EngineKeys(node, cancel)
 		}

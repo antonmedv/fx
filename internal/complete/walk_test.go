@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -147,14 +148,14 @@ func TestWalkMatchesEngine(t *testing.T) {
 			if base == "." {
 				base = ""
 			}
-			want := engineKeys(docs, append(slices.Clone(tt.args), base+".__keys()"), nil)
+			want := engineKeys(docs, append(slices.Clone(tt.args), base+".__keys()"), nil).Keys
 			require.Equal(t, sorted(want), sorted(k.obj.keys), "object keys")
 
 			each := base + "[]"
 			if base == "" || base == "@" || base == "@@" {
 				each = base + ".[]"
 			}
-			wantElem := engineKeys(docs, append(slices.Clone(tt.args), each+".__keys()"), nil)
+			wantElem := engineKeys(docs, append(slices.Clone(tt.args), each+".__keys()"), nil).Keys
 			if b.each {
 				require.Equal(t, sorted(wantElem), sorted(k.elem.keys), "element keys")
 			} else {
@@ -202,13 +203,13 @@ func TestReplies(t *testing.T) {
 		{`.["esc\"`, []string{`.["esc\"aped"]`}},
 		{`.["esc\"aped"].`, []string{`.["esc\"aped"].inA`, `.["esc\"aped"].B`}},
 		{".list.", []string{".list[].x", ".list[].y", ".list[].w"}},
-		{".nested.", nil},
+		{".nested.le", []string{".nested.length"}}, // methods, no keys
 		{".nested[].", []string{".nested[][].p", ".nested[][].q"}},
 		{".nested[][].", []string{".nested[][].p", ".nested[][].q"}},
 		{`.["k-ey"].`, []string{`.["k-ey"].z`, `.["k-ey"].z2`}},
-		{`.$dollar.`, nil}, // fx does not accept .$dollar[]
+		{`.$dollar.le`, []string{".$dollar.length"}}, // fx does not accept .$dollar[]
 		{".dup.", []string{".dup.v"}},
-		{".str.", nil},
+		{".str.len", []string{".str.length"}},
 		{".list @.", []string{"@.x", "@.y", "@.w"}},
 		{".list @", nil},
 		{".list .", []string{".[].x", ".[].y", ".[].w"}},
@@ -273,8 +274,69 @@ func TestEngineCancel(t *testing.T) {
 	cancel := make(chan struct{})
 	close(cancel)
 	r, _ := ParseQuery("(() => { while (true) {} })() .")
-	require.Nil(t, r.EngineKeys(docs[0], cancel))
+	require.Zero(t, r.EngineKeys(docs[0], cancel))
 
 	r, _ = ParseQuery(`save(x) .`)
-	require.Nil(t, r.EngineKeys(docs[0], nil)) // save is disabled
+	require.Zero(t, r.EngineKeys(docs[0], nil)) // save is disabled
+}
+
+func TestReplies_MethodsIfNoPropertyMatches(t *testing.T) {
+	docs := parseDocs(t, `{"s": "text", "n": 1, "list": [1, 2], "items": [{"map": 1}], "o": {"toUpper": 1}, "b": true}`)
+	tests := []struct {
+		query string
+		want  []string
+	}{
+		{".s.toUpperC", []string{".s.toUpperCase"}},
+		{".s.len", []string{".s.length"}},
+		{".n.toF", []string{".n.toFixed"}},
+		{".list.fla", []string{".list.flat", ".list.flatMap"}},
+		{".list.le", []string{".list.length"}},
+		{".items.ma", []string{".items[].map"}}, // an element key wins
+		{".items.fil", []string{".items.fill", ".items.filter"}},
+		{".o.toUpper", []string{".o.toUpper"}},
+		{".o.toSt", nil}, // no methods of objects
+		{".b.", nil},
+		{".list[", []string{".list[]"}}, // not after a bracket
+		{"Object.ke", []string{"Object.keys"}},
+		{"JSON.", []string{"JSON.parse", "JSON.isRawJSON", "JSON.rawJSON", "JSON.stringify"}},
+		{"console.", []string{"console.log"}},
+		{".s.split(' ').jo", []string{".s.split(' ').join"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.query, func(t *testing.T) {
+			r, _ := ParseQuery(tt.query)
+			got := values(Replies(r, sliceDocs(&docs)))
+			if strings.HasPrefix(tt.query, "JSON") {
+				require.ElementsMatch(t, tt.want, got)
+				return
+			}
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestReplies_MethodsListedWhenNothingTyped(t *testing.T) {
+	docs := parseDocs(t, `{"s": "text"}`)
+	r, _ := ParseQuery(".s.")
+	got := values(Replies(r, sliceDocs(&docs)))
+	require.Contains(t, got, ".s.toUpperCase")
+	require.Contains(t, got, ".s.length")
+	require.NotContains(t, got, ".s.constructor")
+	require.True(t, slices.IsSorted(got))
+}
+
+func TestReplies_BuiltinsIfNoStdlibMatches(t *testing.T) {
+	docs := parseDocs(t, `{}`)
+	for query, want := range map[string][]string{
+		"ma":  {"map"},
+		"Ma":  {"Math", "Map"},
+		"Obj": {"Object"},
+		"con": {"console"},
+		"YA":  {"YAML"},
+		"sk":  {"skip"},
+		"esc": nil, // not a constructor or namespace
+	} {
+		r, _ := ParseQuery(query)
+		require.ElementsMatch(t, want, values(Replies(r, sliceDocs(&docs))), query)
+	}
 }

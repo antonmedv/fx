@@ -2,6 +2,8 @@ package complete
 
 import (
 	"errors"
+	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -52,18 +54,36 @@ func (c *Cache) Complete(r *Request, docs Docs) (replies []Reply, needEngine boo
 	return r.replies(k, base), false
 }
 
-// PutEngine stores the keys EngineKeys returned for r.
-func (c *Cache) PutEngine(r *Request, names []string) {
-	k := c.get(r.cacheKey())
-	*k = baseKeys{engine: true}
-	k.obj.addAll(names)
+// Names are what EngineKeys finds after a base: own properties, and the
+// methods offered when no own property matches.
+type Names struct {
+	Keys, Methods []string
 }
 
-func (r *Request) replies(k *baseKeys, base path) []Reply {
-	var replies []Reply
+// PutEngine stores the names EngineKeys returned for r.
+func (c *Cache) PutEngine(r *Request, names Names) {
+	k := c.get(r.cacheKey())
+	*k = baseKeys{engine: true}
+	k.obj.addAll(names.Keys)
+	k.methods = names.Methods
+}
+
+func (r *Request) replies(k *baseKeys, base path) (replies []Reply) {
 	add := func(value string) {
 		replies = append(replies, Reply{Display: value[len(r.base):], Value: value, Type: "key"})
 	}
+	defer func() {
+		// Methods are many; list them only if no property matches.
+		if r.mode != modeKey || len(replies) > 0 {
+			return
+		}
+		for _, name := range k.methodNames() {
+			if strings.HasPrefix(name, r.partial) {
+				value := r.base + accessor(name, base.empty, 0)
+				replies = append(replies, Reply{Display: value[len(r.base):], Value: value, Type: "method"})
+			}
+		}
+	}()
 	switch r.mode {
 	case modeKey:
 		for _, key := range k.obj.keys {
@@ -111,12 +131,12 @@ const EngineTimeout = 2 * time.Second
 // preview engine (save and exit disabled), returning the keys of the
 // objects the completed accessor applies to. It stops on cancel or after
 // EngineTimeout.
-func (r *Request) EngineKeys(doc *jsonx.Node, cancel <-chan struct{}) []string {
+func (r *Request) EngineKeys(doc *jsonx.Node, cancel <-chan struct{}) Names {
 	last := balanceBrackets(strings.TrimSuffix(r.base, ".") + ".__keys()")
 	return engineKeys([]*jsonx.Node{doc}, append(r.Args[:len(r.Args):len(r.Args)], last), cancel)
 }
 
-func engineKeys(docs []*jsonx.Node, args []string, cancel <-chan struct{}) []string {
+func engineKeys(docs []*jsonx.Node, args []string, cancel <-chan struct{}) Names {
 	var code strings.Builder
 	code.WriteString(prelude)
 	code.WriteString(engine.Stdlib)
@@ -138,33 +158,39 @@ func engineKeys(docs []*jsonx.Node, args []string, cancel <-chan struct{}) []str
 	}()
 
 	if _, err := vm.RunString(code.String()); err != nil {
-		return nil
+		return Names{}
 	}
 	main, ok := goja.AssertFunction(vm.Get("__main__"))
 	if !ok {
-		return nil
+		return Names{}
 	}
 	for _, doc := range docs {
 		if _, err := callMain(main, doc.ToValue(vm)); err != nil {
 			if _, ok := err.(*goja.InterruptedError); ok {
-				return nil
+				return Names{}
 			}
 			// Keys collected before the error are still completions.
 		}
 	}
-	value, err := vm.RunString("Array.from(__keys)")
-	if err != nil {
+	keys, _ := vm.RunString("Array.from(__keys)")
+	methods, _ := vm.RunString("Array.from(__methods)")
+	return Names{Keys: exportStrings(keys), Methods: exportStrings(methods)}
+}
+
+// exportStrings returns the strings of a JS array.
+func exportStrings(value goja.Value) []string {
+	if value == nil {
 		return nil
 	}
-	var keys []string
+	var out []string
 	if array, ok := value.Export().([]any); ok {
-		for _, key := range array {
-			if s, ok := key.(string); ok {
-				keys = append(keys, s)
+		for _, v := range array {
+			if s, ok := v.(string); ok {
+				out = append(out, s)
 			}
 		}
 	}
-	return keys
+	return out
 }
 
 // callMain runs main, recovering from panics of Go functions called by JS.
@@ -179,9 +205,20 @@ func callMain(main goja.Callable, input goja.Value) (_ goja.Value, err error) {
 
 var errPanic = errors.New("panic")
 
+// globals completes a global: an fx function or value, or, if none matches,
+// a JS built-in like Math.
 func (r *Request) globals() []Reply {
+	names := jsNames()
+	replies := r.globalReplies(names.stdlib)
+	if len(replies) == 0 {
+		replies = r.globalReplies(names.builtins)
+	}
+	return replies
+}
+
+func (r *Request) globalReplies(names []string) []Reply {
 	var replies []Reply
-	for _, name := range globals() {
+	for _, name := range names {
 		if strings.HasPrefix(name, r.partial) {
 			replies = append(replies, Reply{Display: name, Value: r.base + name, Type: "global"})
 		}
@@ -189,21 +226,67 @@ func (r *Request) globals() []Reply {
 	return replies
 }
 
-var globals = sync.OnceValue(func() []string {
+// names are the JS names completion offers, read from the engine once.
+type names struct {
+	stdlib   []string // fx functions and values, in stdlib order
+	builtins []string // JS built-ins like Math and JSON
+	string   []string // methods of strings, sorted
+	number   []string
+	array    []string
+}
+
+// reConst finds stdlib values like YAML, which JS does not list in globalThis.
+var reConst = regexp.MustCompile(`(?m)^const ([A-Za-z_$][\w$]*)`)
+
+var jsNames = sync.OnceValue(func() names {
 	var code strings.Builder
 	code.WriteString(prelude)
 	code.WriteString(engine.Stdlib)
-	code.WriteString("\n__autocomplete()\n")
+	code.WriteString("\n;__autocomplete()\n")
 
+	var n names
 	value, err := goja.New().RunString(code.String())
 	if err != nil {
-		return nil
+		return n
 	}
-	var names []string
-	if array, ok := value.Export().([]any); ok {
-		for _, key := range array {
-			names = append(names, key.(string))
+	obj, ok := value.Export().(map[string]any)
+	if !ok {
+		return n
+	}
+	list := func(key string) []string {
+		var out []string
+		if array, ok := obj[key].([]any); ok {
+			for _, v := range array {
+				if s, ok := v.(string); ok {
+					out = append(out, s)
+				}
+			}
+		}
+		return out
+	}
+	n.stdlib = list("stdlib")
+	for _, m := range reConst.FindAllStringSubmatch(engine.Stdlib, -1) {
+		if !slices.Contains(n.stdlib, m[1]) {
+			n.stdlib = append(n.stdlib, m[1])
 		}
 	}
-	return names
+	// A fresh runtime: goja lists built-ins only until a script declares
+	// globals.
+	builtins, err := goja.New().RunString("Object.getOwnPropertyNames(globalThis)")
+	if err == nil {
+		for _, name := range exportStrings(builtins) {
+			// Constructors and namespaces, like Object and Math; not eval,
+			// escape and such.
+			if name[0] >= 'A' && name[0] <= 'Z' && !slices.Contains(n.stdlib, name) {
+				n.builtins = append(n.builtins, name)
+			}
+		}
+	}
+	n.string, n.number, n.array = sortStrings(list("string")), sortStrings(list("number")), sortStrings(list("array"))
+	return n
 })
+
+func sortStrings(s []string) []string {
+	slices.Sort(s)
+	return s
+}
