@@ -119,3 +119,17 @@ func TestSaveRefusesMalformedRest(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, input, string(data), "file must be untouched")
 }
+
+// More() reaching the end must keep it: save() then closes the file.
+func TestSaveRawSingleLine(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "f.txt")
+	require.NoError(t, os.WriteFile(file, []byte("hello\n"), 0o644))
+
+	stdout, stderr, code := runFxArgs(t, "-r", file, "save")
+	require.Equal(t, 0, code, stderr)
+	require.Empty(t, stderr)
+	require.Equal(t, "hello\n", stdout)
+	data, err := os.ReadFile(file)
+	require.NoError(t, err)
+	require.Equal(t, "\"hello\"\n", string(data))
+}

@@ -349,6 +349,7 @@ type nodesParser struct {
 	head      *Node // first document, nil until published
 	last      *Node // last published document
 	returned  *Node // last document returned by Parse
+	recovered bool  // Parse skipped recovered text
 	eof       bool
 	cancelled bool
 }
@@ -374,6 +375,7 @@ func (p *nodesParser) Parse() (*Node, error) {
 			}
 			if p.returned.Kind == Err {
 				// Recovered non-JSON text (e.g. HTTP headers), not an input for the engine.
+				p.recovered = true
 				continue
 			}
 			return p.returned, nil
@@ -386,24 +388,28 @@ func (p *nodesParser) Parse() (*Node, error) {
 }
 
 // More waits until a document after the last returned one is published,
-// or the input ends.
+// or the input ends. Recovered text is an error: the engine never sees it,
+// so save() would drop it.
 func (p *nodesParser) More() (bool, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	seen := p.returned // Last document checked.
 	for {
 		if p.cancelled {
 			return false, errCancelled
 		}
-		for seen != p.last {
-			if seen == nil {
-				seen = p.head
-			} else {
-				seen = nextDoc(seen)
+		if p.recovered {
+			return false, errRecovered
+		}
+		if p.returned != p.last {
+			next := p.head
+			if p.returned != nil {
+				next = nextDoc(p.returned)
 			}
-			if seen.Kind != Err {
-				return true, nil
+			if next.Kind == Err {
+				p.recovered = true
+				return false, errRecovered
 			}
+			return true, nil
 		}
 		if p.eof {
 			return false, nil
@@ -412,7 +418,10 @@ func (p *nodesParser) More() (bool, error) {
 	}
 }
 
-var errCancelled = errors.New("cancelled")
+var (
+	errCancelled = errors.New("cancelled")
+	errRecovered = errors.New("input contains text that is not JSON")
+)
 
 func (p *nodesParser) Recover() *Node {
 	return nil

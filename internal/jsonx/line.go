@@ -58,10 +58,12 @@ func (p *LineParser) More() (bool, error) {
 		return false, p.eof
 	}
 	if _, err := p.buf.Peek(1); err != nil {
+		// Kept: bufio returns a read error only once, and after save()
+		// the file is closed.
+		p.eof = err
 		if err == io.EOF {
 			return false, nil
 		}
-		p.eof = err
 		return false, err
 	}
 	return true, nil

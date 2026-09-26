@@ -1201,3 +1201,26 @@ func TestQuery_SaveSingleStreamedDocument(t *testing.T) {
 	requireFile(t, path, "{\n  \"a\": 2\n}\n")
 	require.False(t, m.query.gotErr)
 }
+
+// Recovered text is not passed to the engine, so save() would drop it.
+func TestQuery_SaveRefusesRecoveredText(t *testing.T) {
+	text := func() *jsonx.Node { return &jsonx.Node{Kind: jsonx.Err, Value: `{"b":`} }
+	for name, docs := range map[string][]*jsonx.Node{
+		"after":  {parseDoc(t, `{"a": 1}`), text()},
+		"before": {text(), parseDoc(t, `{"a": 1}`)},
+	} {
+		t.Run(name, func(t *testing.T) {
+			const input = "{\"a\":1}\n{\"b\":"
+			path := saveFile(t, input)
+			m := newQueryModel(t)
+			m.eof = false
+			for _, doc := range docs {
+				m.Update(nodeMsg{node: doc})
+			}
+			m.Update(eofMsg{})
+			drain(m, m.doQuery("save"))
+			requireFile(t, path, input)
+			require.Contains(t, strings.Join(lines(m), "\n"), "input contains text that is not JSON")
+		})
+	}
+}
