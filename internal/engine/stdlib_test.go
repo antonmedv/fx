@@ -16,7 +16,7 @@ func setupVM(t *testing.T) *goja.Runtime {
 	var output []string
 	vm := engine.NewVM(func(s string) {
 		output = append(output, s)
-	})
+	}, false)
 	_, err := vm.RunString(engine.Stdlib)
 	require.NoError(t, err, "Failed to load stdlib")
 	return vm
@@ -27,7 +27,7 @@ func setupVMWithOutput(t *testing.T) (*goja.Runtime, *[]string) {
 	output := &[]string{}
 	vm := engine.NewVM(func(s string) {
 		*output = append(*output, s)
-	})
+	}, false)
 	_, err := vm.RunString(engine.Stdlib)
 	require.NoError(t, err, "Failed to load stdlib")
 	return vm, output

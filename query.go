@@ -103,7 +103,11 @@ func (r *queryRun) start() {
 	errCh := make(chan error)
 	done := make(chan int, 1)
 	go func() {
-		done <- engine.Start(r.parser, []string{r.query}, out, errCh, r.cancel)
+		if r.preview {
+			done <- engine.StartPreview(r.parser, []string{r.query}, out, errCh, r.cancel)
+		} else {
+			done <- engine.Start(r.parser, []string{r.query}, out, errCh, r.cancel)
+		}
 	}()
 	for {
 		select {
@@ -226,6 +230,7 @@ func (m *model) clearQuery() tea.Cmd {
 func (m *model) restoreOriginal() {
 	o := m.original
 	m.cancelSearch()
+	m.searchID++ // Drop search results in flight for the result list.
 	m.head, m.top, m.bottom = o.head, o.top, o.bottom
 	m.cursor = o.cursor
 	m.totalLines = o.totalLines
@@ -316,6 +321,7 @@ func (m *model) saveView() *viewState {
 // resetView empties the displayed list.
 func (m *model) resetView() {
 	m.cancelSearch()
+	m.searchID++ // Drop search results in flight for the previous list.
 	m.head, m.top, m.bottom = nil, nil, nil
 	m.cursor = 0
 	m.totalLines = 0
@@ -423,6 +429,8 @@ const previewMaxLines = 10_000
 
 const previewDelay = 100 * time.Millisecond
 
+// reSideEffect skips previews that would fail anyway. It is not a safety
+// guard: previews run with save() disabled by engine.StartPreview.
 var reSideEffect = regexp.MustCompile(`\b(save|exit)\b`)
 
 type previewTickMsg struct {

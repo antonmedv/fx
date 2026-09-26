@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -13,6 +15,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/stretchr/testify/require"
 
+	"github.com/antonmedv/fx/internal/engine"
 	"github.com/antonmedv/fx/internal/jsonx"
 	"github.com/antonmedv/fx/internal/theme"
 )
@@ -893,5 +896,46 @@ func TestQuery_RestoreAfterWrapToggle(t *testing.T) {
 		require.True(t, m.wrap)
 		drain(m, m.doQuery("."))
 		require.True(t, hasChunks(m.top), "original must be wrapped")
+	})
+}
+
+func TestPreview_CannotSave(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "file.json")
+	require.NoError(t, os.WriteFile(path, []byte(`{"a": 1}`), 0644))
+	old := engine.FilePath
+	engine.FilePath = path
+	t.Cleanup(func() { engine.FilePath = old })
+
+	m := newQueryModel(t, `{"a": 1}`)
+	preview(m, `x => (__save__("{}"), x)`)
+
+	data, _ := os.ReadFile(path)
+	require.Equal(t, `{"a": 1}`, string(data))
+	require.Nil(t, m.original, "failed preview must not be applied")
+}
+
+func TestQuery_StaleSearchResultIgnoredAfterSwap(t *testing.T) {
+	stale := func(m *model) searchResultMsg {
+		s := newSearch()
+		s.results = []*jsonx.Node{m.top}
+		return searchResultMsg{id: m.searchID, search: s}
+	}
+
+	t.Run("apply", func(t *testing.T) {
+		m := newQueryModel(t, `{"a": 1}`)
+		msg := stale(m) // Search of the original, finished but not yet delivered.
+		drain(m, m.doQuery(".a"))
+		m.Update(msg)
+		require.Empty(t, m.search.results)
+		require.Equal(t, []string{"1"}, lines(m))
+	})
+
+	t.Run("restore", func(t *testing.T) {
+		m := newQueryModel(t, `{"a": 1}`)
+		drain(m, m.doQuery(".a"))
+		msg := stale(m) // Search of the result view.
+		drain(m, m.doQuery("."))
+		m.Update(msg)
+		require.Empty(t, m.search.results)
 	})
 }
