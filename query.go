@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -15,18 +14,13 @@ import (
 	. "github.com/antonmedv/fx/internal/jsonx"
 )
 
-// viewState is the part of the model describing the displayed node list.
-type viewState struct {
-	head, top, bottom *Node
-	cursor            int
-	totalLines        int
-	locationHistory   []location
-	locationIndex     int
-	search            *search
-	searchText        string
-	wrap              bool  // whether the list is wrapped
-	width             int   // wrap width of the list
-	pending           *Node // first document appended while hidden, not yet wrapped/collapsed
+// savedView is the original view, set aside while a query result is shown.
+type savedView struct {
+	viewState
+	searchText string
+	wrap       bool  // whether the list is wrapped
+	width      int   // wrap width of the list
+	pending    *Node // first document appended while hidden, not yet wrapped/collapsed
 }
 
 // queryRun is one evaluation of a query by the engine. Messages carry the
@@ -79,11 +73,7 @@ func isIdentityQuery(query string) bool {
 func (m *model) startQuery(query string) tea.Cmd {
 	// Swap to an empty result view right away: from now on the engine reads
 	// the original list, so the UI must not mutate it.
-	if m.original == nil {
-		m.original = m.saveView()
-	}
-	m.resetView()
-	m.restoring = false
+	m.showResultView()
 
 	nodes := newNodesParser(m.original.top, m.original.bottom, m.eof)
 	run := &queryRun{
@@ -175,12 +165,7 @@ func (m *model) handleQueryResult(msg queryResultMsg) tea.Cmd {
 			msg.run.pending = append(msg.run.pending, msg.node)
 		}
 	} else if msg.run == m.query {
-		if msg.node.Kind == Err {
-			// Output of println/console.log.
-			m.appendText(msg.node.Value, false)
-		} else {
-			m.appendResult(msg.node)
-		}
+		m.appendOutput(msg.node)
 	}
 	return waitQuery(msg.run)
 }
@@ -232,17 +217,8 @@ func (m *model) restoreOriginal() {
 	o := m.original
 	m.cancelSearch()
 	m.searchID++ // Drop search results in flight for the result list.
-	m.head, m.top, m.bottom = o.head, o.top, o.bottom
-	m.cursor = o.cursor
-	m.totalLines = o.totalLines
-	m.locationHistory = o.locationHistory
-	m.locationIndex = o.locationIndex
-	m.search = o.search
+	m.viewState = o.viewState
 	m.searchInput.SetValue(o.searchText)
-	m.keysIndex = nil
-	m.keysIndexNodes = nil
-	m.fuzzyMatch = nil
-	m.queryErrors = nil
 	m.original = nil
 	m.query = nil
 	m.restoring = false
@@ -275,6 +251,16 @@ func chunkAttached(chunk *Node) bool {
 		}
 	}
 	return false
+}
+
+// appendOutput attaches an engine output to the result view.
+func (m *model) appendOutput(node *Node) {
+	if node.Kind == Err {
+		// Output of println/console.log.
+		m.appendText(node.Value, false)
+	} else {
+		m.appendResult(node)
+	}
 }
 
 // appendResult attaches an engine output document to the result view.
@@ -315,37 +301,31 @@ func (m *model) isQueryError(node *Node) bool {
 	return ok
 }
 
-func (m *model) saveView() *viewState {
-	return &viewState{
-		head:            m.head,
-		top:             m.top,
-		bottom:          m.bottom,
-		cursor:          m.cursor,
-		totalLines:      m.totalLines,
-		locationHistory: m.locationHistory,
-		locationIndex:   m.locationIndex,
-		search:          m.search,
-		searchText:      m.searchInput.Value(),
-		wrap:            m.wrap,
-		width:           m.viewWidth(),
+func (m *model) saveView() *savedView {
+	return &savedView{
+		viewState:  m.viewState,
+		searchText: m.searchInput.Value(),
+		wrap:       m.wrap,
+		width:      m.viewWidth(),
 	}
+}
+
+// showResultView sets the original aside, if not yet, and shows an empty
+// result view.
+func (m *model) showResultView() {
+	if m.original == nil {
+		m.original = m.saveView()
+	}
+	m.resetView()
+	m.restoring = false
 }
 
 // resetView empties the displayed list.
 func (m *model) resetView() {
 	m.cancelSearch()
 	m.searchID++ // Drop search results in flight for the previous list.
-	m.head, m.top, m.bottom = nil, nil, nil
-	m.cursor = 0
-	m.totalLines = 0
-	m.locationHistory = nil
-	m.locationIndex = 0
-	m.search = newSearch()
+	m.viewState = viewState{search: newSearch()}
 	m.searchInput.SetValue("")
-	m.keysIndex = nil
-	m.keysIndexNodes = nil
-	m.fuzzyMatch = nil
-	m.queryErrors = nil
 }
 
 // nodesParser feeds already parsed top-level documents to the engine
@@ -443,20 +423,43 @@ const previewMaxLines = 10_000
 
 const previewDelay = 100 * time.Millisecond
 
-// reSideEffect skips previews that would fail anyway. It is not a safety
-// guard: previews run with save() disabled by engine.StartPreview.
-var reSideEffect = regexp.MustCompile(`\b(save|exit)\b`)
-
 type previewTickMsg struct {
 	seq uint64
 }
 
+type previewAction int
+
+const (
+	previewNone  previewAction = iota
+	previewRun                 // evaluate the query
+	previewClear               // show the original, like Enter on an identity query
+)
+
+// previewAction decides what the live preview of query does. Only input
+// fully arrived and at most previewMaxLines is previewed on every keystroke.
+// Queries calling save() or exit() are previewed too: they fail, and a
+// failed preview is not applied.
+func (m *model) previewAction(query string) previewAction {
+	totalLines := m.totalLines
+	if m.original != nil {
+		totalLines = m.original.totalLines
+	}
+	if !m.eof || totalLines > previewMaxLines {
+		return previewNone
+	}
+	if !isIdentityQuery(strings.TrimSpace(query)) {
+		return previewRun
+	}
+	if m.original != nil {
+		return previewClear
+	}
+	return previewNone
+}
+
 // schedulePreview debounces a live preview of the query being typed.
 func (m *model) schedulePreview() tea.Cmd {
-	m.previewSeq++
-	m.stopPreview()
-	query := m.queryInput.Value()
-	if !m.previewAllowed(query) && !m.previewClears(query) {
+	m.cancelPreview()
+	if m.previewAction(m.queryInput.Value()) == previewNone {
 		return nil
 	}
 	seq := m.previewSeq
@@ -465,43 +468,16 @@ func (m *model) schedulePreview() tea.Cmd {
 	})
 }
 
-func (m *model) previewAllowed(query string) bool {
-	query = strings.TrimSpace(query)
-	if isIdentityQuery(query) || reSideEffect.MatchString(query) {
-		return false
-	}
-	return m.liveInput()
-}
-
-// previewClears reports whether the live preview of query is the original:
-// editing back to an identity query shows the original, like Enter does.
-func (m *model) previewClears(query string) bool {
-	return isIdentityQuery(strings.TrimSpace(query)) && m.original != nil && m.liveInput()
-}
-
-// liveInput reports whether the input is small enough to preview on every
-// keystroke: fully arrived and at most previewMaxLines.
-func (m *model) liveInput() bool {
-	if !m.eof {
-		return false
-	}
-	totalLines := m.totalLines
-	if m.original != nil {
-		totalLines = m.original.totalLines
-	}
-	return totalLines <= previewMaxLines
-}
-
 func (m *model) handlePreviewTick(msg previewTickMsg) tea.Cmd {
 	if msg.seq != m.previewSeq || !m.queryInput.Focused() {
 		return nil
 	}
 	query := strings.TrimSpace(m.queryInput.Value())
-	if m.previewClears(query) {
-		return m.clearQuery()
-	}
-	if !m.previewAllowed(query) {
+	switch m.previewAction(query) {
+	case previewNone:
 		return nil
+	case previewClear:
+		return m.clearQuery()
 	}
 
 	// The preview reads a snapshot, never the displayed nodes, so the UI
@@ -522,7 +498,9 @@ func (m *model) handlePreviewTick(msg previewTickMsg) tea.Cmd {
 	return waitQuery(run)
 }
 
-func (m *model) stopPreview() {
+// cancelPreview stops the running live preview and drops a pending tick.
+func (m *model) cancelPreview() {
+	m.previewSeq++
 	m.livePreview.stop()
 	m.livePreview = nil
 }
@@ -534,18 +512,10 @@ func (m *model) applyPreview(run *queryRun, exitCode int) {
 		return
 	}
 	m.stopQuery()
-	if m.original == nil {
-		m.original = m.saveView()
-	}
-	m.resetView()
-	m.restoring = false
+	m.showResultView()
 	m.query = run
 	for _, node := range run.pending {
-		if node.Kind == Err {
-			m.appendText(node.Value, false)
-		} else {
-			m.appendResult(node)
-		}
+		m.appendOutput(node)
 	}
 	run.pending = nil
 }
@@ -624,8 +594,7 @@ func (m *model) queryHistoryNext() {
 }
 
 func (m *model) setQueryInput(value string) {
-	m.previewSeq++ // Drop a pending preview tick.
-	m.stopPreview()
+	m.cancelPreview()
 	m.queryInput.SetValue(value)
 	m.queryInput.CursorEnd()
 }

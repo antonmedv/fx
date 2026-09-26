@@ -306,7 +306,7 @@ func main() {
 		gotoSymbolInput:     gotoSymbolInput,
 		commandInput:        commandInput,
 		searchInput:         searchInput,
-		search:              newSearch(),
+		viewState:           viewState{search: newSearch()},
 		previewSearchInput:  previewSearchInput,
 		previewSearchCursor: -1,
 		spinner:             spinnerModel,
@@ -366,10 +366,9 @@ func main() {
 }
 
 type model struct {
+	viewState
 	termWidth, termHeight int
-	head, top, bottom     *Node
 	eof                   bool
-	cursor                int // cursor position [0, termHeight)
 	suspending            bool
 	showCursor            bool
 	wrap                  bool
@@ -377,23 +376,20 @@ type model struct {
 	showShowSelector      bool
 	showSizes             bool
 	showLineNumbers       bool
-	totalLines            int
 	fileName              string
 	queryInput            textinput.Model
-	query                 *queryRun          // running or last finished query, nil if none
-	original              *viewState         // saved original view while a query result is shown
-	runningQueries        int                // engine goroutines still reading the original
-	restoring             bool               // waiting for runningQueries to reach zero to restore the original
-	queryErrors           map[*Node]struct{} // error lines in the result view
-	livePreview           *queryRun          // running live preview, nil if none
-	previewSeq            uint64             // increments with each keystroke to debounce previews
-	queryHistory          []string           // applied queries, oldest first
-	queryHistoryIndex     int                // browsed entry; len(queryHistory) means the draft
-	queryHistoryDraft     string             // text typed before browsing history
+	query                 *queryRun  // running or last finished query, nil if none
+	original              *savedView // saved original view while a query result is shown
+	runningQueries        int        // engine goroutines still reading the original
+	restoring             bool       // waiting for runningQueries to reach zero to restore the original
+	livePreview           *queryRun  // running live preview, nil if none
+	previewSeq            uint64     // increments with each keystroke to debounce previews
+	queryHistory          []string   // applied queries, oldest first
+	queryHistoryIndex     int        // browsed entry; len(queryHistory) means the draft
+	queryHistoryDraft     string     // text typed before browsing history
 	gotoSymbolInput       textinput.Model
 	commandInput          textinput.Model
 	searchInput           textinput.Model
-	search                *search
 	searching             bool          // search in progress
 	searchCancel          chan struct{} // cancel channel for search
 	searchID              uint64        // increments with each search to detect stale results
@@ -409,12 +405,22 @@ type model struct {
 	printOnExit           bool
 	printErrorOnExit      error
 	spinner               spinner.Model
-	locationHistory       []location
-	locationIndex         int // position in locationHistory
-	keysIndex             []string
-	keysIndexNodes        []*Node
-	fuzzyMatch            *fuzzy.Match
 	deletePending         bool
+}
+
+// viewState is the part of the model describing the displayed node list.
+// While a query result is shown, the original's viewState is saved aside.
+type viewState struct {
+	head, top, bottom *Node
+	cursor            int // cursor position [0, termHeight)
+	totalLines        int
+	locationHistory   []location
+	locationIndex     int // position in locationHistory
+	search            *search
+	keysIndex         []string
+	keysIndexNodes    []*Node
+	fuzzyMatch        *fuzzy.Match
+	queryErrors       map[*Node]struct{} // error lines in a query result
 }
 
 type location struct {
@@ -611,15 +617,14 @@ func (m *model) handleQueryKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Cancel like search: drop the query and restore the original.
 		m.showCursor = true
 		m.queryInput.Blur()
-		m.previewSeq++ // Drop a pending preview tick.
-		m.stopPreview()
+		m.cancelPreview()
 		m.queryInput.SetValue("")
 		cmd = m.clearQuery()
 
 	case msg.Type == tea.KeyEnter:
 		m.showCursor = true
 		m.queryInput.Blur()
-		m.stopPreview()
+		m.cancelPreview()
 		m.addQueryHistory(m.queryInput.Value())
 		cmd = m.doQuery(m.queryInput.Value())
 
