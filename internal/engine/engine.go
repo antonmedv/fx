@@ -82,7 +82,23 @@ func Start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error,
 	vm := NewVM(func(s string) {
 		send(out, &jsonx.Node{Kind: jsonx.Err, Value: s}, cancel)
 	})
+
+	// Interrupt running JS on cancel: cancel alone is checked only between
+	// documents, so a never-ending expression would never stop.
+	finished := make(chan struct{})
+	defer close(finished)
+	go func() {
+		select {
+		case <-cancel:
+			vm.Interrupt("cancelled")
+		case <-finished:
+		}
+	}()
+
 	if _, err := vm.RunString(code.String()); err != nil {
+		if isCancelled(cancel) {
+			return 0
+		}
 		sendErr(errCh, &Error{gojaErrorToString(err)}, cancel)
 		return 1
 	}
@@ -130,6 +146,9 @@ func Start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error,
 			return exitCode
 		}
 		if err != nil {
+			if isCancelled(cancel) {
+				return 0
+			}
 			sendErr(errCh, &Error{gojaErrorToString(err)}, cancel)
 			return 1
 		}
@@ -143,6 +162,15 @@ func Start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error,
 	}
 
 	return 0
+}
+
+func isCancelled(cancel <-chan struct{}) bool {
+	select {
+	case <-cancel:
+		return true
+	default:
+		return false
+	}
 }
 
 // send delivers node to out, returns false if cancelled.

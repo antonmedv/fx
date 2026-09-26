@@ -23,6 +23,7 @@ type viewState struct {
 	locationHistory   []location
 	locationIndex     int
 	search            *search
+	wrap              bool  // whether the list is wrapped
 	width             int   // wrap width of the list
 	pending           *Node // first document appended while hidden, not yet wrapped/collapsed
 }
@@ -243,12 +244,19 @@ func (m *model) restoreOriginal() {
 			doc.CollapseRecursively()
 		}
 	}
-	if m.wrap {
-		if o.width != m.viewWidth() {
-			Wrap(m.top, m.viewWidth())
-		} else if o.pending != nil {
-			Wrap(o.pending, m.viewWidth())
-		}
+	// Wrap may have been toggled or the width changed while hidden.
+	switch {
+	case m.wrap && (!o.wrap || o.width != m.viewWidth()):
+		Wrap(m.top, m.viewWidth())
+	case m.wrap && o.pending != nil:
+		Wrap(o.pending, m.viewWidth())
+	case !m.wrap && o.wrap:
+		DropWrapAll(m.top)
+	}
+	if m.head != nil && m.head.IsWrap() {
+		// The saved scroll position was a chunk, dropped by re-wrapping.
+		m.head = m.head.Parent
+		m.scrollIntoView()
 	}
 }
 
@@ -300,6 +308,7 @@ func (m *model) saveView() *viewState {
 		locationHistory: m.locationHistory,
 		locationIndex:   m.locationIndex,
 		search:          m.search,
+		wrap:            m.wrap,
 		width:           m.viewWidth(),
 	}
 }
