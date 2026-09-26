@@ -63,6 +63,18 @@ func (p *JsonParser) Parse() (node *Node, err error) {
 	return
 }
 
+// More reports whether input remains after the values parsed so far. It
+// reads ahead, so on a stream it blocks until more input or EOF arrives.
+func (p *JsonParser) More() (more bool) {
+	defer func() {
+		if r := recover(); r != nil {
+			more = true // Invalid input is left for Parse to report.
+		}
+	}()
+	p.skipWhitespace()
+	return !p.eof
+}
+
 func (p *JsonParser) Recover() *Node {
 	p.eof = false
 	p.depth = 0

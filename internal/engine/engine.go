@@ -89,9 +89,18 @@ func start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error,
 	code.WriteString(Stdlib)
 	code.WriteString(JS(args))
 
-	vm := NewVM(func(s string) {
+	values := 0 // JSON values parsed so far.
+	severalValues := func() bool {
+		if values > 1 {
+			return true
+		}
+		m, ok := parser.(interface{ More() bool })
+		return ok && m.More()
+	}
+
+	vm := newVM(func(s string) {
 		send(out, &jsonx.Node{Kind: jsonx.Err, Value: s}, cancel)
-	}, preview)
+	}, preview, severalValues)
 
 	// Interrupt running JS on cancel: cancel alone is checked only between
 	// documents, so a never-ending expression would never stop.
@@ -166,6 +175,7 @@ func start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error,
 			sendErr(errCh, err, cancel)
 			return 1
 		}
+		values++
 
 		input := node.ToValue(vm)
 		output, exit, err := callMain(main, input)

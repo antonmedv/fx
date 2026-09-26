@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/dop251/goja"
 	"github.com/goccy/go-yaml"
@@ -20,6 +21,12 @@ type ExitError struct {
 // NewVM creates a runtime with fx bindings. In preview, save() and exit()
 // fail: a preview must neither write the file nor stop with partial output.
 func NewVM(writeOut func(string), preview bool) *goja.Runtime {
+	return newVM(writeOut, preview, nil)
+}
+
+// newVM is NewVM for Start: severalValues reports whether the input holds
+// more than one JSON value, in which case save() fails.
+func newVM(writeOut func(string), preview bool, severalValues func() bool) *goja.Runtime {
 	vm := goja.New()
 
 	if err := vm.Set("println", func(s string) any {
@@ -36,13 +43,13 @@ func NewVM(writeOut func(string), preview bool) *goja.Runtime {
 		if FilePath == "" {
 			return fmt.Errorf("specify a file as the first argument to be able to save: fx file.json ")
 		}
-		if info, err := os.Lstat(FilePath); err == nil && info.Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("cannot save to a symbolic link: %s", FilePath)
+		// save() replaces the whole file with one value. With several values
+		// (JSON Lines, a YAML stream) each would overwrite the file in turn,
+		// losing the rest, so refuse before writing anything.
+		if severalValues != nil && severalValues() {
+			return fmt.Errorf("save supports a single JSON value, but %s contains several", FilePath)
 		}
-		if err := os.WriteFile(FilePath, []byte(json), 0644); err != nil {
-			return err
-		}
-		return nil
+		return writeFileAtomic(FilePath, []byte(json))
 	}); err != nil {
 		panic(err)
 	}
@@ -99,4 +106,45 @@ func NewVM(writeOut func(string), preview bool) *goja.Runtime {
 	}
 
 	return vm
+}
+
+// writeFileAtomic replaces path with data via a temp file in the same
+// directory and a rename: a crash never leaves a half-written file, and the
+// original inode is untouched for anyone still reading it. The file mode is
+// kept; a new file gets 0644.
+func writeFileAtomic(path string, data []byte) (err error) {
+	mode := os.FileMode(0644)
+	if info, err := os.Lstat(path); err == nil {
+		if info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("cannot save to a symbolic link: %s", path)
+		}
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("cannot save to %s: not a regular file", path)
+		}
+		mode = info.Mode().Perm()
+	}
+
+	tmp, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".*.tmp")
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			_ = tmp.Close()
+			_ = os.Remove(tmp.Name())
+		}
+	}()
+	if _, err = tmp.Write(data); err != nil {
+		return err
+	}
+	if err = tmp.Chmod(mode); err != nil {
+		return err
+	}
+	if err = tmp.Sync(); err != nil {
+		return err
+	}
+	if err = tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmp.Name(), path)
 }

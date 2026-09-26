@@ -58,7 +58,11 @@ func TestChooseInput(t *testing.T) {
 // TestMain lets tests run the fx binary by re-executing the test binary.
 func TestMain(m *testing.M) {
 	if os.Getenv("FX_TEST_RUN_MAIN") == "1" {
-		os.Args = append([]string{"fx"}, strings.Fields(os.Getenv("FX_TEST_ARGS"))...)
+		args := strings.Fields(os.Getenv("FX_TEST_ARGS"))
+		if argv, ok := os.LookupEnv("FX_TEST_ARGV"); ok {
+			args = strings.Split(argv, argvSep) // Args may contain spaces.
+		}
+		os.Args = append([]string{"fx"}, args...)
 		main()
 		os.Exit(0)
 	}
