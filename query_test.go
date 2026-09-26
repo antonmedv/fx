@@ -282,3 +282,97 @@ func TestQuery_PrintlnAndError(t *testing.T) {
 	require.Greater(t, len(got), 2, "expected error lines")
 	require.True(t, m.query.gotErr)
 }
+
+func TestQuery_ClearRestoresOriginal(t *testing.T) {
+	m := newQueryModel(t, `{"a": {"b": 1}, "c": [1, 2, 3], "d": 4}`)
+	m.top.Next.Collapse() // "a"
+	m.cursor = 2
+	head, top, bottom := m.head, m.top, m.bottom
+	history := []location{{head: m.head, node: m.top}}
+	m.locationHistory, m.locationIndex = history, 1
+	totalLines := m.totalLines
+
+	typeKeys(m, ".")
+	typeKeys(m, "c")
+	enter(m)
+	require.NotNil(t, m.original)
+	m.cursor = 1 // Move around in the result view.
+
+	typeKeys(m, ".")
+	m.queryInput.SetValue(".")
+	enter(m)
+
+	require.Nil(t, m.original)
+	require.Nil(t, m.query)
+	require.False(t, m.restoring)
+	require.Equal(t, "", m.queryInput.Value())
+	require.Same(t, head, m.head)
+	require.Same(t, top, m.top)
+	require.Same(t, bottom, m.bottom)
+	require.Equal(t, 2, m.cursor)
+	require.Equal(t, totalLines, m.totalLines)
+	require.Equal(t, history, m.locationHistory)
+	require.Equal(t, 1, m.locationIndex)
+	require.True(t, m.top.Next.IsCollapsed())
+}
+
+func TestQuery_ClearWaitsForRunningEngine(t *testing.T) {
+	m := newQueryModel(t, `{"a": 1}`)
+	m.eof = false // Streaming: the engine blocks waiting for more documents.
+	top := m.top
+
+	cmd := m.doQuery(".a")
+	require.Equal(t, 1, m.runningQueries)
+
+	m.doQuery(".")
+	require.True(t, m.restoring)
+	require.NotNil(t, m.original, "must not restore while the engine still runs")
+
+	drain(m, cmd)
+
+	require.Equal(t, 0, m.runningQueries)
+	require.False(t, m.restoring)
+	require.Nil(t, m.original)
+	require.Same(t, top, m.top)
+}
+
+func TestQuery_ApplyWhileRestoring(t *testing.T) {
+	m := newQueryModel(t, `{"a": 1, "b": 2}`)
+	m.eof = false
+
+	cmd1 := m.doQuery(".a")
+	m.doQuery(".")
+	require.True(t, m.restoring)
+
+	m.eof = true
+	cmd2 := m.doQuery(".b")
+	require.False(t, m.restoring)
+
+	drain(m, cmd1)
+	drain(m, cmd2)
+
+	require.NotNil(t, m.original)
+	require.Equal(t, []string{"2"}, lines(m))
+}
+
+func TestQuery_ClearRewrapsOnWidthChange(t *testing.T) {
+	m := newQueryModel(t, `{"s": "`+strings.Repeat("word ", 30)+`"}`)
+	m.wrap = true
+	jsonx.Wrap(m.top, m.viewWidth())
+	chunks := func() int {
+		n := 0
+		for it := m.top; it != nil; it = it.Next {
+			if it.Value == "" && it.Chunk != "" {
+				n++
+			}
+		}
+		return n
+	}
+	before := chunks()
+
+	drain(m, m.doQuery(".s"))
+	m.Update(tea.WindowSizeMsg{Width: 40, Height: 40})
+	drain(m, m.doQuery("."))
+
+	require.Greater(t, chunks(), before)
+}

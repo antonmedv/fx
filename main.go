@@ -391,6 +391,8 @@ type model struct {
 	queryInput            textinput.Model
 	query                 *queryRun  // running or last finished query, nil if none
 	original              *viewState // saved original view while a query result is shown
+	runningQueries        int        // engine goroutines still reading the original
+	restoring             bool       // waiting for runningQueries to reach zero to restore the original
 	gotoSymbolInput       textinput.Model
 	commandInput          textinput.Model
 	searchInput           textinput.Model
@@ -482,7 +484,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.handleQueryDone(msg)
 
 	case spinner.TickMsg:
-		if !m.eof || m.searching {
+		if !m.eof || m.searching || m.restoring {
 			var cmd tea.Cmd
 			m.spinner, cmd = m.spinner.Update(msg)
 			return m, cmd

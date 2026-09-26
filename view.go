@@ -168,7 +168,7 @@ func (m *model) View() string {
 		} else {
 			statusBarWidth := m.termWidth
 			var indicator string
-			if m.eof {
+			if m.eof && !m.restoring {
 				percent := int(float64(cursorLineNumber) / float64(m.totalLines) * 100)
 				if cursorLineNumber == 1 {
 					percent = min(1, percent)
