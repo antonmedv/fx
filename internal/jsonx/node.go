@@ -55,6 +55,9 @@ func (n *Node) Append(child *Node) {
 func (n *Node) Adjacent(child *Node) {
 	end := n.End
 	if end == nil {
+		end = n.ChunkEnd // Keep wrapped string chunks.
+	}
+	if end == nil {
 		end = n
 	}
 	end.Next = child

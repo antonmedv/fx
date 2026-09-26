@@ -376,3 +376,103 @@ func TestQuery_ClearRewrapsOnWidthChange(t *testing.T) {
 
 	require.Greater(t, chunks(), before)
 }
+
+// step runs cmd once and feeds its message into Update.
+func step(m *model, cmd tea.Cmd) tea.Cmd {
+	_, next := m.Update(cmd())
+	return next
+}
+
+func parseDoc(t *testing.T, json string) *jsonx.Node {
+	node, err := jsonx.Parse([]byte(json))
+	require.NoError(t, err)
+	return node
+}
+
+func TestQuery_Streaming(t *testing.T) {
+	m := newQueryModel(t, `{"id": 1}`)
+	m.eof = false
+
+	cmd := m.doQuery(".id")
+	cmd = step(m, cmd)
+	require.Equal(t, []string{"1"}, lines(m))
+
+	doc2 := parseDoc(t, `{"id": 2}`)
+	m.Update(nodeMsg{node: doc2})
+	cmd = step(m, cmd)
+	require.Equal(t, []string{"1", "2"}, lines(m))
+	require.Same(t, doc2, m.original.bottom)
+
+	m.Update(nodeMsg{node: parseDoc(t, `{"id": 3}`)})
+	m.Update(eofMsg{})
+	drain(m, cmd)
+
+	require.Equal(t, []string{"1", "2", "3"}, lines(m))
+	require.True(t, m.query.done)
+	require.Equal(t, 3, m.totalLines)
+}
+
+func TestQuery_StreamingStartsWithNoDocuments(t *testing.T) {
+	m := newQueryModel(t)
+	m.eof = false
+
+	cmd := m.doQuery(".id")
+	m.Update(nodeMsg{node: parseDoc(t, `{"id": 1}`)})
+	cmd = step(m, cmd)
+	require.Equal(t, []string{"1"}, lines(m))
+	require.NotNil(t, m.original.top)
+
+	m.Update(eofMsg{})
+	drain(m, cmd)
+}
+
+func TestQuery_StreamingAfterWrappedString(t *testing.T) {
+	m := newQueryModel(t)
+	m.eof = false
+	m.wrap = true
+	m.Update(nodeMsg{node: parseDoc(t, `"`+strings.Repeat("word ", 30)+`"`)})
+
+	cmd := m.doQuery("x => x.length")
+	cmd = step(m, cmd)
+	m.Update(nodeMsg{node: parseDoc(t, `"b"`)})
+	cmd = step(m, cmd)
+	m.Update(eofMsg{})
+	drain(m, cmd)
+
+	require.Equal(t, []string{"150", "1"}, lines(m))
+}
+
+func TestQuery_RestoreWrapsAndCollapsesStreamedDocuments(t *testing.T) {
+	m := newQueryModel(t, `{"a": {"b": 1}}`)
+	m.eof = false
+	m.wrap = true
+	m.collapsed = true
+
+	cmd := m.doQuery(".a")
+	cmd = step(m, cmd)
+	streamed := parseDoc(t, `{"a": {"b": "`+strings.Repeat("word ", 30)+`"}}`)
+	m.Update(nodeMsg{node: streamed})
+	cmd = step(m, cmd)
+	require.False(t, streamed.Next.IsCollapsed(), "hidden original must not be mutated")
+	require.Nil(t, streamed.Next.Next.ChunkEnd, "hidden original must not be wrapped")
+
+	m.Update(eofMsg{})
+	drain(m, cmd)
+	drain(m, m.doQuery("."))
+
+	require.Nil(t, m.original)
+	require.True(t, streamed.Next.IsCollapsed())
+	require.NotNil(t, streamed.Next.Collapsed.ChunkEnd, "streamed string must be wrapped")
+}
+
+func TestNodesParser_SkipsRecoveredText(t *testing.T) {
+	var l docList
+	l.add(t, `1`)
+	text := &jsonx.Node{Kind: jsonx.Err, Value: "HTTP/1.1 200 OK"}
+	l.bottom.Adjacent(text)
+	l.bottom = text
+	l.add(t, `2`)
+
+	p := newNodesParser(l.head, l.bottom, true)
+	require.Equal(t, []string{"1", "2"}, parseAll(t, p))
+}

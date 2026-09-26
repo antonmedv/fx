@@ -20,7 +20,8 @@ type viewState struct {
 	locationHistory   []location
 	locationIndex     int
 	search            *search
-	width             int // wrap width of the list
+	width             int   // wrap width of the list
+	pending           *Node // first document appended while hidden, not yet wrapped/collapsed
 }
 
 // queryRun is one evaluation of a query by the engine. Messages carry the
@@ -121,6 +122,25 @@ func (m *model) stopQuery() {
 	close(run.cancel)
 }
 
+// appendOriginal attaches a streamed document to the hidden original list.
+// It is neither wrapped nor collapsed, as engine goroutines may read it;
+// that happens in restoreOriginal.
+func (m *model) appendOriginal(node *Node) {
+	o := m.original
+	if o.top == nil {
+		o.head, o.top = node, node
+	} else {
+		node.Index = -1 // To fix the statusbar path (to show .key instead of [0].key).
+		o.bottom.Adjacent(node)
+	}
+	o.bottom = node
+	o.totalLines = node.Bottom().LineNumber
+	if o.pending == nil {
+		o.pending = node
+	}
+	m.query.parser.publish(node)
+}
+
 func (m *model) handleQueryResult(msg queryResultMsg) tea.Cmd {
 	if msg.run == m.query {
 		if msg.node.Kind == Err {
@@ -184,8 +204,17 @@ func (m *model) restoreOriginal() {
 	m.original = nil
 	m.query = nil
 	m.restoring = false
-	if m.wrap && o.width != m.viewWidth() {
-		Wrap(m.top, m.viewWidth())
+	if m.collapsed {
+		for doc := o.pending; doc != nil; doc = nextDoc(doc) {
+			doc.CollapseRecursively()
+		}
+	}
+	if m.wrap {
+		if o.width != m.viewWidth() {
+			Wrap(m.top, m.viewWidth())
+		} else if o.pending != nil {
+			Wrap(o.pending, m.viewWidth())
+		}
 	}
 }
 
@@ -269,6 +298,10 @@ func (p *nodesParser) Parse() (*Node, error) {
 				p.returned = p.head
 			} else {
 				p.returned = nextDoc(p.returned)
+			}
+			if p.returned.Kind == Err {
+				// Recovered non-JSON text (e.g. HTTP headers), not an input for the engine.
+				continue
 			}
 			return p.returned, nil
 		}
