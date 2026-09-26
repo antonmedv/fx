@@ -214,25 +214,47 @@ func TestStart_StringNodeHasLineNumber(t *testing.T) {
 }
 
 func TestStart_CancelInterruptsRunningJS(t *testing.T) {
-	parser := jsonx.NewJsonParser(strings.NewReader("1"), false)
-	out := make(chan *jsonx.Node)
-	errCh := make(chan error)
-	cancel := make(chan struct{})
+	for _, q := range []string{
+		`x => { while (true) {} }`,
+		`x => ({get a() { while (true) {} }})`, // Runs during serialization.
+	} {
+		t.Run(q, func(t *testing.T) {
+			parser := jsonx.NewJsonParser(strings.NewReader("1"), false)
+			out := make(chan *jsonx.Node)
+			errCh := make(chan error)
+			cancel := make(chan struct{})
 
-	done := make(chan int)
-	go func() {
-		done <- engine.Start(parser, []string{"x => { while (true) {} }"}, out, errCh, cancel)
-	}()
+			done := make(chan int)
+			go func() {
+				done <- engine.Start(parser, []string{q}, out, errCh, cancel)
+			}()
 
-	time.Sleep(50 * time.Millisecond)
-	close(cancel)
+			time.Sleep(50 * time.Millisecond)
+			close(cancel)
 
-	select {
-	case exitCode := <-done:
-		assert.Equal(t, 0, exitCode)
-	case <-time.After(2 * time.Second):
-		t.Fatal("Start did not return after cancel")
+			select {
+			case exitCode := <-done:
+				assert.Equal(t, 0, exitCode)
+			case <-time.After(2 * time.Second):
+				t.Fatal("Start did not return after cancel")
+			}
+		})
 	}
+}
+
+func TestStart_GetterRunsDuringSerialization(t *testing.T) {
+	exitCode, outs, errs := runEngine(jsonx.NewJsonParser(strings.NewReader("1"), false),
+		[]string{`x => ({get a() { throw new Error("boom") }})`})
+	assert.Equal(t, 1, exitCode)
+	assert.Empty(t, outs)
+	require.Len(t, errs, 1)
+	assert.Contains(t, errs[0], "boom")
+
+	exitCode, outs, errs = runEngine(jsonx.NewJsonParser(strings.NewReader("1"), false),
+		[]string{`x => ({get a() { exit(3) }})`})
+	assert.Equal(t, 3, exitCode)
+	assert.Empty(t, outs)
+	assert.Empty(t, errs)
 }
 
 func TestStartPreview_SaveDisabled(t *testing.T) {

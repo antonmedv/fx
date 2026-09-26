@@ -117,21 +117,38 @@ func start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error,
 	undefined := vm.Get("undefined")
 	main, _ := goja.AssertFunction(vm.Get("__main__"))
 
-	// echo returns false if cancelled.
-	echo := func(output goja.Value) bool {
+	// echo returns an exit code to stop with, or -1 to continue.
+	echo := func(output goja.Value) int {
 		rtype := output.ExportType()
 		if output.StrictEquals(undefined) {
-			return sendErr(errCh, &Error{"undefined"}, cancel)
+			if !sendErr(errCh, &Error{"undefined"}, cancel) {
+				return 0
+			}
 		} else if rtype != nil && rtype.Kind() == reflect.String {
-			return send(out, &jsonx.Node{Kind: jsonx.String, Value: Quote(output.String()), LineNumber: 1}, cancel)
+			if !send(out, &jsonx.Node{Kind: jsonx.String, Value: Quote(output.String()), LineNumber: 1}, cancel) {
+				return 0
+			}
 		} else {
-			jsonOut := Stringify(output, vm, 0)
+			jsonOut, exitCode, err := stringify(output, vm)
+			if exitCode >= 0 {
+				return exitCode
+			}
+			if err != nil {
+				if isCancelled(cancel) {
+					return 0
+				}
+				sendErr(errCh, &Error{gojaErrorToString(err)}, cancel)
+				return 1
+			}
 			nodeOut, err := jsonx.Parse([]byte(jsonOut))
 			if err != nil {
 				panic(err)
 			}
-			return send(out, nodeOut, cancel)
+			if !send(out, nodeOut, cancel) {
+				return 0
+			}
 		}
+		return -1
 	}
 
 	for {
@@ -166,8 +183,8 @@ func start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error,
 		if output.StrictEquals(skip) {
 			continue
 		}
-		if !echo(output) {
-			return 0
+		if exitCode := echo(output); exitCode >= 0 {
+			return exitCode
 		}
 	}
 
@@ -215,6 +232,28 @@ func callMain(main goja.Callable, input goja.Value) (output goja.Value, exitCode
 		}
 	}()
 	output, err = main(goja.Undefined(), input)
+	return
+}
+
+// stringify serializes output like callMain runs main: getters run JS here,
+// which may throw, call exit() or be interrupted on cancel.
+func stringify(output goja.Value, vm *goja.Runtime) (json string, exitCode int, err error) {
+	exitCode = -1
+	defer func() {
+		if r := recover(); r != nil {
+			switch e := r.(type) {
+			case ExitError:
+				exitCode = e.Code
+			case *goja.Exception:
+				err = e
+			case *goja.InterruptedError:
+				err = e
+			default:
+				panic(r)
+			}
+		}
+	}()
+	json = Stringify(output, vm, 0)
 	return
 }
 
