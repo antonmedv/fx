@@ -97,8 +97,10 @@ func TestCursorValueDecodesJsonEscapesInWrappedArrayString(t *testing.T) {
 	require.NotNil(t, head.Next.ChunkEnd)
 
 	m := &model{
-		head:   head,
-		cursor: 1,
+		viewState: viewState{
+			head:   head,
+			cursor: 1,
+		},
 	}
 	require.Equal(t, "before\U0001F555\nsecond line after", m.cursorValue())
 
