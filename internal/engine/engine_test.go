@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/antonmedv/fx/internal/engine"
 	"github.com/antonmedv/fx/internal/jsonx"
@@ -199,4 +200,13 @@ func TestStart_CancelWhileBlockedOnSend(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestStart_StringNodeHasLineNumber(t *testing.T) {
+	parser := jsonx.NewJsonParser(strings.NewReader(`{"a": "x"}`), false)
+	out := make(chan *jsonx.Node, 10)
+	errCh := make(chan error, 10)
+	engine.Start(parser, []string{".a"}, out, errCh, make(chan struct{}))
+	close(out)
+	require.Equal(t, 1, (<-out).LineNumber)
 }

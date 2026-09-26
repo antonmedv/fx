@@ -53,12 +53,19 @@ type queryDoneMsg struct {
 
 func (m *model) doQuery(query string) tea.Cmd {
 	query = strings.TrimSpace(query)
-	if query == "" || query == "." {
+	if isIdentityQuery(query) {
 		m.queryInput.SetValue("")
 		return m.clearQuery()
 	}
 	m.stopQuery()
 	return m.startQuery(query)
+}
+
+// isIdentityQuery reports whether query shows the input unchanged. The engine's
+// fast path would return the original nodes themselves, which must never be
+// linked into the result view.
+func isIdentityQuery(query string) bool {
+	return query == "" || query == "." || query == "x" || query == "this"
 }
 
 func (m *model) startQuery(query string) tea.Cmd {
@@ -145,7 +152,7 @@ func (m *model) handleQueryResult(msg queryResultMsg) tea.Cmd {
 	if msg.run == m.query {
 		if msg.node.Kind == Err {
 			// Output of println/console.log.
-			m.appendText(msg.node.Value)
+			m.appendText(msg.node.Value, false)
 		} else {
 			m.appendResult(msg.node)
 		}
@@ -156,7 +163,7 @@ func (m *model) handleQueryResult(msg queryResultMsg) tea.Cmd {
 func (m *model) handleQueryError(msg queryErrorMsg) tea.Cmd {
 	msg.run.gotErr = true
 	if msg.run == m.query {
-		m.appendText(msg.err.Error())
+		m.appendText(msg.err.Error(), true)
 	}
 	return waitQuery(msg.run)
 }
@@ -169,7 +176,7 @@ func (m *model) handleQueryDone(msg queryDoneMsg) tea.Cmd {
 		return nil
 	}
 	if msg.run == m.query && msg.exitCode != 0 && !msg.run.gotErr {
-		m.appendText(fmt.Sprintf("exit(%d) is not allowed in interactive mode", msg.exitCode))
+		m.appendText(fmt.Sprintf("exit(%d) is not allowed in interactive mode", msg.exitCode), true)
 	}
 	return nil
 }
@@ -201,6 +208,7 @@ func (m *model) restoreOriginal() {
 	m.keysIndex = nil
 	m.keysIndexNodes = nil
 	m.fuzzyMatch = nil
+	m.queryErrors = nil
 	m.original = nil
 	m.query = nil
 	m.restoring = false
@@ -230,11 +238,30 @@ func (m *model) appendResult(node *Node) {
 }
 
 // appendText attaches text lines (errors, println output) to the result view.
-func (m *model) appendText(text string) {
-	for _, line := range strings.Split(text, "\n") {
+func (m *model) appendText(text string, isErr bool) {
+	for _, line := range strings.Split(strings.Trim(text, "\n"), "\n") {
 		m.totalLines++
-		m.appendNode(&Node{Kind: Err, Value: line, LineNumber: m.totalLines})
+		node := &Node{Kind: Err, Value: line, LineNumber: m.totalLines}
+		if isErr {
+			if m.queryErrors == nil {
+				m.queryErrors = make(map[*Node]struct{})
+			}
+			m.queryErrors[node] = struct{}{}
+		}
+		m.appendNode(node)
 	}
+}
+
+// isQueryError reports whether node is (a wrapped line of) a query error.
+func (m *model) isQueryError(node *Node) bool {
+	if m.queryErrors == nil {
+		return false
+	}
+	if node.IsWrap() {
+		node = node.Parent
+	}
+	_, ok := m.queryErrors[node]
+	return ok
 }
 
 func (m *model) saveView() *viewState {
@@ -263,6 +290,7 @@ func (m *model) resetView() {
 	m.keysIndex = nil
 	m.keysIndexNodes = nil
 	m.fuzzyMatch = nil
+	m.queryErrors = nil
 }
 
 // nodesParser feeds already parsed top-level documents to the engine

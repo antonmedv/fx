@@ -380,10 +380,11 @@ type model struct {
 	totalLines            int
 	fileName              string
 	queryInput            textinput.Model
-	query                 *queryRun  // running or last finished query, nil if none
-	original              *viewState // saved original view while a query result is shown
-	runningQueries        int        // engine goroutines still reading the original
-	restoring             bool       // waiting for runningQueries to reach zero to restore the original
+	query                 *queryRun          // running or last finished query, nil if none
+	original              *viewState         // saved original view while a query result is shown
+	runningQueries        int                // engine goroutines still reading the original
+	restoring             bool               // waiting for runningQueries to reach zero to restore the original
+	queryErrors           map[*Node]struct{} // error lines in the result view
 	gotoSymbolInput       textinput.Model
 	commandInput          textinput.Model
 	searchInput           textinput.Model
@@ -1237,6 +1238,8 @@ func (m *model) prettyPrint(node *Node, isSelected, isRef bool) string {
 
 	if isSelected {
 		style = theme.CurrentTheme.Cursor
+	} else if m.isQueryError(node) {
+		style = theme.CurrentTheme.Error
 	} else {
 		style = theme.Value(node.Kind)
 	}
