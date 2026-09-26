@@ -1,6 +1,8 @@
 package engine_test
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -231,4 +233,38 @@ func TestStart_CancelInterruptsRunningJS(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("Start did not return after cancel")
 	}
+}
+
+func TestStartPreview_SaveDisabled(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "file.json")
+	require.NoError(t, os.WriteFile(path, []byte(`{"a": 1}`), 0644))
+	old := engine.FilePath
+	engine.FilePath = path
+	t.Cleanup(func() { engine.FilePath = old })
+
+	for _, q := range []string{
+		`x => save(x)`,
+		`x => (__save__("{}"), x)`,
+		`x => globalThis["sa" + "ve"](x)`,
+	} {
+		out := make(chan *jsonx.Node, 10)
+		errCh := make(chan error, 10)
+		parser := jsonx.NewJsonParser(strings.NewReader(`{"a": 2}`), false)
+		exitCode := engine.StartPreview(parser, []string{q}, out, errCh, make(chan struct{}))
+		close(errCh)
+
+		assert.Equal(t, 1, exitCode, q)
+		err := <-errCh
+		require.Error(t, err, q)
+		assert.Contains(t, err.Error(), "save is disabled in preview", q)
+		data, _ := os.ReadFile(path)
+		assert.Equal(t, `{"a": 1}`, string(data), q)
+	}
+
+	// Start still saves.
+	parser := jsonx.NewJsonParser(strings.NewReader(`{"a": 2}`), false)
+	exitCode := engine.Start(parser, []string{`x => (save(x), skip)`}, make(chan *jsonx.Node, 10), make(chan error, 10), make(chan struct{}))
+	assert.Equal(t, 0, exitCode)
+	data, _ := os.ReadFile(path)
+	assert.Contains(t, string(data), `"a": 2`)
 }

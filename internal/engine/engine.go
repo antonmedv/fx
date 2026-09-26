@@ -36,6 +36,16 @@ func (e *Error) Error() string {
 }
 
 func Start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error, cancel <-chan struct{}) int {
+	return start(parser, args, out, errCh, cancel, false)
+}
+
+// StartPreview is Start for live previews: save() is disabled, as a preview
+// runs while the user is still typing the expression.
+func StartPreview(parser Parser, args []string, out chan *jsonx.Node, errCh chan error, cancel <-chan struct{}) int {
+	return start(parser, args, out, errCh, cancel, true)
+}
+
+func start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error, cancel <-chan struct{}, readOnly bool) int {
 	isPrettyPrintArg := len(args) == 1 && (args[0] == "." || args[0] == "this" || args[0] == "x")
 
 	// Fast path.
@@ -81,7 +91,7 @@ func Start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error,
 
 	vm := NewVM(func(s string) {
 		send(out, &jsonx.Node{Kind: jsonx.Err, Value: s}, cancel)
-	})
+	}, readOnly)
 
 	// Interrupt running JS on cancel: cancel alone is checked only between
 	// documents, so a never-ending expression would never stop.
