@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"io"
 	"strings"
 	"testing"
@@ -568,4 +570,137 @@ func TestQuery_ViewEveryLine(t *testing.T) {
 	for m.cursor = 0; m.cursor < len(lines(m)); m.cursor++ {
 		require.NotPanics(t, func() { m.View() })
 	}
+}
+
+// preview types s into the focused query input and runs the debounced preview.
+func preview(m *model, s string) {
+	if !m.queryInput.Focused() {
+		typeKeys(m, ".")
+	}
+	m.queryInput.SetValue(s)
+	m.schedulePreview()
+	drain(m, m.handlePreviewTick(previewTickMsg{seq: m.previewSeq}))
+}
+
+func TestPreview_AppliesOnSmallInput(t *testing.T) {
+	m := newQueryModel(t, `{"a": [1, 2], "b": null}`)
+	preview(m, ".a")
+	require.True(t, m.queryInput.Focused(), "preview must not blur the input")
+	require.Equal(t, []string{"[", "1", "2", "]"}, lines(m))
+	require.NotNil(t, m.original)
+}
+
+func TestPreview_KeepsLastGoodResult(t *testing.T) {
+	m := newQueryModel(t, `{"a": [1, 2], "b": null}`)
+	preview(m, ".a")
+	for _, q := range []string{".nonexistent", ".b", "x => { throw 1 }", ".a[", "x => skip"} {
+		preview(m, q)
+		require.Equal(t, []string{"[", "1", "2", "]"}, lines(m), q)
+	}
+}
+
+func TestPreview_ErrorShownOnEnter(t *testing.T) {
+	m := newQueryModel(t, `{"a": 1}`)
+	preview(m, ".a")
+	preview(m, ".nonexistent")
+	require.Equal(t, []string{"1"}, lines(m))
+
+	enter(m)
+	require.Equal(t, []string{"undefined"}, lines(m))
+	require.True(t, m.isQueryError(m.top))
+}
+
+func TestPreview_OriginalUntouchedUntilGoodResult(t *testing.T) {
+	m := newQueryModel(t, `{"a": 1}`)
+	top := m.top
+	preview(m, ".nonexistent")
+	require.Nil(t, m.original)
+	require.Same(t, top, m.top)
+}
+
+func TestPreview_Gate(t *testing.T) {
+	m := newQueryModel(t, `{"a": 1}`)
+	require.True(t, m.previewAllowed(".a"))
+	require.False(t, m.previewAllowed("."))
+	require.False(t, m.previewAllowed("x"))
+	require.False(t, m.previewAllowed("save(x)"))
+	require.False(t, m.previewAllowed("x => exit(1)"))
+	require.True(t, m.previewAllowed(".saved"), "save must match as a whole word")
+
+	m.totalLines = previewMaxLines + 1
+	require.False(t, m.previewAllowed(".a"), "large input")
+
+	m.totalLines = 1
+	m.eof = false
+	require.False(t, m.previewAllowed(".a"), "input still streaming")
+}
+
+func TestPreview_GateUsesOriginalSize(t *testing.T) {
+	m := newQueryModel(t, `1`)
+	m.totalLines = previewMaxLines + 1
+	drain(m, m.doQuery("x => 0"))
+	require.Equal(t, 1, m.totalLines, "result view is small")
+	require.False(t, m.previewAllowed(".a"), "original is large")
+}
+
+func TestPreview_StaleTickIgnored(t *testing.T) {
+	m := newQueryModel(t, `{"a": 1}`)
+	typeKeys(m, ".")
+	m.queryInput.SetValue(".a")
+	m.schedulePreview()
+	stale := m.previewSeq
+	m.schedulePreview()
+	require.Nil(t, m.handlePreviewTick(previewTickMsg{seq: stale}))
+	require.Nil(t, m.livePreview)
+}
+
+func TestPreview_EscDropsRunningPreview(t *testing.T) {
+	m := newQueryModel(t, `{"a": 1}`)
+	typeKeys(m, ".")
+	m.queryInput.SetValue(".a")
+	m.schedulePreview()
+	cmd := m.handlePreviewTick(previewTickMsg{seq: m.previewSeq})
+	run := m.livePreview
+	require.NotNil(t, run)
+
+	m.Update(tea.KeyMsg{Type: tea.KeyEscape})
+	require.Nil(t, m.livePreview)
+	require.True(t, run.stopped)
+
+	drain(m, cmd)
+	require.Nil(t, m.original, "stopped preview must not be applied")
+}
+
+func TestPreview_TypingSchedulesTick(t *testing.T) {
+	m := newQueryModel(t, `{"a": 1}`)
+	typeKeys(m, ".")
+	seq := m.previewSeq
+	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	require.NotNil(t, cmd)
+	require.Equal(t, seq+1, m.previewSeq)
+}
+
+func TestSnapshot(t *testing.T) {
+	var l docList
+	l.add(t, `{"a": {"b": [1, "`+strings.Repeat("word ", 30)+`"]}, "c": true}`)
+	l.bottom.Next.Collapse() // "a"
+	text := &jsonx.Node{Kind: jsonx.Err, Value: "not json"}
+	l.bottom.Adjacent(text)
+	l.bottom = text
+	l.add(t, `"s"`)
+	l.add(t, `2`)
+	jsonx.Wrap(l.head, 20)
+
+	var docs []any
+	dec := json.NewDecoder(bytes.NewReader(snapshot(l.head)))
+	for dec.More() {
+		var v any
+		require.NoError(t, dec.Decode(&v))
+		docs = append(docs, v)
+	}
+	require.Equal(t, []any{
+		map[string]any{"a": map[string]any{"b": []any{1.0, strings.Repeat("word ", 30)}}, "c": true},
+		"s",
+		2.0,
+	}, docs)
 }
