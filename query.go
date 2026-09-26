@@ -20,6 +20,7 @@ type viewState struct {
 	locationHistory   []location
 	locationIndex     int
 	search            *search
+	width             int // wrap width of the list
 }
 
 // queryRun is one evaluation of a query by the engine. Messages carry the
@@ -52,7 +53,8 @@ type queryDoneMsg struct {
 func (m *model) doQuery(query string) tea.Cmd {
 	query = strings.TrimSpace(query)
 	if query == "" || query == "." {
-		return nil
+		m.queryInput.SetValue("")
+		return m.clearQuery()
 	}
 	m.stopQuery()
 	return m.startQuery(query)
@@ -65,6 +67,7 @@ func (m *model) startQuery(query string) tea.Cmd {
 		m.original = m.saveView()
 	}
 	m.resetView()
+	m.restoring = false
 
 	run := &queryRun{
 		query:  query,
@@ -73,6 +76,7 @@ func (m *model) startQuery(query string) tea.Cmd {
 		msgs:   make(chan tea.Msg),
 	}
 	m.query = run
+	m.runningQueries++
 	go run.start()
 	return waitQuery(run)
 }
@@ -139,10 +143,50 @@ func (m *model) handleQueryError(msg queryErrorMsg) tea.Cmd {
 
 func (m *model) handleQueryDone(msg queryDoneMsg) tea.Cmd {
 	msg.run.done = true
+	m.runningQueries--
+	if m.restoring && m.runningQueries == 0 {
+		m.restoreOriginal()
+		return nil
+	}
 	if msg.run == m.query && msg.exitCode != 0 && !msg.run.gotErr {
 		m.appendText(fmt.Sprintf("exit(%d) is not allowed in interactive mode", msg.exitCode))
 	}
 	return nil
+}
+
+// clearQuery drops the result view. The original is restored once no engine
+// goroutine reads it anymore, as restoring may re-wrap (mutate) it.
+func (m *model) clearQuery() tea.Cmd {
+	if m.original == nil {
+		return nil
+	}
+	m.stopQuery()
+	m.restoring = true
+	if m.runningQueries == 0 {
+		m.restoreOriginal()
+		return nil
+	}
+	return m.spinner.Tick
+}
+
+func (m *model) restoreOriginal() {
+	o := m.original
+	m.cancelSearch()
+	m.head, m.top, m.bottom = o.head, o.top, o.bottom
+	m.cursor = o.cursor
+	m.totalLines = o.totalLines
+	m.locationHistory = o.locationHistory
+	m.locationIndex = o.locationIndex
+	m.search = o.search
+	m.keysIndex = nil
+	m.keysIndexNodes = nil
+	m.fuzzyMatch = nil
+	m.original = nil
+	m.query = nil
+	m.restoring = false
+	if m.wrap && o.width != m.viewWidth() {
+		Wrap(m.top, m.viewWidth())
+	}
 }
 
 // appendResult attaches an engine output document to the result view.
@@ -174,6 +218,7 @@ func (m *model) saveView() *viewState {
 		locationHistory: m.locationHistory,
 		locationIndex:   m.locationIndex,
 		search:          m.search,
+		width:           m.viewWidth(),
 	}
 }
 

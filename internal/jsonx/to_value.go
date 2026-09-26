@@ -63,11 +63,7 @@ func (n *Node) ToValue(vm *goja.Runtime) goja.Value {
 					panic(err)
 				}
 
-				if it.HasChildren() {
-					it = it.End.Next
-				} else {
-					it = it.Next
-				}
+				it = it.nextSibling()
 			}
 		}
 
@@ -87,11 +83,7 @@ func (n *Node) ToValue(vm *goja.Runtime) goja.Value {
 			for it != nil && it != n.End {
 				arr = append(arr, it.ToValue(vm))
 
-				if it.HasChildren() {
-					it = it.End.Next
-				} else {
-					it = it.Next
-				}
+				it = it.nextSibling()
 			}
 		}
 
@@ -111,6 +103,17 @@ func (n *Node) ToValue(vm *goja.Runtime) goja.Value {
 
 	}
 	panic(fmt.Sprintf("unsupported node kind %d", n.Kind))
+}
+
+// nextSibling returns the node after n and all its children and wrap chunks.
+func (n *Node) nextSibling() *Node {
+	if n.HasChildren() {
+		return n.End.Next
+	}
+	if n.ChunkEnd != nil {
+		return n.ChunkEnd.Next
+	}
+	return n.Next
 }
 
 // maxSafeInt is 2^53 - 1, the largest integer JS can represent exactly.
