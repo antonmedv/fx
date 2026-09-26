@@ -151,12 +151,14 @@ func TestNodesParser_StopUnblocks(t *testing.T) {
 // newQueryModel creates a model with the given documents fully loaded.
 func newQueryModel(t *testing.T, docs ...string) *model {
 	m := &model{
-		termWidth:  80,
-		termHeight: 40,
-		eof:        true,
-		showCursor: true,
-		queryInput: textinput.New(),
-		search:     newSearch(),
+		termWidth:    80,
+		termHeight:   40,
+		eof:          true,
+		showCursor:   true,
+		queryInput:   textinput.New(),
+		searchInput:  textinput.New(),
+		commandInput: textinput.New(),
+		search:       newSearch(),
 	}
 	for _, doc := range docs {
 		node, err := jsonx.Parse([]byte(doc))
@@ -888,6 +890,22 @@ func TestQuery_RestoreAfterWrapToggle(t *testing.T) {
 		require.NotPanics(t, func() { m.View() })
 	})
 
+	t.Run("unchanged", func(t *testing.T) {
+		m := newQueryModel(t, long)
+		m.wrap = true
+		jsonx.Wrap(m.top, m.viewWidth())
+		chunk := m.top.Next.Next
+		m.head = chunk // Scrolled to a chunk.
+		m.cursor = 0
+		require.True(t, m.head.IsWrap())
+
+		drain(m, m.doQuery(".s"))
+		drain(m, m.doQuery("."))
+
+		require.Same(t, chunk, m.head, "scroll position must be kept")
+		require.Equal(t, 0, m.cursor)
+	})
+
 	t.Run("turned on", func(t *testing.T) {
 		m := newQueryModel(t, long)
 		m.wrap = false
@@ -938,4 +956,102 @@ func TestQuery_StaleSearchResultIgnoredAfterSwap(t *testing.T) {
 		m.Update(msg)
 		require.Empty(t, m.search.results)
 	})
+}
+
+func TestPreview_IdentityShowsOriginal(t *testing.T) {
+	t.Run("after preview", func(t *testing.T) {
+		m := newQueryModel(t, `{"a": 1}`)
+		top := m.top
+		preview(m, ".a")
+		require.NotNil(t, m.original)
+
+		preview(m, ".")
+		require.Nil(t, m.original)
+		require.Same(t, top, m.top)
+		require.True(t, m.queryInput.Focused(), "input stays open")
+		require.Equal(t, ".", m.queryInput.Value())
+	})
+
+	t.Run("after enter", func(t *testing.T) {
+		m := newQueryModel(t, `{"a": 1}`)
+		typeKeys(m, ".a")
+		enter(m)
+		typeKeys(m, ".")
+		preview(m, ".")
+		require.Nil(t, m.original)
+	})
+
+	t.Run("large input waits for enter", func(t *testing.T) {
+		m := newQueryModel(t, `{"a": 1}`)
+		m.totalLines = previewMaxLines + 1
+		drain(m, m.doQuery(".a"))
+		typeKeys(m, ".")
+		m.queryInput.SetValue(".")
+		require.Nil(t, m.schedulePreview())
+		require.NotNil(t, m.original)
+	})
+
+	t.Run("nothing to clear", func(t *testing.T) {
+		m := newQueryModel(t, `{"a": 1}`)
+		typeKeys(m, ".")
+		require.Nil(t, m.schedulePreview())
+	})
+}
+
+func TestQuery_EmptyResultView(t *testing.T) {
+	keys := []tea.KeyMsg{
+		{Type: tea.KeyPgUp}, {Type: tea.KeyPgDown}, {Type: tea.KeyHome}, {Type: tea.KeyEnd},
+		{Type: tea.KeyUp}, {Type: tea.KeyDown}, {Type: tea.KeyLeft}, {Type: tea.KeyRight},
+		{Type: tea.KeyCtrlU}, {Type: tea.KeyCtrlD}, {Type: tea.KeyShiftUp}, {Type: tea.KeyShiftDown},
+		{Type: tea.KeyShiftLeft}, {Type: tea.KeyShiftRight}, {Type: tea.KeyCtrlG},
+	}
+	for _, r := range "bfgGjkhlJKHLeE123zsnN[]" {
+		keys = append(keys, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+	}
+	for _, k := range keys {
+		t.Run(k.String(), func(t *testing.T) {
+			m := newQueryModel(t, `{"a": 1}`)
+			drain(m, m.doQuery("x => skip"))
+			require.Nil(t, m.top)
+			_, cmd := m.Update(k)
+			drain(m, cmd)
+			m.View()
+		})
+	}
+	for _, input := range []string{":1", ":5", "/a"} {
+		t.Run(input, func(t *testing.T) {
+			m := newQueryModel(t, `{"a": 1}`)
+			drain(m, m.doQuery("x => skip"))
+			typeKeys(m, input)
+			enter(m)
+			m.View()
+		})
+	}
+}
+
+// runSearch runs a search and delivers its result, skipping the spinner.
+func runSearch(m *model, s string) {
+	typeKeys(m, "/"+s)
+	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	for _, c := range cmd().(tea.BatchMsg) {
+		if msg, ok := c().(searchResultMsg); ok {
+			m.Update(msg)
+		}
+	}
+}
+
+func TestQuery_SearchTextSavedWithResults(t *testing.T) {
+	m := newQueryModel(t, `{"foo": 1, "bar": 2}`)
+	runSearch(m, "bar")
+	require.NotEmpty(t, m.search.results)
+	original := m.search
+
+	drain(m, m.doQuery("x => ({foo: x.foo})"))
+	require.Empty(t, m.searchInput.Value(), "result view starts without a search")
+	runSearch(m, "foo")
+	require.NotEmpty(t, m.search.results)
+
+	drain(m, m.doQuery("."))
+	require.Same(t, original, m.search)
+	require.Equal(t, "bar", m.searchInput.Value())
 }

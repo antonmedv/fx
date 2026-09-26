@@ -1195,6 +1195,9 @@ func (m *model) scrollIntoView() {
 }
 
 func (m *model) scrollBackward(lines int) {
+	if m.head == nil {
+		return
+	}
 	it := m.head
 	for it.Prev != nil {
 		it = it.Prev

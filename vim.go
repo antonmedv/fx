@@ -27,6 +27,10 @@ func gotoLine(m *model, num int) {
 }
 
 func findNode(m *model, line int) *Node {
+	if m.top == nil {
+		return nil
+	}
+
 	if line >= m.totalLines {
 		return m.top.Bottom()
 	}

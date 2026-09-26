@@ -23,6 +23,7 @@ type viewState struct {
 	locationHistory   []location
 	locationIndex     int
 	search            *search
+	searchText        string
 	wrap              bool  // whether the list is wrapped
 	width             int   // wrap width of the list
 	pending           *Node // first document appended while hidden, not yet wrapped/collapsed
@@ -237,6 +238,7 @@ func (m *model) restoreOriginal() {
 	m.locationHistory = o.locationHistory
 	m.locationIndex = o.locationIndex
 	m.search = o.search
+	m.searchInput.SetValue(o.searchText)
 	m.keysIndex = nil
 	m.keysIndexNodes = nil
 	m.fuzzyMatch = nil
@@ -258,11 +260,21 @@ func (m *model) restoreOriginal() {
 	case !m.wrap && o.wrap:
 		DropWrapAll(m.top)
 	}
-	if m.head != nil && m.head.IsWrap() {
+	if m.head != nil && m.head.IsWrap() && !chunkAttached(m.head) {
 		// The saved scroll position was a chunk, dropped by re-wrapping.
 		m.head = m.head.Parent
 		m.scrollIntoView()
 	}
+}
+
+// chunkAttached reports whether chunk is still one of its string's chunks.
+func chunkAttached(chunk *Node) bool {
+	for it := chunk.Parent.Next; it != nil && it.IsWrap() && it.Parent == chunk.Parent; it = it.Next {
+		if it == chunk {
+			return true
+		}
+	}
+	return false
 }
 
 // appendResult attaches an engine output document to the result view.
@@ -313,6 +325,7 @@ func (m *model) saveView() *viewState {
 		locationHistory: m.locationHistory,
 		locationIndex:   m.locationIndex,
 		search:          m.search,
+		searchText:      m.searchInput.Value(),
 		wrap:            m.wrap,
 		width:           m.viewWidth(),
 	}
@@ -328,6 +341,7 @@ func (m *model) resetView() {
 	m.locationHistory = nil
 	m.locationIndex = 0
 	m.search = newSearch()
+	m.searchInput.SetValue("")
 	m.keysIndex = nil
 	m.keysIndexNodes = nil
 	m.fuzzyMatch = nil
@@ -441,7 +455,8 @@ type previewTickMsg struct {
 func (m *model) schedulePreview() tea.Cmd {
 	m.previewSeq++
 	m.stopPreview()
-	if !m.previewAllowed(m.queryInput.Value()) {
+	query := m.queryInput.Value()
+	if !m.previewAllowed(query) && !m.previewClears(query) {
 		return nil
 	}
 	seq := m.previewSeq
@@ -455,6 +470,18 @@ func (m *model) previewAllowed(query string) bool {
 	if isIdentityQuery(query) || reSideEffect.MatchString(query) {
 		return false
 	}
+	return m.liveInput()
+}
+
+// previewClears reports whether the live preview of query is the original:
+// editing back to an identity query shows the original, like Enter does.
+func (m *model) previewClears(query string) bool {
+	return isIdentityQuery(strings.TrimSpace(query)) && m.original != nil && m.liveInput()
+}
+
+// liveInput reports whether the input is small enough to preview on every
+// keystroke: fully arrived and at most previewMaxLines.
+func (m *model) liveInput() bool {
 	if !m.eof {
 		return false
 	}
@@ -470,6 +497,9 @@ func (m *model) handlePreviewTick(msg previewTickMsg) tea.Cmd {
 		return nil
 	}
 	query := strings.TrimSpace(m.queryInput.Value())
+	if m.previewClears(query) {
+		return m.clearQuery()
+	}
 	if !m.previewAllowed(query) {
 		return nil
 	}
