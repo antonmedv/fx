@@ -218,6 +218,12 @@ func TestQuery_ApplyOnEnter(t *testing.T) {
 	require.Same(t, original, m.original.top)
 }
 
+func TestQuery_MultipleArgs(t *testing.T) {
+	m := newQueryModel(t, `{"users": [{"name": "a b"}, {"name": "c"}]}`)
+	drain(m, m.doQuery(`.users @.name .join(", ") x => x + "!"`))
+	require.Equal(t, []string{`"a b, c!"`}, lines(m))
+}
+
 func TestQuery_DotDoesNotStartEngine(t *testing.T) {
 	m := newQueryModel(t, `{"a": 1}`)
 	original := m.top
@@ -573,7 +579,7 @@ func TestQuery_ClearDropsErrorStyles(t *testing.T) {
 }
 
 func TestQuery_IdentityQueriesShowOriginal(t *testing.T) {
-	for _, q := range []string{"", ".", "x", "this", " x "} {
+	for _, q := range []string{"", ".", "x", "this", " x ", ". x"} {
 		m := newQueryModel(t, `{"a": 1}`)
 		top := m.top
 		require.Nil(t, m.doQuery(q), q)

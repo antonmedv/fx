@@ -67,7 +67,12 @@ func (m *model) doQuery(query string) tea.Cmd {
 // fast path would return the original nodes themselves, which must never be
 // linked into the result view.
 func isIdentityQuery(query string) bool {
-	return query == "" || query == "." || query == "x" || query == "this"
+	for _, arg := range engine.SplitArgs(query) {
+		if arg != "." && arg != "x" && arg != "this" {
+			return false
+		}
+	}
+	return true
 }
 
 func (m *model) startQuery(query string) tea.Cmd {
@@ -93,11 +98,12 @@ func (r *queryRun) start() {
 	out := make(chan *Node)
 	errCh := make(chan error)
 	done := make(chan int, 1)
+	args := engine.SplitArgs(r.query)
 	go func() {
 		if r.preview {
-			done <- engine.StartPreview(r.parser, []string{r.query}, out, errCh, r.cancel)
+			done <- engine.StartPreview(r.parser, args, out, errCh, r.cancel)
 		} else {
-			done <- engine.Start(r.parser, []string{r.query}, out, errCh, r.cancel)
+			done <- engine.Start(r.parser, args, out, errCh, r.cancel)
 		}
 	}()
 	for {
