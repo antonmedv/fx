@@ -657,9 +657,26 @@ func TestPreview_Gate(t *testing.T) {
 }
 
 func TestPreview_ExitNotApplied(t *testing.T) {
+	for _, q := range []string{
+		`x => exit()`,
+		`x => exit(0)`,
+		`x => exit(-1)`,
+		`x => exit(1)`,
+		`x => x.a == 1 ? x : exit(0)`, // After partial output.
+		`x => (println("a"), exit())`,
+	} {
+		t.Run(q, func(t *testing.T) {
+			m := newQueryModel(t, `{"a": 1}`, `{"a": 2}`)
+			preview(m, q)
+			require.Nil(t, m.original, "failed preview must not be applied")
+		})
+	}
+}
+
+func TestQuery_NegativeExitIsError(t *testing.T) {
 	m := newQueryModel(t, `{"a": 1}`)
-	preview(m, `x => exit(1)`)
-	require.Nil(t, m.original, "failed preview must not be applied")
+	drain(m, m.doQuery("x => exit(-1)"))
+	require.Equal(t, []string{"exit(-1) is not allowed in interactive mode"}, lines(m))
 }
 
 func TestPreview_GateUsesOriginalSize(t *testing.T) {

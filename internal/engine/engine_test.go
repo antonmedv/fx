@@ -257,6 +257,51 @@ func TestStart_GetterRunsDuringSerialization(t *testing.T) {
 	assert.Empty(t, errs)
 }
 
+func TestStart_ExitCodes(t *testing.T) {
+	for q, want := range map[string]int{
+		`x => exit()`:                        0,
+		`x => exit(0)`:                       0,
+		`x => exit(2)`:                       2,
+		`x => exit(-1)`:                      -1,
+		`x => ({get a() { exit(-1) }})`:      -1,
+		`x => x == 1 ? x : exit(-1)`:         -1,
+		`x => (println("a"), exit(3), x)`:    3,
+		`x => ({get a() { return exit() }})`: 0,
+	} {
+		t.Run(q, func(t *testing.T) {
+			parser := jsonx.NewJsonParser(strings.NewReader("1 2"), false)
+			exitCode, _, errs := runEngine(parser, []string{q})
+			assert.Equal(t, want, exitCode)
+			assert.Empty(t, errs)
+		})
+	}
+}
+
+func TestStartPreview_ExitDisabled(t *testing.T) {
+	for _, q := range []string{
+		`x => exit()`,
+		`x => exit(0)`,
+		`x => exit(-1)`,
+		`x => exit(2)`,
+		`x => (__exit__(0), x)`,
+		`x => x == 1 ? x : exit(0)`, // After partial output.
+		`x => ({get a() { exit(0) }})`,
+	} {
+		t.Run(q, func(t *testing.T) {
+			out := make(chan *jsonx.Node, 10)
+			errCh := make(chan error, 10)
+			parser := jsonx.NewJsonParser(strings.NewReader("1 2"), false)
+			exitCode := engine.StartPreview(parser, []string{q}, out, errCh, make(chan struct{}))
+			close(errCh)
+
+			assert.Equal(t, 1, exitCode)
+			err := <-errCh
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "exit is disabled in preview")
+		})
+	}
+}
+
 func TestStartPreview_SaveDisabled(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "file.json")
 	require.NoError(t, os.WriteFile(path, []byte(`{"a": 1}`), 0644))
