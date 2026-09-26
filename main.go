@@ -608,9 +608,13 @@ func (m *model) handleQueryKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch {
 	case msg.Type == tea.KeyEscape:
+		// Cancel like search: drop the query and restore the original.
 		m.showCursor = true
 		m.queryInput.Blur()
+		m.previewSeq++ // Drop a pending preview tick.
 		m.stopPreview()
+		m.queryInput.SetValue("")
+		cmd = m.clearQuery()
 
 	case msg.Type == tea.KeyEnter:
 		m.showCursor = true
