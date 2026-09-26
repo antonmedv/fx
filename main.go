@@ -169,21 +169,19 @@ func main() {
 	var fileName string
 	var src io.Reader
 
-	// Use file mode when stdin is TTY or when stdin is a non-input device (e.g., /dev/null in launch agents)
-	if stdinIsTty || !stdinIsInput {
-		if len(args) == 0 {
-			// $ fx
-			fmt.Println(usage())
-			return
-		} else {
-			// $ fx file.json arg*
-			filePath := args[0]
-			src = open(filePath, &flagYaml, &flagToml)
-			engine.FilePath = filePath
-			fileName = filepath.Base(filePath)
-			args = args[1:]
-		}
-	} else {
+	switch chooseInput(stdinIsTty, stdinIsInput, args, os.Stat) {
+	case inputUsage:
+		// $ fx
+		fmt.Println(usage())
+		return
+	case inputFile:
+		// $ fx file.json arg*
+		filePath := args[0]
+		src = open(filePath, &flagYaml, &flagToml)
+		engine.FilePath = filePath
+		fileName = filepath.Base(filePath)
+		args = args[1:]
+	case inputStdin:
 		// cat file.json | fx arg*
 		src = os.Stdin
 	}

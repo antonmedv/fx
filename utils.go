@@ -119,3 +119,39 @@ func isRefNode(n *jsonx.Node) (string, bool) {
 	}
 	return "", false
 }
+
+type inputSource int
+
+const (
+	inputUsage inputSource = iota
+	inputFile
+	inputStdin
+)
+
+var bareIdentifier = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]*$`)
+
+// chooseInput decides where input comes from. The first argument is read as a
+// file when it names an existing regular file, whatever stdin is. When stdin is
+// a pipe or a regular file, a bare identifier (e.g. `keys`) stays code even if a
+// file with that name exists, so pipelines don't change meaning with the cwd.
+// Without a file argument, a TTY or char device stdin (e.g. /dev/null) keeps
+// file mode, and piped stdin is read as input.
+func chooseInput(stdinIsTty, stdinIsInput bool, args []string, stat func(string) (os.FileInfo, error)) inputSource {
+	stdinMode := stdinIsInput && !stdinIsTty
+	if len(args) > 0 {
+		isFile := false
+		if info, err := stat(args[0]); err == nil && info.Mode().IsRegular() {
+			isFile = true
+		}
+		if isFile && !(stdinMode && bareIdentifier.MatchString(args[0])) {
+			return inputFile
+		}
+	}
+	if stdinMode {
+		return inputStdin
+	}
+	if len(args) == 0 {
+		return inputUsage
+	}
+	return inputFile
+}
