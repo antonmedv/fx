@@ -3,6 +3,8 @@
 _fx() {
     local -a reply
     reply=("${(@f)$(COMP_ZSH="${LBUFFER}" fx)}")
+    # No output splits into one empty line, which compadd -U would insert.
+    reply=(${reply:#})
     if (( ${#reply} )); then
         local -a insert_files display_files insert_other display_other
         local line display rest value typ
