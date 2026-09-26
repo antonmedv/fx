@@ -39,13 +39,13 @@ func Start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error,
 	return start(parser, args, out, errCh, cancel, false)
 }
 
-// StartPreview is Start for live previews: save() is disabled, as a preview
-// runs while the user is still typing the expression.
+// StartPreview is Start for live previews: save() and exit() are disabled,
+// as a preview runs while the user is still typing the expression.
 func StartPreview(parser Parser, args []string, out chan *jsonx.Node, errCh chan error, cancel <-chan struct{}) int {
 	return start(parser, args, out, errCh, cancel, true)
 }
 
-func start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error, cancel <-chan struct{}, readOnly bool) int {
+func start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error, cancel <-chan struct{}, preview bool) int {
 	isPrettyPrintArg := len(args) == 1 && (args[0] == "." || args[0] == "this" || args[0] == "x")
 
 	// Fast path.
@@ -91,7 +91,7 @@ func start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error,
 
 	vm := NewVM(func(s string) {
 		send(out, &jsonx.Node{Kind: jsonx.Err, Value: s}, cancel)
-	}, readOnly)
+	}, preview)
 
 	// Interrupt running JS on cancel: cancel alone is checked only between
 	// documents, so a never-ending expression would never stop.
@@ -117,38 +117,38 @@ func start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error,
 	undefined := vm.Get("undefined")
 	main, _ := goja.AssertFunction(vm.Get("__main__"))
 
-	// echo returns an exit code to stop with, or -1 to continue.
-	echo := func(output goja.Value) int {
+	// echo returns stop = true and an exit code if Start must return.
+	echo := func(output goja.Value) (exitCode int, stop bool) {
 		rtype := output.ExportType()
 		if output.StrictEquals(undefined) {
 			if !sendErr(errCh, &Error{"undefined"}, cancel) {
-				return 0
+				return 0, true
 			}
 		} else if rtype != nil && rtype.Kind() == reflect.String {
 			if !send(out, &jsonx.Node{Kind: jsonx.String, Value: Quote(output.String()), LineNumber: 1}, cancel) {
-				return 0
+				return 0, true
 			}
 		} else {
-			jsonOut, exitCode, err := stringify(output, vm)
-			if exitCode >= 0 {
-				return exitCode
+			jsonOut, exit, err := stringify(output, vm)
+			if exit != nil {
+				return exit.Code, true
 			}
 			if err != nil {
 				if isCancelled(cancel) {
-					return 0
+					return 0, true
 				}
 				sendErr(errCh, &Error{gojaErrorToString(err)}, cancel)
-				return 1
+				return 1, true
 			}
 			nodeOut, err := jsonx.Parse([]byte(jsonOut))
 			if err != nil {
 				panic(err)
 			}
 			if !send(out, nodeOut, cancel) {
-				return 0
+				return 0, true
 			}
 		}
-		return -1
+		return 0, false
 	}
 
 	for {
@@ -168,9 +168,9 @@ func start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error,
 		}
 
 		input := node.ToValue(vm)
-		output, exitCode, err := callMain(main, input)
-		if exitCode >= 0 {
-			return exitCode
+		output, exit, err := callMain(main, input)
+		if exit != nil {
+			return exit.Code
 		}
 		if err != nil {
 			if isCancelled(cancel) {
@@ -183,7 +183,7 @@ func start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error,
 		if output.StrictEquals(skip) {
 			continue
 		}
-		if exitCode := echo(output); exitCode >= 0 {
+		if exitCode, stop := echo(output); stop {
 			return exitCode
 		}
 	}
@@ -220,12 +220,12 @@ func sendErr(errCh chan error, err error, cancel <-chan struct{}) bool {
 	}
 }
 
-func callMain(main goja.Callable, input goja.Value) (output goja.Value, exitCode int, err error) {
-	exitCode = -1
+// callMain runs main. exit is set if exit() was called, with any code.
+func callMain(main goja.Callable, input goja.Value) (output goja.Value, exit *ExitError, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			if e, ok := r.(ExitError); ok {
-				exitCode = e.Code
+				exit = &e
 			} else {
 				panic(r)
 			}
@@ -237,13 +237,12 @@ func callMain(main goja.Callable, input goja.Value) (output goja.Value, exitCode
 
 // stringify serializes output like callMain runs main: getters run JS here,
 // which may throw, call exit() or be interrupted on cancel.
-func stringify(output goja.Value, vm *goja.Runtime) (json string, exitCode int, err error) {
-	exitCode = -1
+func stringify(output goja.Value, vm *goja.Runtime) (json string, exit *ExitError, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			switch e := r.(type) {
 			case ExitError:
-				exitCode = e.Code
+				exit = &e
 			case *goja.Exception:
 				err = e
 			case *goja.InterruptedError:

@@ -17,8 +17,9 @@ type ExitError struct {
 	Code int
 }
 
-// NewVM creates a runtime with fx bindings. With readOnly, save() fails.
-func NewVM(writeOut func(string), readOnly bool) *goja.Runtime {
+// NewVM creates a runtime with fx bindings. In preview, save() and exit()
+// fail: a preview must neither write the file nor stop with partial output.
+func NewVM(writeOut func(string), preview bool) *goja.Runtime {
 	vm := goja.New()
 
 	if err := vm.Set("println", func(s string) any {
@@ -29,7 +30,7 @@ func NewVM(writeOut func(string), readOnly bool) *goja.Runtime {
 	}
 
 	if err := vm.Set("__save__", func(json string) error {
-		if readOnly {
+		if preview {
 			return fmt.Errorf("save is disabled in preview, press enter to apply")
 		}
 		if FilePath == "" {
@@ -88,7 +89,10 @@ func NewVM(writeOut func(string), readOnly bool) *goja.Runtime {
 		panic(err)
 	}
 
-	if err := vm.Set("__exit__", func(code int) {
+	if err := vm.Set("__exit__", func(code int) error {
+		if preview {
+			return fmt.Errorf("exit is disabled in preview")
+		}
 		panic(ExitError{Code: code})
 	}); err != nil {
 		panic(err)
