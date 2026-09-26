@@ -48,13 +48,23 @@ func (p *LineParser) Parse() (*Node, error) {
 	return node, nil
 }
 
-// More reports whether another line remains. It blocks like JsonParser.More.
-func (p *LineParser) More() bool {
+// More reports whether another line remains, blocking like
+// JsonParser.More. A read error is kept for later More and Parse calls.
+func (p *LineParser) More() (bool, error) {
 	if p.eof != nil {
-		return false
+		if p.eof == io.EOF {
+			return false, nil
+		}
+		return false, p.eof
 	}
-	_, err := p.buf.Peek(1)
-	return err == nil
+	if _, err := p.buf.Peek(1); err != nil {
+		if err == io.EOF {
+			return false, nil
+		}
+		p.eof = err
+		return false, err
+	}
+	return true, nil
 }
 
 func (p *LineParser) Recover() *Node {

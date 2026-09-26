@@ -177,8 +177,10 @@ func main() {
 	case inputFile:
 		// $ fx file.json arg*
 		filePath := args[0]
-		src = open(filePath, &flagYaml, &flagToml)
+		f := open(filePath, &flagYaml, &flagToml)
+		src = f
 		engine.FilePath = filePath
+		engine.Input = f
 		fileName = filepath.Base(filePath)
 		args = args[1:]
 	case inputStdin:

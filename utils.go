@@ -27,22 +27,16 @@ func lookup(names []string, defaultEditor string) string {
 	return defaultEditor
 }
 
-// open returns the input of a file argument. A regular file is read into
-// memory and closed, so save() rewriting it cannot change what is still to be
-// parsed. Other files (FIFOs like <(cmd), devices) are streamed.
-func open(filePath string, flagYaml, flagToml *bool) io.Reader {
+func open(filePath string, flagYaml, flagToml *bool) *os.File {
 	f, err := os.Open(filePath)
 	if err != nil {
-		exitOnPathError(err)
-	}
-	var src io.Reader = f
-	if info, err := f.Stat(); err == nil && info.Mode().IsRegular() {
-		b, err := io.ReadAll(f)
-		if err != nil {
-			exitOnPathError(err)
+		var pathError *fs.PathError
+		if errors.As(err, &pathError) {
+			println(err.Error())
+			os.Exit(1)
+		} else {
+			panic(err)
 		}
-		_ = f.Close()
-		src = bytes.NewReader(b)
 	}
 	fileName := path.Base(filePath)
 	hasYamlExt, _ := regexp.MatchString(`(?i)\.ya?ml$`, fileName)
@@ -53,16 +47,7 @@ func open(filePath string, flagYaml, flagToml *bool) io.Reader {
 	if !*flagToml && hasTomlExt {
 		*flagToml = true
 	}
-	return src
-}
-
-func exitOnPathError(err error) {
-	var pathError *fs.PathError
-	if errors.As(err, &pathError) {
-		println(err.Error())
-		os.Exit(1)
-	}
-	panic(err)
+	return f
 }
 
 func regexCase(code string) (string, bool) {

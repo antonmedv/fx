@@ -3,6 +3,7 @@ package engine
 import (
 	"encoding/base64"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -12,6 +13,10 @@ import (
 
 // FilePath is the file being processed, empty if stdin.
 var FilePath string
+
+// Input is the open FilePath. save() closes it before replacing the file,
+// as Windows can't rename over an open file.
+var Input io.Closer
 
 // ExitError is used by exit() to signal a specific exit code.
 type ExitError struct {
@@ -25,8 +30,9 @@ func NewVM(writeOut func(string), preview bool) *goja.Runtime {
 }
 
 // newVM is NewVM for Start: severalValues reports whether the input holds
-// more than one JSON value, in which case save() fails.
-func newVM(writeOut func(string), preview bool, severalValues func() bool) *goja.Runtime {
+// more than one JSON value, in which case save() fails. Without it save()
+// always fails.
+func newVM(writeOut func(string), preview bool, severalValues func() (bool, error)) *goja.Runtime {
 	vm := goja.New()
 
 	if err := vm.Set("println", func(s string) any {
@@ -43,13 +49,28 @@ func newVM(writeOut func(string), preview bool, severalValues func() bool) *goja
 		if FilePath == "" {
 			return fmt.Errorf("specify a file as the first argument to be able to save: fx file.json ")
 		}
+		mode, err := saveMode(FilePath)
+		if err != nil {
+			return err
+		}
 		// save() replaces the whole file with one value. With several values
 		// (JSON Lines, a YAML stream) each would overwrite the file in turn,
 		// losing the rest, so refuse before writing anything.
-		if severalValues != nil && severalValues() {
+		if severalValues == nil {
+			return fmt.Errorf("save is not available here")
+		}
+		several, err := severalValues()
+		if err != nil {
+			return err
+		}
+		if several {
 			return fmt.Errorf("save supports a single JSON value, but %s contains several", FilePath)
 		}
-		return writeFileAtomic(FilePath, []byte(json))
+		// All input is read, so the parser no longer needs the file.
+		if Input != nil {
+			_ = Input.Close()
+		}
+		return writeFileAtomic(FilePath, []byte(json), mode)
 	}); err != nil {
 		panic(err)
 	}
@@ -108,22 +129,26 @@ func newVM(writeOut func(string), preview bool, severalValues func() bool) *goja
 	return vm
 }
 
+// saveMode returns the mode of the file save() may replace. A missing file
+// gets 0644.
+func saveMode(path string) (os.FileMode, error) {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return 0644, nil
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		return 0, fmt.Errorf("cannot save to a symbolic link: %s", path)
+	}
+	if !info.Mode().IsRegular() {
+		return 0, fmt.Errorf("cannot save to %s: not a regular file", path)
+	}
+	return info.Mode().Perm(), nil
+}
+
 // writeFileAtomic replaces path with data via a temp file in the same
 // directory and a rename: a crash never leaves a half-written file, and the
-// original inode is untouched for anyone still reading it. The file mode is
-// kept; a new file gets 0644.
-func writeFileAtomic(path string, data []byte) (err error) {
-	mode := os.FileMode(0644)
-	if info, err := os.Lstat(path); err == nil {
-		if info.Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("cannot save to a symbolic link: %s", path)
-		}
-		if !info.Mode().IsRegular() {
-			return fmt.Errorf("cannot save to %s: not a regular file", path)
-		}
-		mode = info.Mode().Perm()
-	}
-
+// original inode is untouched for anyone still reading it.
+func writeFileAtomic(path string, data []byte, mode os.FileMode) (err error) {
 	tmp, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".*.tmp")
 	if err != nil {
 		return err

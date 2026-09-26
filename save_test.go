@@ -104,3 +104,18 @@ func TestSaveRefusesSeveralValues(t *testing.T) {
 		})
 	}
 }
+
+// Retrying save() after the lookahead failed must not overwrite the input.
+func TestSaveRefusesMalformedRest(t *testing.T) {
+	const input = `{"a":1} /* unfinished`
+	file := filepath.Join(t.TempDir(), "f.json")
+	require.NoError(t, os.WriteFile(file, []byte(input), 0o644))
+
+	stdout, stderr, code := runFxArgs(t, file, `x => { try { save(x) } catch (e) {} return save(x) }`)
+	require.Equal(t, 1, code)
+	require.Empty(t, stdout)
+	require.Contains(t, stderr, "Unexpected end of input in comment")
+	data, err := os.ReadFile(file)
+	require.NoError(t, err)
+	require.Equal(t, input, string(data), "file must be untouched")
+}

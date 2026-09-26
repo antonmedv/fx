@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -383,6 +384,35 @@ func (p *nodesParser) Parse() (*Node, error) {
 		p.cond.Wait()
 	}
 }
+
+// More waits until a document after the last returned one is published,
+// or the input ends.
+func (p *nodesParser) More() (bool, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	seen := p.returned // Last document checked.
+	for {
+		if p.cancelled {
+			return false, errCancelled
+		}
+		for seen != p.last {
+			if seen == nil {
+				seen = p.head
+			} else {
+				seen = nextDoc(seen)
+			}
+			if seen.Kind != Err {
+				return true, nil
+			}
+		}
+		if p.eof {
+			return false, nil
+		}
+		p.cond.Wait()
+	}
+}
+
+var errCancelled = errors.New("cancelled")
 
 func (p *nodesParser) Recover() *Node {
 	return nil

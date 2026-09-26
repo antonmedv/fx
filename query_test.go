@@ -1146,3 +1146,58 @@ func TestQueryInputView_WideRunes(t *testing.T) {
 	m.queryInput.CursorEnd()
 	require.Equal(t, `str(語")`, m.queryInputView())
 }
+
+// saveFile makes path the file argument, as `fx path`.
+func saveFile(t *testing.T, content string) string {
+	path := filepath.Join(t.TempDir(), "file.json")
+	require.NoError(t, os.WriteFile(path, []byte(content), 0644))
+	old := engine.FilePath
+	engine.FilePath = path
+	t.Cleanup(func() { engine.FilePath = old })
+	return path
+}
+
+func requireFile(t *testing.T, path, want string) {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+	require.Equal(t, want, string(data))
+}
+
+func TestQuery_SaveRefusesSeveralDocuments(t *testing.T) {
+	const input = "{\"a\": 1}\n{\"a\": 2}\n"
+	path := saveFile(t, input)
+	m := newQueryModel(t, `{"a": 1}`, `{"a": 2}`)
+	drain(m, m.doQuery("save"))
+	requireFile(t, path, input)
+	require.Contains(t, strings.Join(lines(m), "\n"), "save supports a single JSON value")
+}
+
+// save() of the first document waits for the rest of a still loading file.
+func TestQuery_SaveWaitsForStreamedDocuments(t *testing.T) {
+	const input = "{\"a\": 1}\n{\"a\": 2}\n"
+	path := saveFile(t, input)
+	m := newQueryModel(t, `{"a": 1}`)
+	m.eof = false
+
+	cmd := m.doQuery("save")
+	time.Sleep(50 * time.Millisecond) // The engine is blocked in save().
+	requireFile(t, path, input)
+
+	m.Update(nodeMsg{node: parseDoc(t, `{"a": 2}`)})
+	drain(m, cmd)
+	requireFile(t, path, input)
+	require.Contains(t, strings.Join(lines(m), "\n"), "save supports a single JSON value")
+}
+
+func TestQuery_SaveSingleStreamedDocument(t *testing.T) {
+	path := saveFile(t, `{"a": 1}`)
+	m := newQueryModel(t, `{"a": 1}`)
+	m.eof = false
+
+	cmd := m.doQuery("x.a = 2, save(x)")
+	m.Update(eofMsg{})
+	drain(m, cmd)
+	requireFile(t, path, "{\n  \"a\": 2\n}\n")
+	require.False(t, m.query.gotErr)
+}

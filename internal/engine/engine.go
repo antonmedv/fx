@@ -25,6 +25,10 @@ func init() {
 type Parser interface {
 	Parse() (*jsonx.Node, error)
 	Recover() *jsonx.Node
+	// More reports whether input remains after the values parsed so far,
+	// blocking until more input or EOF arrives. An error in the remaining
+	// input is returned by every later More and Parse call.
+	More() (bool, error)
 }
 
 type Error struct {
@@ -90,12 +94,11 @@ func start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error,
 	code.WriteString(JS(args))
 
 	values := 0 // JSON values parsed so far.
-	severalValues := func() bool {
+	severalValues := func() (bool, error) {
 		if values > 1 {
-			return true
+			return true, nil
 		}
-		m, ok := parser.(interface{ More() bool })
-		return ok && m.More()
+		return parser.More()
 	}
 
 	vm := newVM(func(s string) {

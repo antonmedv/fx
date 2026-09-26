@@ -61,6 +61,10 @@ func (p *slurpParser) Parse() (*jsonx.Node, error) {
 	return node, nil
 }
 
+func (p *slurpParser) More() (bool, error) {
+	return p.node != nil, nil
+}
+
 func (p *slurpParser) Recover() *jsonx.Node {
 	return nil
 }

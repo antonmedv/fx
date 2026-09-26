@@ -23,6 +23,7 @@ type JsonParser struct {
 	realLineNumber int
 	depth          uint8
 	count          int
+	err            error // error found by More, until Recover
 }
 
 func Parse(b []byte) (*Node, error) {
@@ -52,6 +53,9 @@ func (p *JsonParser) Parse() (node *Node, err error) {
 			err = p.errorSnippet(fmt.Sprintf("%v", r))
 		}
 	}()
+	if p.err != nil {
+		return nil, p.err
+	}
 	if p.count > 0 {
 		p.skipWhitespace()
 	}
@@ -65,17 +69,22 @@ func (p *JsonParser) Parse() (node *Node, err error) {
 
 // More reports whether input remains after the values parsed so far. It
 // reads ahead, so on a stream it blocks until more input or EOF arrives.
-func (p *JsonParser) More() (more bool) {
+func (p *JsonParser) More() (more bool, err error) {
+	if p.err != nil {
+		return false, p.err
+	}
 	defer func() {
 		if r := recover(); r != nil {
-			more = true // Invalid input is left for Parse to report.
+			p.err = p.errorSnippet(fmt.Sprintf("%v", r))
+			more, err = false, p.err
 		}
 	}()
 	p.skipWhitespace()
-	return !p.eof
+	return !p.eof, nil
 }
 
 func (p *JsonParser) Recover() *Node {
+	p.err = nil
 	p.eof = false
 	p.depth = 0
 
