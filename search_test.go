@@ -39,9 +39,11 @@ func TestBasicSearch(t *testing.T) {
 	require.NoError(t, err)
 
 	m := &model{
-		top:    head,
-		head:   head,
-		search: newSearch(),
+		viewState: viewState{
+			top:    head,
+			head:   head,
+			search: newSearch(),
+		},
 	}
 
 	testCases := []struct {
@@ -89,9 +91,11 @@ func TestRegexSearch(t *testing.T) {
 	require.NoError(t, err)
 
 	m := &model{
-		top:    head,
-		head:   head,
-		search: newSearch(),
+		viewState: viewState{
+			top:    head,
+			head:   head,
+			search: newSearch(),
+		},
 	}
 
 	testCases := []struct {
@@ -152,9 +156,11 @@ func TestCaseInsensitiveSearch(t *testing.T) {
 	require.NoError(t, err)
 
 	m := &model{
-		top:    head,
-		head:   head,
-		search: newSearch(),
+		viewState: viewState{
+			top:    head,
+			head:   head,
+			search: newSearch(),
+		},
 	}
 
 	testCases := []struct {
@@ -198,9 +204,11 @@ func TestSearchInDifferentNodeTypes(t *testing.T) {
 	require.NoError(t, err)
 
 	m := &model{
-		top:    head,
-		head:   head,
-		search: newSearch(),
+		viewState: viewState{
+			top:    head,
+			head:   head,
+			search: newSearch(),
+		},
 	}
 
 	testCases := []struct {
@@ -238,9 +246,11 @@ func TestSearchResultDetails(t *testing.T) {
 	require.NoError(t, err)
 
 	m := &model{
-		top:    head,
-		head:   head,
-		search: newSearch(),
+		viewState: viewState{
+			top:    head,
+			head:   head,
+			search: newSearch(),
+		},
 	}
 
 	// Test multiple matches in same value
@@ -275,9 +285,11 @@ func TestSearchNavigation(t *testing.T) {
 	require.NoError(t, err)
 
 	m := &model{
-		top:    head,
-		head:   head,
-		search: newSearch(),
+		viewState: viewState{
+			top:    head,
+			head:   head,
+			search: newSearch(),
+		},
 	}
 
 	// Search for term with multiple matches
@@ -316,9 +328,11 @@ func TestSpecialCharacterSearch(t *testing.T) {
 	require.NoError(t, err)
 
 	m := &model{
-		top:    head,
-		head:   head,
-		search: newSearch(),
+		viewState: viewState{
+			top:    head,
+			head:   head,
+			search: newSearch(),
+		},
 	}
 
 	testCases := []struct {
@@ -371,9 +385,11 @@ func TestEmptyAndEdgeCases(t *testing.T) {
 			require.NoError(t, err)
 
 			m := &model{
-				top:    head,
-				head:   head,
-				search: newSearch(),
+				viewState: viewState{
+					top:    head,
+					head:   head,
+					search: newSearch(),
+				},
 			}
 
 			doSearch(m, tc.searchTerm)
@@ -416,9 +432,11 @@ func TestLargeJSONSearch(t *testing.T) {
 	require.NoError(t, err)
 
 	m := &model{
-		top:    head,
-		head:   head,
-		search: newSearch(),
+		viewState: viewState{
+			top:    head,
+			head:   head,
+			search: newSearch(),
+		},
 	}
 
 	// Test that search completes in reasonable time
@@ -444,9 +462,11 @@ func TestSearchInWrappedStrings(t *testing.T) {
 	Wrap(head, 40)
 
 	m := &model{
-		top:       head,
-		head:      head,
-		search:    newSearch(),
+		viewState: viewState{
+			top:    head,
+			head:   head,
+			search: newSearch(),
+		},
 		wrap:      true,
 		termWidth: 40,
 	}
@@ -490,9 +510,11 @@ func TestSearchChunkBoundaryMatches(t *testing.T) {
 	Wrap(head, 30)
 
 	m := &model{
-		top:       head,
-		head:      head,
-		search:    newSearch(),
+		viewState: viewState{
+			top:    head,
+			head:   head,
+			search: newSearch(),
+		},
 		wrap:      true,
 		termWidth: 30,
 	}
@@ -537,9 +559,11 @@ func TestSearchMultipleMatchesInChunks(t *testing.T) {
 	Wrap(head, 35)
 
 	m := &model{
-		top:       head,
-		head:      head,
-		search:    newSearch(),
+		viewState: viewState{
+			top:    head,
+			head:   head,
+			search: newSearch(),
+		},
 		wrap:      true,
 		termWidth: 35,
 	}
@@ -566,9 +590,11 @@ func TestSearchWrappedVsUnwrapped(t *testing.T) {
 
 	// First test without wrapping
 	m := &model{
-		top:       head,
-		head:      head,
-		search:    newSearch(),
+		viewState: viewState{
+			top:    head,
+			head:   head,
+			search: newSearch(),
+		},
 		wrap:      false,
 		termWidth: 80,
 	}
@@ -599,9 +625,11 @@ func TestSearchChunkIndexMapping(t *testing.T) {
 	Wrap(head, 20)
 
 	m := &model{
-		top:       head,
-		head:      head,
-		search:    newSearch(),
+		viewState: viewState{
+			top:    head,
+			head:   head,
+			search: newSearch(),
+		},
 		wrap:      true,
 		termWidth: 20,
 	}
@@ -652,9 +680,11 @@ func TestSearchEmptyAndShortStringsWithWrap(t *testing.T) {
 			Wrap(head, 30)
 
 			m := &model{
-				top:       head,
-				head:      head,
-				search:    newSearch(),
+				viewState: viewState{
+					top:    head,
+					head:   head,
+					search: newSearch(),
+				},
 				wrap:      true,
 				termWidth: 30,
 			}
@@ -681,9 +711,11 @@ func TestSearchRegexAcrossChunks(t *testing.T) {
 	Wrap(head, 25)
 
 	m := &model{
-		top:       head,
-		head:      head,
-		search:    newSearch(),
+		viewState: viewState{
+			top:    head,
+			head:   head,
+			search: newSearch(),
+		},
 		wrap:      true,
 		termWidth: 25,
 	}

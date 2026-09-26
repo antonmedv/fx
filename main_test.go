@@ -37,15 +37,17 @@ func prepare(t *testing.T, opts ...options) *teatest.TestModel {
 	require.NoError(t, err)
 
 	m := &model{
-		top:          head,
-		head:         head,
-		bottom:       head,
-		totalLines:   head.Bottom().LineNumber,
+		viewState: viewState{
+			top:        head,
+			head:       head,
+			bottom:     head,
+			totalLines: head.Bottom().LineNumber,
+			search:     newSearch(),
+		},
 		eof:          true,
 		wrap:         true,
 		showCursor:   true,
 		searchInput:  textinput.New(),
-		search:       newSearch(),
 		commandInput: textinput.New(),
 	}
 

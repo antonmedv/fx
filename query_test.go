@@ -158,7 +158,7 @@ func newQueryModel(t *testing.T, docs ...string) *model {
 		queryInput:   textinput.New(),
 		searchInput:  textinput.New(),
 		commandInput: textinput.New(),
-		search:       newSearch(),
+		viewState:    viewState{search: newSearch()},
 	}
 	for _, doc := range docs {
 		node, err := jsonx.Parse([]byte(doc))
@@ -642,19 +642,24 @@ func TestPreview_OriginalUntouchedUntilGoodResult(t *testing.T) {
 
 func TestPreview_Gate(t *testing.T) {
 	m := newQueryModel(t, `{"a": 1}`)
-	require.True(t, m.previewAllowed(".a"))
-	require.False(t, m.previewAllowed("."))
-	require.False(t, m.previewAllowed("x"))
-	require.False(t, m.previewAllowed("save(x)"))
-	require.False(t, m.previewAllowed("x => exit(1)"))
-	require.True(t, m.previewAllowed(".saved"), "save must match as a whole word")
+	require.Equal(t, previewRun, m.previewAction(".a"))
+	require.Equal(t, previewNone, m.previewAction("."))
+	require.Equal(t, previewNone, m.previewAction("x"))
+	require.Equal(t, previewRun, m.previewAction(".exit"), "keys named like functions")
+	require.Equal(t, previewRun, m.previewAction(".save"), "keys named like functions")
 
 	m.totalLines = previewMaxLines + 1
-	require.False(t, m.previewAllowed(".a"), "large input")
+	require.Equal(t, previewNone, m.previewAction(".a"), "large input")
 
 	m.totalLines = 1
 	m.eof = false
-	require.False(t, m.previewAllowed(".a"), "input still streaming")
+	require.Equal(t, previewNone, m.previewAction(".a"), "input still streaming")
+}
+
+func TestPreview_ExitNotApplied(t *testing.T) {
+	m := newQueryModel(t, `{"a": 1}`)
+	preview(m, `x => exit(1)`)
+	require.Nil(t, m.original, "failed preview must not be applied")
 }
 
 func TestPreview_GateUsesOriginalSize(t *testing.T) {
@@ -662,7 +667,7 @@ func TestPreview_GateUsesOriginalSize(t *testing.T) {
 	m.totalLines = previewMaxLines + 1
 	drain(m, m.doQuery("x => 0"))
 	require.Equal(t, 1, m.totalLines, "result view is small")
-	require.False(t, m.previewAllowed(".a"), "original is large")
+	require.Equal(t, previewNone, m.previewAction(".a"), "original is large")
 }
 
 func TestPreview_StaleTickIgnored(t *testing.T) {
