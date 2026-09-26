@@ -528,19 +528,35 @@ func TestQuery_WrappedErrorLineIsStyled(t *testing.T) {
 	require.Greater(t, wrapped, 0)
 }
 
-func TestQuery_EscKeepsEditedText(t *testing.T) {
+func TestQuery_EscCancelsLikeSearch(t *testing.T) {
 	m := newQueryModel(t, `{"a": 1, "ab": 2}`)
+	top := m.top
 	typeKeys(m, ".a")
 	enter(m)
 	require.Equal(t, []string{"1"}, lines(m))
 
 	typeKeys(m, ".b")
 	require.Equal(t, ".ab", m.queryInput.Value())
-	m.Update(tea.KeyMsg{Type: tea.KeyEscape})
+	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEscape})
+	drain(m, cmd)
 
 	require.False(t, m.queryInput.Focused())
-	require.Equal(t, ".ab", m.queryInput.Value())
-	require.Equal(t, []string{"1"}, lines(m), "Esc must not apply")
+	require.Equal(t, "", m.queryInput.Value())
+	require.Nil(t, m.original)
+	require.Same(t, top, m.top)
+	require.Equal(t, []string{".a"}, m.queryHistory, "Esc must not add to history")
+}
+
+func TestQuery_EscDropsPreviewResult(t *testing.T) {
+	m := newQueryModel(t, `{"a": 1}`)
+	top := m.top
+	preview(m, ".a")
+	require.NotNil(t, m.original)
+
+	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEscape})
+	drain(m, cmd)
+	require.Nil(t, m.original)
+	require.Same(t, top, m.top)
 }
 
 func TestQuery_ClearDropsErrorStyles(t *testing.T) {
