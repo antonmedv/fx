@@ -2,6 +2,7 @@ package engine
 
 import (
 	_ "embed"
+	"fmt"
 	"io"
 	"reflect"
 	"strings"
@@ -234,13 +235,14 @@ func sendErr(errCh chan error, err error, cancel <-chan struct{}) bool {
 }
 
 // callMain runs main. exit is set if exit() was called, with any code.
+// Go panics from inside goja (bugs in its built-ins) become errors.
 func callMain(main goja.Callable, input goja.Value) (output goja.Value, exit *ExitError, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			if e, ok := r.(ExitError); ok {
 				exit = &e
 			} else {
-				panic(r)
+				err = fmt.Errorf("internal error: %v", r)
 			}
 		}
 	}()
@@ -261,7 +263,7 @@ func stringify(output goja.Value, vm *goja.Runtime) (json string, exit *ExitErro
 			case *goja.InterruptedError:
 				err = e
 			default:
-				panic(r)
+				err = fmt.Errorf("internal error: %v", r)
 			}
 		}
 	}()

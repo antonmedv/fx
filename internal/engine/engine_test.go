@@ -335,3 +335,13 @@ func TestStartPreview_SaveDisabled(t *testing.T) {
 	data, _ := os.ReadFile(path)
 	assert.Contains(t, string(data), `"a": 2`)
 }
+
+func TestStart_GoPanicInBuiltinIsError(t *testing.T) {
+	// goja's Object.fromEntries dereferences nil on entries without "0".
+	exitCode, outs, errs := runEngine(jsonx.NewJsonParser(strings.NewReader("[{}]"), false),
+		[]string{`Object.fromEntries`})
+	assert.Equal(t, 1, exitCode)
+	assert.Empty(t, outs)
+	require.Len(t, errs, 1)
+	assert.Contains(t, errs[0], "internal error")
+}
