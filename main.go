@@ -385,6 +385,8 @@ type model struct {
 	runningQueries        int                // engine goroutines still reading the original
 	restoring             bool               // waiting for runningQueries to reach zero to restore the original
 	queryErrors           map[*Node]struct{} // error lines in the result view
+	livePreview           *queryRun          // running live preview, nil if none
+	previewSeq            uint64             // increments with each keystroke to debounce previews
 	gotoSymbolInput       textinput.Model
 	commandInput          textinput.Model
 	searchInput           textinput.Model
@@ -455,8 +457,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case eofMsg:
 		m.eof = true
-		if m.query != nil {
-			m.query.parser.setEOF()
+		if m.query != nil && m.query.nodes != nil {
+			m.query.nodes.setEOF()
 		}
 		return m, nil
 
@@ -481,6 +483,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case queryDoneMsg:
 		return m, m.handleQueryDone(msg)
+
+	case previewTickMsg:
+		return m, m.handlePreviewTick(msg)
 
 	case spinner.TickMsg:
 		if !m.eof || m.searching || m.restoring {
@@ -602,14 +607,20 @@ func (m *model) handleQueryKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case msg.Type == tea.KeyEscape:
 		m.showCursor = true
 		m.queryInput.Blur()
+		m.stopPreview()
 
 	case msg.Type == tea.KeyEnter:
 		m.showCursor = true
 		m.queryInput.Blur()
+		m.stopPreview()
 		cmd = m.doQuery(m.queryInput.Value())
 
 	default:
+		before := m.queryInput.Value()
 		m.queryInput, cmd = m.queryInput.Update(msg)
+		if m.queryInput.Value() != before {
+			cmd = tea.Batch(cmd, m.schedulePreview())
+		}
 	}
 	return m, cmd
 }

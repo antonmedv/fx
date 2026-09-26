@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 	"sync"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -28,7 +31,10 @@ type viewState struct {
 // run pointer; messages of a run other than m.query are stale.
 type queryRun struct {
 	query   string
-	parser  *nodesParser
+	parser  engine.Parser
+	nodes   *nodesParser // parser reading the original list, nil for previews
+	preview bool
+	pending []*Node // preview output, applied on success only
 	cancel  chan struct{}
 	msgs    chan tea.Msg
 	stopped bool
@@ -77,9 +83,11 @@ func (m *model) startQuery(query string) tea.Cmd {
 	m.resetView()
 	m.restoring = false
 
+	nodes := newNodesParser(m.original.top, m.original.bottom, m.eof)
 	run := &queryRun{
 		query:  query,
-		parser: newNodesParser(m.original.top, m.original.bottom, m.eof),
+		parser: nodes,
+		nodes:  nodes,
 		cancel: make(chan struct{}),
 		msgs:   make(chan tea.Msg),
 	}
@@ -120,13 +128,18 @@ func waitQuery(run *queryRun) tea.Cmd {
 
 // stopQuery cancels the running query, if any.
 func (m *model) stopQuery() {
-	run := m.query
-	if run == nil || run.stopped {
+	m.query.stop()
+}
+
+func (r *queryRun) stop() {
+	if r == nil || r.stopped {
 		return
 	}
-	run.stopped = true
-	run.parser.stop()
-	close(run.cancel)
+	r.stopped = true
+	if r.nodes != nil {
+		r.nodes.stop()
+	}
+	close(r.cancel)
 }
 
 // appendOriginal attaches a streamed document to the hidden original list.
@@ -145,11 +158,17 @@ func (m *model) appendOriginal(node *Node) {
 	if o.pending == nil {
 		o.pending = node
 	}
-	m.query.parser.publish(node)
+	if m.query != nil && m.query.nodes != nil {
+		m.query.nodes.publish(node)
+	}
 }
 
 func (m *model) handleQueryResult(msg queryResultMsg) tea.Cmd {
-	if msg.run == m.query {
+	if msg.run.preview {
+		if msg.run == m.livePreview {
+			msg.run.pending = append(msg.run.pending, msg.node)
+		}
+	} else if msg.run == m.query {
 		if msg.node.Kind == Err {
 			// Output of println/console.log.
 			m.appendText(msg.node.Value, false)
@@ -170,6 +189,13 @@ func (m *model) handleQueryError(msg queryErrorMsg) tea.Cmd {
 
 func (m *model) handleQueryDone(msg queryDoneMsg) tea.Cmd {
 	msg.run.done = true
+	if msg.run.preview {
+		if msg.run == m.livePreview {
+			m.livePreview = nil
+			m.applyPreview(msg.run, msg.exitCode)
+		}
+		return nil
+	}
 	m.runningQueries--
 	if m.restoring && m.runningQueries == 0 {
 		m.restoreOriginal()
@@ -381,4 +407,130 @@ func nextDoc(doc *Node) *Node {
 		return doc.ChunkEnd.Next
 	}
 	return doc.Next
+}
+
+// previewMaxLines is the largest input evaluated on every keystroke.
+const previewMaxLines = 10_000
+
+const previewDelay = 100 * time.Millisecond
+
+var reSideEffect = regexp.MustCompile(`\b(save|exit)\b`)
+
+type previewTickMsg struct {
+	seq uint64
+}
+
+// schedulePreview debounces a live preview of the query being typed.
+func (m *model) schedulePreview() tea.Cmd {
+	m.previewSeq++
+	m.stopPreview()
+	if !m.previewAllowed(m.queryInput.Value()) {
+		return nil
+	}
+	seq := m.previewSeq
+	return tea.Tick(previewDelay, func(time.Time) tea.Msg {
+		return previewTickMsg{seq: seq}
+	})
+}
+
+func (m *model) previewAllowed(query string) bool {
+	query = strings.TrimSpace(query)
+	if isIdentityQuery(query) || reSideEffect.MatchString(query) {
+		return false
+	}
+	if !m.eof {
+		return false
+	}
+	totalLines := m.totalLines
+	if m.original != nil {
+		totalLines = m.original.totalLines
+	}
+	return totalLines <= previewMaxLines
+}
+
+func (m *model) handlePreviewTick(msg previewTickMsg) tea.Cmd {
+	if msg.seq != m.previewSeq || !m.queryInput.Focused() {
+		return nil
+	}
+	query := strings.TrimSpace(m.queryInput.Value())
+	if !m.previewAllowed(query) {
+		return nil
+	}
+
+	// The preview reads a snapshot, never the displayed nodes, so the UI
+	// stays free to mutate them. Only small inputs are previewed.
+	top := m.top
+	if m.original != nil {
+		top = m.original.top
+	}
+	run := &queryRun{
+		query:   query,
+		parser:  NewJsonParser(bytes.NewReader(snapshot(top)), false),
+		preview: true,
+		cancel:  make(chan struct{}),
+		msgs:    make(chan tea.Msg),
+	}
+	m.livePreview = run
+	go run.start()
+	return waitQuery(run)
+}
+
+func (m *model) stopPreview() {
+	m.livePreview.stop()
+	m.livePreview = nil
+}
+
+// applyPreview shows the preview output if it is a usable result:
+// no error, and the first output is not null.
+func (m *model) applyPreview(run *queryRun, exitCode int) {
+	if run.gotErr || exitCode != 0 || len(run.pending) == 0 || run.pending[0].Kind == Null {
+		return
+	}
+	m.stopQuery()
+	if m.original == nil {
+		m.original = m.saveView()
+	}
+	m.resetView()
+	m.restoring = false
+	m.query = run
+	for _, node := range run.pending {
+		if node.Kind == Err {
+			m.appendText(node.Value, false)
+		} else {
+			m.appendResult(node)
+		}
+	}
+	run.pending = nil
+}
+
+// snapshot serializes the top-level documents starting at top as JSON.
+func snapshot(top *Node) []byte {
+	var b bytes.Buffer
+	for doc := top; doc != nil; doc = nextDoc(doc) {
+		if doc.Kind == Err {
+			continue
+		}
+		for it := doc; it != nil; {
+			if !it.IsWrap() {
+				if it.Key != "" {
+					b.WriteString(it.Key)
+					b.WriteByte(':')
+				}
+				b.WriteString(it.Value)
+				if it.Comma && it != doc.End {
+					b.WriteByte(',')
+				}
+			}
+			if it == doc.End || doc.End == nil {
+				break
+			}
+			if it.IsCollapsed() {
+				it = it.Collapsed
+			} else {
+				it = it.Next
+			}
+		}
+		b.WriteByte('\n')
+	}
+	return b.Bytes()
 }
