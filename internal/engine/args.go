@@ -14,6 +14,7 @@ import (
 func SplitArgs(query string) []string {
 	var args []string
 	start := -1 // start of the current argument
+	last := -1  // start of the last token of the current argument
 	i := 0
 	for i < len(query) {
 		c := query[i]
@@ -22,7 +23,7 @@ func SplitArgs(query string) []string {
 			for j < len(query) && isSpace(query[j]) {
 				j++
 			}
-			if start >= 0 && (j == len(query) || !continues(query[start:i], query[j:])) {
+			if start >= 0 && (j == len(query) || !continues(query[start:i], last-start, query[j:])) {
 				args = append(args, query[start:i])
 				start = -1
 			}
@@ -32,6 +33,7 @@ func SplitArgs(query string) []string {
 		if start < 0 {
 			start = i
 		}
+		last = i
 		i = skipToken(query, i, query[start:i])
 	}
 	if start >= 0 {
@@ -144,16 +146,17 @@ func regexAllowed(before string) bool {
 }
 
 // continues reports whether the code after whitespace continues the argument
-// before it, rather than starting a new argument.
-func continues(before, after string) bool {
-	last := before[len(before)-1]
-	if strings.IndexByte("+-*/%=<>!&|^~?:,", last) >= 0 {
+// arg, rather than starting a new argument. last is the start of the last
+// token of arg.
+func continues(arg string, last int, after string) bool {
+	token := arg[last:]
+	if len(token) == 1 && strings.IndexByte("+-*/%=<>!&|^~?:,", token[0]) >= 0 &&
+		!strings.HasSuffix(arg, "++") && !strings.HasSuffix(arg, "--") {
+		// A binary or unary operator, not a postfix increment.
 		return true
 	}
-	if word := trailingWord(before); word != "" {
-		if isKeyword(word) {
-			return true
-		}
+	if isKeyword(trailingWord(arg)) {
+		return true
 	}
 	switch after[0] {
 	case '+', '-', '*', '/', '%', '=', '<', '>', '&', '|', '^', ':', ',':
@@ -164,14 +167,28 @@ func continues(before, after string) bool {
 		// `a ? b : c` and `a ?? b`, but `?.active` is a filter argument.
 		return len(after) == 1 || after[1] == '?' || isSpace(after[1])
 	case '{':
-		// `(x) { ... }` of a function.
-		return last == ')'
+		// The body of `function (x) { ... }` or `if (x) { ... }`, but not an
+		// object literal after a call like `.map(f) {a: 1}`.
+		return token[0] == '(' && isBlockHead(strings.TrimRightFunc(arg[:last], unicode.IsSpace))
 	}
 	switch leadingWord(after) {
 	case "in", "instanceof", "else", "catch", "finally":
 		return true
 	}
 	return false
+}
+
+// isBlockHead reports whether code followed by `(...)` starts a block, as in
+// `function (x)`, `function f(x)` or `if (x)`.
+func isBlockHead(code string) bool {
+	word := trailingWord(code)
+	switch word {
+	case "function", "if", "for", "while", "catch", "switch":
+		return true
+	case "":
+		return false
+	}
+	return trailingWord(strings.TrimRightFunc(code[:len(code)-len(word)], unicode.IsSpace)) == "function"
 }
 
 func isKeyword(word string) bool {
