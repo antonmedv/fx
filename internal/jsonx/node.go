@@ -207,11 +207,7 @@ func (n *Node) findChildByKey(key string) *Node {
 	}
 	for it != nil && it != n.End {
 		if it.Key != "" {
-			k, err := strconv.Unquote(it.Key)
-			if err != nil {
-				continue
-			}
-			if k == key {
+			if k, err := strconv.Unquote(it.Key); err == nil && k == key {
 				return it
 			}
 		}

@@ -31,6 +31,7 @@ type KeyMap struct {
 	Preview             key.Binding `category:"Actions"`
 	Print               key.Binding `category:"Actions"`
 	Open                key.Binding `category:"Actions"`
+	Reload              key.Binding `category:"Actions"`
 	ToggleWrap          key.Binding `category:"View"`
 	ShowSelector        key.Binding `category:"View"`
 	GoBack              key.Binding `category:"Navigation"`
@@ -185,6 +186,10 @@ func init() {
 		Open: key.NewBinding(
 			key.WithKeys("v"),
 			key.WithHelp("", "open in editor"),
+		),
+		Reload: key.NewBinding(
+			key.WithKeys("r"),
+			key.WithHelp("", "reload file"),
 		),
 		GoBack: key.NewBinding(
 			key.WithKeys("["),
