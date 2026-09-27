@@ -45,54 +45,59 @@ func newParser(src io.Reader) (engine.Parser, error) {
 }
 
 // loader reads the input in its own goroutine and delivers the documents
-// to the UI. A reload stops the loader and starts a new generation.
+// to the UI through wait. A reload stops the loader and starts a new
+// generation.
 type loader struct {
-	gen    uint64
-	stop   chan struct{}
-	sendFn func(tea.Msg) // delivers messages directly (tea.Program.Send); nil to use msgs
-	msgs   chan tea.Msg  // read by wait
+	gen  uint64
+	stop chan struct{}
+	msgs chan tea.Msg
 }
 
-// read parses the input until EOF or an error. It reports whether EOF was
-// reached and delivered.
-func (l *loader) read(parser engine.Parser) bool {
+// newLoader starts reading the parser returned by open.
+func newLoader(gen uint64, open func() (engine.Parser, error)) *loader {
+	l := &loader{gen: gen, stop: make(chan struct{}), msgs: make(chan tea.Msg)}
+	go func() {
+		parser, err := open()
+		if err != nil {
+			l.send(errorMsg{err: err, gen: gen})
+			return
+		}
+		l.read(parser)
+	}()
+	return l
+}
+
+// read parses the input until EOF or an error.
+func (l *loader) read(parser engine.Parser) {
 	firstOk := false
 	for {
 		node, err := parser.Parse()
 		if err != nil {
 			if err == io.EOF {
-				return l.send(eofMsg{gen: l.gen})
+				l.send(eofMsg{gen: l.gen})
+				return
 			}
 			if flagStrict {
 				l.send(errorMsg{err: err, gen: l.gen})
-				return false
+				return
 			}
 			textNode := parser.Recover()
 			if !firstOk && !strings.HasPrefix(textNode.Value, "HTTP") {
 				l.send(errorMsg{err: err, gen: l.gen})
-				return false
+				return
 			}
 			node = textNode
 		} else {
 			firstOk = true
 		}
 		if !l.send(nodeMsg{node: node, gen: l.gen}) {
-			return false
+			return
 		}
 	}
 }
 
 // send delivers msg, unless the loader is stopped.
 func (l *loader) send(msg tea.Msg) bool {
-	if l.sendFn != nil {
-		select {
-		case <-l.stop:
-			return false
-		default:
-		}
-		l.sendFn(msg)
-		return true
-	}
 	select {
 	case l.msgs <- msg:
 		return true
@@ -102,9 +107,9 @@ func (l *loader) send(msg tea.Msg) bool {
 }
 
 // wait reads the next message of the loader. It is re-issued after every
-// document; nil if messages are delivered directly.
+// document.
 func (l *loader) wait() tea.Cmd {
-	if l == nil || l.msgs == nil {
+	if l == nil {
 		return nil
 	}
 	return func() tea.Msg {
@@ -154,7 +159,7 @@ func (m *model) reload() tea.Cmd {
 	query := ""
 	if m.original != nil {
 		// The query result has no place in the new file; run the query again.
-		if m.query != nil {
+		if m.query != nil && !m.restoring {
 			query = m.query.query
 		}
 		m.stopQuery()
@@ -173,18 +178,9 @@ func (m *model) reload() tea.Cmd {
 	}
 	engine.Input = f
 
-	l := &loader{gen: m.loadGen, stop: make(chan struct{}), msgs: make(chan tea.Msg)}
-	m.loader = l
-	go func() {
-		parser, err := newParser(f)
-		if err != nil {
-			l.send(errorMsg{err: err, gen: l.gen})
-			return
-		}
-		l.read(parser)
-	}()
+	m.loader = newLoader(m.loadGen, func() (engine.Parser, error) { return newParser(f) })
 
-	cmds := []tea.Cmd{l.wait(), m.spinner.Tick}
+	cmds := []tea.Cmd{m.loader.wait(), m.spinner.Tick}
 	if query != "" {
 		cmds = append(cmds, m.startQuery(query))
 	}

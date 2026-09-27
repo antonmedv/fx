@@ -115,3 +115,12 @@ func TestNode_AdjacentKeepsWrapChunks(t *testing.T) {
 	require.Same(t, chunkEnd, next.Prev)
 	require.NotSame(t, next, n.Next, "chunks must stay between the string and the next document")
 }
+
+// A key Go can't unquote (JSON's \/ escape) used to loop forever.
+func TestNode_FindByPathSkipsKeyGoCantUnquote(t *testing.T) {
+	n, err := Parse([]byte(`{"a\/b": 1, "c": 2}`))
+	require.NoError(t, err)
+	c := n.FindByPath([]any{"c"})
+	require.NotNil(t, c)
+	require.Equal(t, "2", c.Value)
+}

@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -172,4 +173,90 @@ func TestReload_StdinIsNoop(t *testing.T) {
 	reloadKey(m)
 	require.Equal(t, []string{"{", `"a"1`, "}"}, lines(m))
 	require.Zero(t, m.loadGen)
+}
+
+func TestReload_WhileRestoringDoesNotRunQuery(t *testing.T) {
+	m, file := newReloadModel(t, `{"a": 1}`)
+	runAll(m, m.doQuery(".a"))
+	m.runningQueries++ // An engine still reads the original: clearQuery waits.
+	m.clearQuery()
+	require.True(t, m.restoring)
+
+	require.NoError(t, os.WriteFile(file, []byte(`{"a": 2}`), 0o644))
+	reloadKey(m)
+	require.Nil(t, m.original)
+	require.Equal(t, []string{"{", `"a"2`, "}"}, lines(m))
+}
+
+func TestReload_KeepsCursorArrayIndexAndRow(t *testing.T) {
+	m, file := newReloadModel(t, `{"a": [1, 2, 3]}`)
+	m.selectNode(m.findByPath([]any{"a", 2}))
+	row := m.cursor
+
+	require.NoError(t, os.WriteFile(file, []byte(`{"a": [1, 2, 30]}`), 0o644))
+	reloadKey(m)
+	at, _ := m.cursorPointsTo()
+	require.Equal(t, "30", at.Value)
+	require.Equal(t, row, m.cursor)
+}
+
+func TestReload_KeepsCursorInCollapsedMode(t *testing.T) {
+	m, file := newReloadModel(t, `{"a": {"b": 1}}`)
+	m.collapsed = true
+	m.selectNode(m.findByPath([]any{"a", "b"}))
+
+	require.NoError(t, os.WriteFile(file, []byte(`{"a": {"b": 2}}`), 0o644))
+	reloadKey(m)
+	at, _ := m.cursorPointsTo()
+	require.Equal(t, "2", at.Value)
+}
+
+func TestReload_CursorOnClosingBracket(t *testing.T) {
+	m, file := newReloadModel(t, `{"a": {"b": 1}}`)
+	m.selectNode(m.findByPath([]any{"a"}).End)
+
+	require.NoError(t, os.WriteFile(file, []byte(`{"a": {"b": 2}}`), 0o644))
+	reloadKey(m)
+	at, _ := m.cursorPointsTo()
+	require.Equal(t, `"a"`, at.Key)
+}
+
+func TestReload_CursorOnWrappedString(t *testing.T) {
+	long := `"` + strings.Repeat("word ", 40) + `"`
+	m, file := newReloadModel(t, `{"a": 1, "s": `+long+`}`)
+	m.wrap = true
+	runAll(m, m.reload())
+	s := m.findByPath([]any{"s"})
+	require.NotNil(t, s.ChunkEnd)
+	m.selectNode(s.ChunkEnd) // A wrapped chunk of .s
+
+	require.NoError(t, os.WriteFile(file, []byte(`{"s": `+long+`}`), 0o644))
+	reloadKey(m)
+	require.Equal(t, ".s", m.cursorPath())
+}
+
+func TestReload_KeyPressCancelsPendingRestore(t *testing.T) {
+	m, file := newReloadModel(t, `{"id": 1}`+"\n"+`{"id": 2}`)
+	m.selectNode(m.top.End.Next.Next)
+
+	require.NoError(t, os.WriteFile(file, []byte(`{"id": 10}`+"\n"+`{"id": 20}`), 0o644))
+	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
+	msg := cmd().(tea.BatchMsg)[0]() // First document only.
+	_, cmd = m.Update(msg)
+	m.Update(tea.KeyMsg{Type: tea.KeyDown})
+	runAll(m, cmd)
+	at, _ := m.cursorPointsTo()
+	require.Equal(t, `"id"`, at.Key)
+	require.Equal(t, "10", at.Value)
+}
+
+func TestReload_Yaml(t *testing.T) {
+	flagYaml = true
+	t.Cleanup(func() { flagYaml = false })
+	m, file := newReloadModel(t, "a: 1\n")
+	require.Equal(t, []string{"{", `"a"1`, "}"}, lines(m))
+
+	require.NoError(t, os.WriteFile(file, []byte("a: 2\n"), 0o644))
+	reloadKey(m)
+	require.Equal(t, []string{"{", `"a"2`, "}"}, lines(m))
 }

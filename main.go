@@ -312,12 +312,8 @@ func main() {
 		tea.WithOutput(os.Stderr),
 	)
 
-	m.loader = &loader{stop: make(chan struct{}), sendFn: p.Send}
-	go func() {
-		if m.loader.read(parser) && !stdinIsTty {
-			p.Send(rawModeMsg{})
-		}
-	}()
+	m.rawModeOnEOF = !stdinIsTty
+	m.loader = newLoader(0, func() (engine.Parser, error) { return parser, nil })
 
 	_, err = p.Run()
 	if err != nil {
@@ -376,6 +372,7 @@ type model struct {
 	printErrorOnExit      error
 	spinner               spinner.Model
 	deletePending         bool
+	rawModeOnEOF          bool       // stdin is piped, reapply raw mode once it is read
 	loader                *loader    // reads the input, replaced on reload
 	loadGen               uint64     // generation of loader, stale messages are dropped
 	reloadPos             *reloadPos // cursor position to restore after reload, nil if none
@@ -417,9 +414,6 @@ type eofMsg struct {
 	gen uint64
 }
 
-// rawModeMsg asks to reapply raw mode after the process piping to fx exits.
-type rawModeMsg struct{}
-
 type searchResultMsg struct {
 	id     uint64
 	query  string
@@ -431,7 +425,7 @@ type searchCancelledMsg struct {
 }
 
 func (m *model) Init() tea.Cmd {
-	return m.spinner.Tick
+	return tea.Batch(m.spinner.Tick, m.loader.wait())
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -451,12 +445,13 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.setEOF()
-		return m, nil
-
-	case rawModeMsg:
-		// Handled inside Update so it can't race with bubbletea restoring
-		// the terminal on exit.
-		reapplyRawMode()
+		if m.rawModeOnEOF {
+			// Reapply raw mode after the process piping to fx exits. Done
+			// inside Update so it can't race with bubbletea restoring the
+			// terminal on exit.
+			m.rawModeOnEOF = false
+			reapplyRawMode()
+		}
 		return m, nil
 
 	case errorMsg:
@@ -548,6 +543,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.MouseMsg:
+		m.reloadPos = nil // The user moved on, don't jump back.
 		m.handlePendingDelete(msg)
 
 		switch {
@@ -800,6 +796,7 @@ func (m *model) handlePendingDelete(msg tea.Msg) {
 }
 
 func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	m.reloadPos = nil // The user moved on, don't jump back.
 	m.handlePendingDelete(msg)
 
 	switch {
