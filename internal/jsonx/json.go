@@ -44,7 +44,23 @@ func NewJsonParser(rd io.Reader, strict bool) *JsonParser {
 		realLineNumber: 1,
 	}
 	p.next() // Should be called here, to support streaming.
+	p.skipBOM()
 	return p
+}
+
+// skipBOM skips a UTF-8 byte order mark at the start of the input.
+func (p *JsonParser) skipBOM() {
+	if p.char != 0xEF {
+		return
+	}
+	for _, b := range []byte{0xEF, 0xBB, 0xBF} {
+		if p.char != b {
+			// Not a BOM: rewind to the first byte.
+			p.end, p.char, p.eof, p.realLineNumber = 1, p.data[0], false, 1
+			return
+		}
+		p.next()
+	}
 }
 
 func (p *JsonParser) Parse() (node *Node, err error) {

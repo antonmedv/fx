@@ -41,6 +41,9 @@ func TestJsonParser_Parse(t *testing.T) {
 		{`INF`, jsonx.Infinity},
 		{`undefined`, jsonx.Undefined},
 		{`"\g"`, jsonx.String},
+		{"\xEF\xBB\xBF{}", jsonx.Object},
+		{"\xEF\xBB\xBF\n  [1]", jsonx.Array},
+		{"\xEF\xBB\xBF\"\xEF\xBB\xBF\"", jsonx.String},
 	}
 
 	for _, tt := range tests {
@@ -58,6 +61,10 @@ func TestJsonParser_Parse_error(t *testing.T) {
 	}{
 		{`"abc`},
 		{`truth`},
+		{"\xEF"},
+		{"\xEF\xBB"},
+		{"\xEF\xBB{}"},
+		{"\xEF\xBB\xBF\xEF\xBB\xBF{}"},
 		{`1e`},
 		{`[1, 2`},
 		{`/* test`},
