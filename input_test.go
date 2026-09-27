@@ -126,6 +126,26 @@ func TestFileArgWithNonTtyStdin(t *testing.T) {
 	}
 }
 
+func TestEmptyInputExitsNonZero(t *testing.T) {
+	dir := t.TempDir()
+	for _, input := range []string{"", " \n\t\r\n"} {
+		file := filepath.Join(dir, "t.json")
+		require.NoError(t, os.WriteFile(file, []byte(input), 0o644))
+
+		for _, args := range [][]string{{"."}, {".a"}} {
+			out, err := runFx(t, func(cmd *exec.Cmd) {
+				cmd.Stdin = strings.NewReader(input)
+			}, args...)
+			require.Error(t, err, "stdin %q, args %v", input, args)
+			require.Equal(t, errEmptyInput.Error(), out)
+
+			out, err = runFx(t, func(cmd *exec.Cmd) {}, append([]string{file}, args...)...)
+			require.Error(t, err, "file %q, args %v", input, args)
+			require.Equal(t, errEmptyInput.Error(), out)
+		}
+	}
+}
+
 func TestPipedStdinStillWorks(t *testing.T) {
 	out, err := runFx(t, func(cmd *exec.Cmd) {
 		cmd.Stdin = io.NopCloser(strings.NewReader(`{"name":"fx"}`))

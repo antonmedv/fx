@@ -13,6 +13,7 @@ import (
 
 	"github.com/goccy/go-yaml"
 
+	"github.com/antonmedv/fx/internal/engine"
 	"github.com/antonmedv/fx/internal/jsonpath"
 	"github.com/antonmedv/fx/internal/jsonx"
 )
@@ -118,6 +119,26 @@ func isRefNode(n *jsonx.Node) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+var errEmptyInput = errors.New("Empty input: expected JSON value.")
+
+// nonEmptyParser reports empty input (or input of only whitespace) as an
+// error instead of io.EOF, so fx exits non-zero on it.
+type nonEmptyParser struct {
+	engine.Parser
+	parsed bool
+}
+
+func (p *nonEmptyParser) Parse() (*jsonx.Node, error) {
+	node, err := p.Parser.Parse()
+	if err == io.EOF && !p.parsed {
+		return nil, errEmptyInput
+	}
+	if err == nil {
+		p.parsed = true
+	}
+	return node, err
 }
 
 type inputSource int

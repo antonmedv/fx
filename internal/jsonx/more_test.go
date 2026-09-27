@@ -65,3 +65,12 @@ func TestLineParserMore(t *testing.T) {
 		require.Equal(t, want, more, input)
 	}
 }
+
+// Input without any value, even if it has whitespace or comments, ends at once.
+func TestJsonParserEmpty(t *testing.T) {
+	for _, input := range []string{"", " \n\t\r\n", "// comment\n", "\xEF\xBB\xBF\n"} {
+		p := jsonx.NewJsonParser(strings.NewReader(input), false)
+		_, err := p.Parse()
+		require.Equal(t, io.EOF, err, input)
+	}
+}

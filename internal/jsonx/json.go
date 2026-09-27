@@ -72,9 +72,7 @@ func (p *JsonParser) Parse() (node *Node, err error) {
 	if p.err != nil {
 		return nil, p.err
 	}
-	if p.count > 0 {
-		p.skipWhitespace()
-	}
+	p.skipWhitespace()
 	if p.eof {
 		return nil, io.EOF
 	}

@@ -223,6 +223,10 @@ func main() {
 	if len(args) > 0 || flagSlurp {
 		var err error
 
+		if !flagRaw && !flagYaml && !flagToml && !flagSlurp {
+			parser = &nonEmptyParser{Parser: parser}
+		}
+
 		if flagSlurp {
 			parser, err = engine.Slurp(parser)
 			if err != nil {
