@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -259,4 +260,62 @@ func TestReload_Yaml(t *testing.T) {
 	require.NoError(t, os.WriteFile(file, []byte("a: 2\n"), 0o644))
 	reloadKey(m)
 	require.Equal(t, []string{"{", `"a"2`, "}"}, lines(m))
+}
+
+// A strict parse error must not look like the end of input to a query:
+// save() would overwrite the file with the part read before the error.
+func TestReload_StrictErrorDoesNotSave(t *testing.T) {
+	flagStrict = true
+	t.Cleanup(func() { flagStrict = false })
+	m, file := newReloadModel(t, `{"a": 1}`)
+	runAll(m, m.doQuery(`save({a: x.a + 1})`))
+	data, err := os.ReadFile(file)
+	require.NoError(t, err)
+	require.JSONEq(t, `{"a": 2}`, string(data))
+
+	broken := `{"a": 5} oops`
+	require.NoError(t, os.WriteFile(file, []byte(broken), 0o644))
+	reloadKey(m)
+	data, err = os.ReadFile(file)
+	require.NoError(t, err)
+	require.Equal(t, broken, string(data))
+}
+
+// The file of a stopped loader must not be closed while its parser may
+// still read it.
+func TestReload_RapidReloads(t *testing.T) {
+	var content strings.Builder
+	for i := range 20000 {
+		fmt.Fprintf(&content, "{\"i\": %d}\n", i)
+	}
+	m, _ := newReloadModel(t, content.String())
+	for range 50 {
+		m.reload()
+	}
+	runAll(m, m.reload())
+	require.True(t, m.eof)
+	require.Equal(t, 20000*3, m.totalLines)
+}
+
+func TestReload_DoesNotFollowBottom(t *testing.T) {
+	m, file := newReloadModel(t, "1\n2\n3")
+	m.selectNode(m.top)
+
+	require.NoError(t, os.WriteFile(file, []byte("1\n2\n3"), 0o644))
+	reloadKey(m)
+	at, _ := m.cursorPointsTo()
+	require.Same(t, m.top, at)
+}
+
+func TestReload_KeepsQueryAcrossOpenFailure(t *testing.T) {
+	m, file := newReloadModel(t, `{"a": 1}`)
+	runAll(m, m.doQuery(".a"))
+
+	require.NoError(t, os.Remove(file))
+	reloadKey(m)
+	require.True(t, m.isQueryError(m.top))
+
+	require.NoError(t, os.WriteFile(file, []byte(`{"a": 2}`), 0o644))
+	reloadKey(m)
+	require.Equal(t, []string{"2"}, lines(m))
 }

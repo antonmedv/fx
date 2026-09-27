@@ -313,7 +313,11 @@ func main() {
 	)
 
 	m.rawModeOnEOF = !stdinIsTty
-	m.loader = newLoader(0, func() (engine.Parser, error) { return parser, nil })
+	var file io.Closer
+	if engine.Input != nil {
+		file = engine.Input
+	}
+	m.loader = newLoader(0, file, func() (engine.Parser, error) { return parser, nil })
 
 	_, err = p.Run()
 	if err != nil {
@@ -1205,7 +1209,8 @@ func (m *model) appendNode(node *Node) {
 		m.bottom = node
 	} else {
 		to, ok := m.cursorPointsTo()
-		scrollToBottom := ok && to == m.bottom.Bottom()
+		// Follow the input at the bottom, unless a reload restores the cursor.
+		scrollToBottom := ok && to == m.bottom.Bottom() && !m.reloading()
 		node.Index = -1 // To fix the statusbar path (to show .key instead of [0].key).
 		m.bottom.Adjacent(node)
 		m.bottom = node

@@ -53,10 +53,15 @@ type loader struct {
 	msgs chan tea.Msg
 }
 
-// newLoader starts reading the parser returned by open.
-func newLoader(gen uint64, open func() (engine.Parser, error)) *loader {
+// newLoader starts reading the parser returned by open. The loader owns
+// file (nil for stdin) and closes it once done: closing it from outside
+// would fail the parser's reads, which panic outside Parse.
+func newLoader(gen uint64, file io.Closer, open func() (engine.Parser, error)) *loader {
 	l := &loader{gen: gen, stop: make(chan struct{}), msgs: make(chan tea.Msg)}
 	go func() {
+		if file != nil {
+			defer file.Close()
+		}
 		parser, err := open()
 		if err != nil {
 			l.send(errorMsg{err: err, gen: gen})
@@ -148,10 +153,6 @@ func (m *model) reload() tea.Cmd {
 		return nil
 	}
 	m.loader.stopLoading()
-	if engine.Input != nil {
-		_ = engine.Input.Close()
-		engine.Input = nil
-	}
 	m.loadGen++
 
 	m.reloadPos = m.cursorReloadPos()
@@ -171,20 +172,27 @@ func (m *model) reload() tea.Cmd {
 	m.resetView()
 	m.eof = false
 
+	var queryCmd tea.Cmd
+	if query != "" {
+		// Started before opening, so a failed open keeps the query for the
+		// next reload.
+		queryCmd = m.startQuery(query)
+	}
+
 	f, err := os.Open(engine.FilePath)
 	if err != nil {
+		engine.Input = nil
 		m.showReloadError(err)
-		return nil
+		return queryCmd
 	}
 	engine.Input = f
+	m.loader = newLoader(m.loadGen, f, func() (engine.Parser, error) { return newParser(f) })
+	return tea.Batch(m.loader.wait(), m.spinner.Tick, queryCmd)
+}
 
-	m.loader = newLoader(m.loadGen, func() (engine.Parser, error) { return newParser(f) })
-
-	cmds := []tea.Cmd{m.loader.wait(), m.spinner.Tick}
-	if query != "" {
-		cmds = append(cmds, m.startQuery(query))
-	}
-	return tea.Batch(cmds...)
+// reloading reports whether a reloaded file is still being read.
+func (m *model) reloading() bool {
+	return m.loadGen > 0 && !m.eof
 }
 
 // setEOF marks the input as fully read.
@@ -197,8 +205,10 @@ func (m *model) setEOF() {
 }
 
 // showReloadError shows err below what was read, so the file can be fixed
-// and reloaded again.
+// and reloaded again. The query is stopped, not given EOF: the input is
+// incomplete, and save() would overwrite the file with the part read.
 func (m *model) showReloadError(err error) {
+	m.stopQuery()
 	m.setEOF()
 	m.appendText(err.Error(), true)
 }
