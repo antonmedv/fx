@@ -341,6 +341,9 @@ func main() {
 			if err != nil {
 				if err == io.EOF {
 					p.Send(eofMsg{})
+					if !stdinIsTty {
+						p.Send(rawModeMsg{})
+					}
 					break
 				}
 				if flagStrict {
@@ -449,6 +452,9 @@ type errorMsg struct {
 
 type eofMsg struct{}
 
+// rawModeMsg asks to reapply raw mode after the process piping to fx exits.
+type rawModeMsg struct{}
+
 type searchResultMsg struct {
 	id     uint64
 	query  string
@@ -480,6 +486,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.query != nil && m.query.nodes != nil {
 			m.query.nodes.setEOF()
 		}
+		return m, nil
+
+	case rawModeMsg:
+		// Handled inside Update so it can't race with bubbletea restoring
+		// the terminal on exit.
+		reapplyRawMode()
 		return m, nil
 
 	case errorMsg:
