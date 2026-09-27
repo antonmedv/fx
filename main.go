@@ -31,7 +31,6 @@ import (
 	. "github.com/antonmedv/fx/internal/jsonx"
 	"github.com/antonmedv/fx/internal/pretty"
 	"github.com/antonmedv/fx/internal/theme"
-	"github.com/antonmedv/fx/internal/toml"
 	"github.com/antonmedv/fx/internal/utils"
 )
 
@@ -188,36 +187,11 @@ func main() {
 		src = os.Stdin
 	}
 
-	var parser engine.Parser
-
-	if flagYaml {
-		b, err := io.ReadAll(src)
-		if err != nil {
-			panic(err)
-		}
-		jsonBytes, err := parseYAML(b)
-		if err != nil {
-			fmt.Print(err.Error())
-			os.Exit(1)
-			return
-		}
-		parser = NewJsonParser(bytes.NewReader(jsonBytes), flagStrict)
-	} else if flagToml {
-		b, err := io.ReadAll(src)
-		if err != nil {
-			panic(err)
-		}
-		jsonBytes, err := toml.ToJSON(b)
-		if err != nil {
-			fmt.Print(err.Error())
-			os.Exit(1)
-			return
-		}
-		parser = NewJsonParser(bytes.NewReader(jsonBytes), flagStrict)
-	} else if flagRaw {
-		parser = NewLineParser(src)
-	} else {
-		parser = NewJsonParser(src, flagStrict)
+	parser, err := newParser(src)
+	if err != nil {
+		fmt.Print(err.Error())
+		os.Exit(1)
+		return
 	}
 
 	if len(args) > 0 || flagSlurp {
@@ -338,36 +312,14 @@ func main() {
 		tea.WithOutput(os.Stderr),
 	)
 
+	m.loader = &loader{stop: make(chan struct{}), sendFn: p.Send}
 	go func() {
-		firstOk := false
-		for {
-			node, err := parser.Parse()
-			if err != nil {
-				if err == io.EOF {
-					p.Send(eofMsg{})
-					if !stdinIsTty {
-						p.Send(rawModeMsg{})
-					}
-					break
-				}
-				if flagStrict {
-					p.Send(errorMsg{err: err})
-					break
-				}
-				textNode := parser.Recover()
-				if !firstOk && !strings.HasPrefix(textNode.Value, "HTTP") {
-					p.Send(errorMsg{err: err})
-					break
-				}
-				p.Send(nodeMsg{node: textNode})
-			} else {
-				firstOk = true
-				p.Send(nodeMsg{node: node})
-			}
+		if m.loader.read(parser) && !stdinIsTty {
+			p.Send(rawModeMsg{})
 		}
 	}()
 
-	_, err := p.Run()
+	_, err = p.Run()
 	if err != nil {
 		panic(err)
 	}
@@ -424,6 +376,9 @@ type model struct {
 	printErrorOnExit      error
 	spinner               spinner.Model
 	deletePending         bool
+	loader                *loader    // reads the input, replaced on reload
+	loadGen               uint64     // generation of loader, stale messages are dropped
+	reloadPos             *reloadPos // cursor position to restore after reload, nil if none
 }
 
 // viewState is the part of the model describing the displayed node list.
@@ -446,15 +401,21 @@ type location struct {
 	node *Node
 }
 
+// nodeMsg, errorMsg and eofMsg carry the generation of the loader that
+// read them; messages of a loader replaced by reload are stale.
 type nodeMsg struct {
 	node *Node
+	gen  uint64
 }
 
 type errorMsg struct {
 	err error
+	gen uint64
 }
 
-type eofMsg struct{}
+type eofMsg struct {
+	gen uint64
+}
 
 // rawModeMsg asks to reapply raw mode after the process piping to fx exits.
 type rawModeMsg struct{}
@@ -486,10 +447,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.redoSearch()
 
 	case eofMsg:
-		m.eof = true
-		if m.query != nil && m.query.nodes != nil {
-			m.query.nodes.setEOF()
+		if msg.gen != m.loadGen {
+			return m, nil
 		}
+		m.setEOF()
 		return m, nil
 
 	case rawModeMsg:
@@ -499,17 +460,29 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case errorMsg:
+		if msg.gen != m.loadGen {
+			return m, nil
+		}
+		if m.loadGen > 0 {
+			// A reloaded file may be mid-write; keep fx open to reload again.
+			m.showReloadError(msg.err)
+			return m, nil
+		}
 		m.printErrorOnExit = msg.err
 		return m, tea.Quit
 
 	case nodeMsg:
+		if msg.gen != m.loadGen {
+			return m, nil
+		}
 		if m.original != nil {
 			m.appendOriginal(msg.node)
-			return m, m.completionDocsArrived()
+			return m, tea.Batch(m.completionDocsArrived(), m.loader.wait())
 		}
 		m.appendNode(msg.node)
 		m.totalLines = msg.node.Bottom().LineNumber
-		return m, m.completionDocsArrived()
+		m.restoreReloadPosition(msg.node)
+		return m, tea.Batch(m.completionDocsArrived(), m.loader.wait())
 
 	case queryResultMsg:
 		return m, m.handleQueryResult(msg)
@@ -1081,6 +1054,9 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keyMap.Open):
 		return m, m.open()
+
+	case key.Matches(msg, keyMap.Reload):
+		return m, m.reload()
 
 	case key.Matches(msg, keyMap.GotoSymbol):
 		m.gotoSymbolInput.CursorEnd()
