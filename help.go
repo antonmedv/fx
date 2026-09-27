@@ -90,12 +90,33 @@ func help(keyMap KeyMap) string {
 
 	var sb strings.Builder
 
-	// Header
-	sb.WriteString("\n")
-	sb.WriteString(titleStyle.Render("  Key Bindings"))
-	sb.WriteString("\n")
-	sb.WriteString(dimStyle.Render("  ─────────────────────────────────────────"))
-	sb.WriteString("\n")
+	section := func(title string) {
+		sb.WriteString("\n")
+		sb.WriteString(titleStyle.Render("  " + title))
+		sb.WriteString("\n")
+		sb.WriteString(dimStyle.Render("  ─────────────────────────────────────────"))
+		sb.WriteString("\n")
+	}
+
+	category := func(name string) {
+		sb.WriteString(categoryStyle.Render("  " + name))
+		sb.WriteString("\n")
+	}
+
+	row := func(keyStr, desc string) {
+		keyFormatted := keyStyle.Render(fmt.Sprintf("%-20s", keyStr))
+		descFormatted := descStyle.Render(desc)
+		sb.WriteString(fmt.Sprintf("    %s  %s\n", keyFormatted, descFormatted))
+	}
+
+	text := func(lines ...string) {
+		sb.WriteString("\n")
+		for _, line := range lines {
+			sb.WriteString("    " + line + "\n")
+		}
+	}
+
+	section("Key Bindings")
 
 	for _, cat := range categoryOrder {
 		bindings, ok := categories[cat]
@@ -103,8 +124,7 @@ func help(keyMap KeyMap) string {
 			continue
 		}
 
-		sb.WriteString(categoryStyle.Render("  " + cat))
-		sb.WriteString("\n")
+		category(cat)
 
 		for _, binding := range bindings {
 			keyStr := binding.Help().Key
@@ -116,18 +136,41 @@ func help(keyMap KeyMap) string {
 					keyStr = strings.Join(keys, ", ")
 				}
 			}
-
-			desc := binding.Help().Desc
-			keyFormatted := keyStyle.Render(fmt.Sprintf("%-20s", keyStr))
-			descFormatted := descStyle.Render(desc)
-
-			sb.WriteString(fmt.Sprintf("    %s  %s\n", keyFormatted, descFormatted))
+			row(keyStr, binding.Help().Desc)
 		}
 	}
 
 	sb.WriteString("\n")
-	sb.WriteString(dimStyle.Render("  ─────────────────────────────────────────"))
+	section("Commands")
+	text("Press : to open the command line.")
 	sb.WriteString("\n")
+	row(":<n>", "goto line n")
+	row(":q", "quit")
+
+	sb.WriteString("\n")
+	section("Query")
+	text(
+		"Press . to open the query input,",
+		"type a query and press enter.",
+	)
+
+	category("Syntax")
+	row(".name", "property, .items[0] for index")
+	row(".items[].name", "map over array")
+	row("@.name", "map with expression")
+	row("?.active", "filter with expression")
+	row("x => x.a + 1", "any JS expression, x is input")
+	row("len keys sort uniq", "built-in functions")
+	row(".items len", "space separates piped queries")
+
+	category("Input Keys")
+	row("tab, shift+tab", "complete, cycle candidates")
+	row("right, end, ctrl+e", "accept suggestion")
+	row("up, down", "query history")
+	row("enter", "apply query")
+	row("esc", "cancel, restore original")
+
+	sb.WriteString("\n\n\n")
 	sb.WriteString(dimStyle.Render("  Press q or ? to close"))
 	sb.WriteString("\n")
 
