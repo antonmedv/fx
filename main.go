@@ -167,6 +167,7 @@ func main() {
 
 	var fileName string
 	var src io.Reader
+	var file io.Closer // nil for stdin
 
 	switch chooseInput(stdinIsTty, stdinIsInput, args, os.Stat) {
 	case inputUsage:
@@ -178,8 +179,9 @@ func main() {
 		filePath := args[0]
 		f := open(filePath, &flagYaml, &flagToml)
 		src = f
+		file = f
 		engine.FilePath = filePath
-		engine.Input = f
+		engine.SetInput(f)
 		fileName = filepath.Base(filePath)
 		args = args[1:]
 	case inputStdin:
@@ -313,10 +315,6 @@ func main() {
 	)
 
 	m.rawModeOnEOF = !stdinIsTty
-	var file io.Closer
-	if engine.Input != nil {
-		file = engine.Input
-	}
 	m.loader = newLoader(0, file, func() (engine.Parser, error) { return parser, nil })
 
 	_, err = p.Run()

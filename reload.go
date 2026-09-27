@@ -87,7 +87,8 @@ func (l *loader) read(parser engine.Parser) {
 				return
 			}
 			textNode := parser.Recover()
-			if !firstOk && !strings.HasPrefix(textNode.Value, "HTTP") {
+			if textNode == nil || !firstOk && !strings.HasPrefix(textNode.Value, "HTTP") {
+				// LineParser can't recover, a read error ends it.
 				l.send(errorMsg{err: err, gen: l.gen})
 				return
 			}
@@ -181,11 +182,11 @@ func (m *model) reload() tea.Cmd {
 
 	f, err := os.Open(engine.FilePath)
 	if err != nil {
-		engine.Input = nil
+		engine.SetInput(nil)
 		m.showReloadError(err)
 		return queryCmd
 	}
-	engine.Input = f
+	engine.SetInput(f)
 	m.loader = newLoader(m.loadGen, f, func() (engine.Parser, error) { return newParser(f) })
 	return tea.Batch(m.loader.wait(), m.spinner.Tick, queryCmd)
 }
@@ -256,6 +257,8 @@ func (m *model) restoreReloadPosition(doc *Node) {
 	if p == nil {
 		return
 	}
+	// p.doc counts down the documents still to arrive before the saved one;
+	// doc may hold several (lines of recovered text).
 	for ; doc != nil && p.doc > 0; doc = nextDoc(doc) {
 		p.doc--
 	}

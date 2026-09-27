@@ -2,28 +2,30 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/stretchr/testify/require"
 
 	"github.com/antonmedv/fx/internal/engine"
+	"github.com/antonmedv/fx/internal/jsonx"
 )
 
 // newReloadModel creates a model showing file, loaded as main does.
 func newReloadModel(t *testing.T, content string) (*model, string) {
 	file := filepath.Join(t.TempDir(), "f.json")
 	require.NoError(t, os.WriteFile(file, []byte(content), 0o644))
-	oldPath, oldInput := engine.FilePath, engine.Input
+	oldPath := engine.FilePath
 	engine.FilePath = file
 	t.Cleanup(func() {
-		if engine.Input != nil {
-			_ = engine.Input.Close()
-		}
-		engine.FilePath, engine.Input = oldPath, oldInput
+		engine.FilePath = oldPath
+		engine.SetInput(nil)
 	})
 	m := newQueryModel(t)
 	m.eof = false
@@ -318,4 +320,48 @@ func TestReload_KeepsQueryAcrossOpenFailure(t *testing.T) {
 	require.NoError(t, os.WriteFile(file, []byte(`{"a": 2}`), 0o644))
 	reloadKey(m)
 	require.Equal(t, []string{"2"}, lines(m))
+}
+
+type blockingParser struct {
+	engine.Parser
+	entered, release chan struct{}
+	closed           *atomic.Bool
+	closedInParse    atomic.Bool
+}
+
+func (p *blockingParser) Parse() (*jsonx.Node, error) {
+	close(p.entered)
+	<-p.release
+	p.closedInParse.Store(p.closed.Load())
+	return nil, io.EOF
+}
+
+type closer struct{ closed *atomic.Bool }
+
+func (c closer) Close() error { c.closed.Store(true); return nil }
+
+// A stopped loader closes its file only once the parser is done with it:
+// a read of a closed file panics in the parser (outside Parse's recover).
+func TestLoader_ClosesFileAfterParser(t *testing.T) {
+	var closed atomic.Bool
+	p := &blockingParser{entered: make(chan struct{}), release: make(chan struct{}), closed: &closed}
+	l := newLoader(1, closer{&closed}, func() (engine.Parser, error) { return p, nil })
+	<-p.entered
+	l.stopLoading()
+	require.False(t, closed.Load())
+	close(p.release)
+	require.Eventually(t, closed.Load, time.Second, time.Millisecond)
+	require.False(t, p.closedInParse.Load())
+}
+
+type failingParser struct{ engine.Parser }
+
+func (failingParser) Parse() (*jsonx.Node, error) { return nil, os.ErrClosed }
+func (failingParser) Recover() *jsonx.Node        { return nil }
+
+// A parser that can't recover (LineParser) ends with its error.
+func TestLoader_ParserWithoutRecover(t *testing.T) {
+	l := newLoader(0, nil, func() (engine.Parser, error) { return failingParser{}, nil })
+	msg := l.wait()()
+	require.Equal(t, errorMsg{err: os.ErrClosed}, msg)
 }

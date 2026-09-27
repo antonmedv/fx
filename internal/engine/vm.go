@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/dop251/goja"
 	"github.com/goccy/go-yaml"
@@ -14,9 +15,27 @@ import (
 // FilePath is the file being processed, empty if stdin.
 var FilePath string
 
-// Input is the open FilePath. save() closes it before replacing the file,
-// as Windows can't rename over an open file.
-var Input io.Closer
+var (
+	inputMu sync.Mutex
+	input   io.Closer
+)
+
+// SetInput sets the open FilePath. save() closes it before replacing the
+// file, as Windows can't rename over an open file. The UI replaces it on
+// reload while an engine may run save(), hence the mutex.
+func SetInput(c io.Closer) {
+	inputMu.Lock()
+	defer inputMu.Unlock()
+	input = c
+}
+
+func closeInput() {
+	inputMu.Lock()
+	defer inputMu.Unlock()
+	if input != nil {
+		_ = input.Close()
+	}
+}
 
 // ExitError is used by exit() to signal a specific exit code.
 type ExitError struct {
@@ -67,9 +86,7 @@ func newVM(writeOut func(string), preview bool, severalValues func() (bool, erro
 			return fmt.Errorf("save supports a single JSON value, but %s contains several", FilePath)
 		}
 		// All input is read, so the parser no longer needs the file.
-		if Input != nil {
-			_ = Input.Close()
-		}
+		closeInput()
 		return writeFileAtomic(FilePath, []byte(json), mode)
 	}); err != nil {
 		panic(err)
