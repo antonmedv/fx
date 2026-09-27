@@ -13,6 +13,7 @@ type KeyMap struct {
 	GotoBottom          key.Binding `category:"Navigation"`
 	NextSibling         key.Binding `category:"Navigation"`
 	PrevSibling         key.Binding `category:"Navigation"`
+	MatchBracket        key.Binding `category:"Navigation"`
 	Expand              key.Binding `category:"Expand / Collapse"`
 	Collapse            key.Binding `category:"Expand / Collapse"`
 	ExpandRecursively   key.Binding `category:"Expand / Collapse"`
@@ -136,6 +137,10 @@ func init() {
 		PrevSibling: key.NewBinding(
 			key.WithKeys("K", "shift+up"),
 			key.WithHelp("", "previous sibling"),
+		),
+		MatchBracket: key.NewBinding(
+			key.WithKeys("%"),
+			key.WithHelp("", "jump to matching bracket"),
 		),
 		ToggleWrap: key.NewBinding(
 			key.WithKeys("z"),

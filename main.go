@@ -923,6 +923,28 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		m.recordHistory()
 
+	case key.Matches(msg, keyMap.MatchBracket):
+		pointsTo, ok := m.cursorPointsTo()
+		if !ok {
+			return m, nil
+		}
+		if pointsTo.Chunk != "" && pointsTo.Parent != nil && pointsTo.Parent.ChunkEnd != nil {
+			pointsTo = pointsTo.Parent // Wrapped string chunk.
+		}
+		var match *Node
+		parent := pointsTo.Parent
+		if pointsTo.End != nil {
+			match = pointsTo.End
+		} else if parent != nil && parent.End == pointsTo {
+			match = parent
+		} else if parent != nil {
+			match = parent.End
+		}
+		if match != nil {
+			m.selectNode(match)
+		}
+		m.recordHistory()
+
 	case key.Matches(msg, keyMap.Collapse):
 		n, ok := m.cursorPointsTo()
 		if !ok {
