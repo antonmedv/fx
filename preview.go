@@ -44,6 +44,14 @@ func (m *model) handlePreviewKey(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.preview.HalfPageDown()
 			return m, nil
 
+		case key.Matches(msg, keyMap.ScrollUp):
+			m.preview.ScrollUp(1)
+			return m, nil
+
+		case key.Matches(msg, keyMap.ScrollDown):
+			m.preview.ScrollDown(1)
+			return m, nil
+
 		case key.Matches(msg, keyMap.PageUp):
 			m.preview.PageUp()
 			return m, nil

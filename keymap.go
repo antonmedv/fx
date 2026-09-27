@@ -9,6 +9,8 @@ type KeyMap struct {
 	PageDown            key.Binding `category:"Navigation"`
 	HalfPageUp          key.Binding `category:"Navigation"`
 	HalfPageDown        key.Binding `category:"Navigation"`
+	ScrollUp            key.Binding `category:"Navigation"`
+	ScrollDown          key.Binding `category:"Navigation"`
 	GotoTop             key.Binding `category:"Navigation"`
 	GotoBottom          key.Binding `category:"Navigation"`
 	NextSibling         key.Binding `category:"Navigation"`
@@ -70,6 +72,14 @@ func init() {
 		HalfPageDown: key.NewBinding(
 			key.WithKeys("ctrl+d"),
 			key.WithHelp("", "half page down"),
+		),
+		ScrollUp: key.NewBinding(
+			key.WithKeys("ctrl+y"),
+			key.WithHelp("", "scroll view up one line"),
+		),
+		ScrollDown: key.NewBinding(
+			key.WithKeys("ctrl+e"),
+			key.WithHelp("", "scroll view down one line"),
 		),
 		GotoTop: key.NewBinding(
 			key.WithKeys("g", "home"),

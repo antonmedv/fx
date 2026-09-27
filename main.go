@@ -844,6 +844,16 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.scrollIntoView() // As the cursor stays at the same position, and it may be empty.
 		m.recordHistory()
 
+	case key.Matches(msg, keyMap.ScrollUp):
+		m.showCursor = true
+		m.scrollUp()
+		m.recordHistory()
+
+	case key.Matches(msg, keyMap.ScrollDown):
+		m.showCursor = true
+		m.scrollDown()
+		m.recordHistory()
+
 	case key.Matches(msg, keyMap.GotoTop):
 		m.head = m.top
 		m.cursor = 0
@@ -1279,6 +1289,30 @@ func (m *model) scrollForward(lines int) {
 		}
 	}
 	m.head = it
+}
+
+// scrollUp moves the view one line backward. The cursor stays on the same
+// node unless that would push it below the view, like Ctrl-Y in vim.
+func (m *model) scrollUp() {
+	if m.head == nil || m.head.Prev == nil {
+		return
+	}
+	m.head = m.head.Prev
+	if m.cursor < m.viewHeight()-1 {
+		m.cursor++
+	}
+}
+
+// scrollDown moves the view one line forward. The cursor stays on the same
+// node unless that would push it above the view, like Ctrl-E in vim.
+func (m *model) scrollDown() {
+	if m.head == nil || m.head.Next == nil {
+		return
+	}
+	m.head = m.head.Next
+	if m.cursor > 0 {
+		m.cursor--
+	}
 }
 
 func (m *model) prettyKey(node *Node, selected bool) []byte {
