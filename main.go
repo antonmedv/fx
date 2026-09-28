@@ -281,6 +281,9 @@ func main() {
 	if _, ok := os.LookupEnv("FX_NO_MOUSE"); ok {
 		m.noMouse = true
 	}
+	_, sshConn := os.LookupEnv("SSH_CONNECTION")
+	_, sshTTY := os.LookupEnv("SSH_TTY")
+	m.sshSession = sshConn || sshTTY
 
 	p := tea.NewProgram(m,
 		tea.WithOutput(os.Stderr),
@@ -332,6 +335,7 @@ type model struct {
 	showSizes             bool
 	showLineNumbers       bool
 	noMouse               bool // FX_NO_MOUSE: leave the mouse to the terminal
+	sshSession            bool // the clipboard tool would reach the wrong machine
 	fileName              string
 	queryInput            textinput.Model
 	queryInputOffset      int        // first rune of the query shown, when it is wider than the input
@@ -767,21 +771,29 @@ func (m *model) handleGotoSymbolKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m *model) handleYankKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
 	switch {
 	case key.Matches(msg, yankPath):
-		_ = clipboard.WriteAll(m.cursorPath())
+		cmd = m.copy(m.cursorPath())
 	case key.Matches(msg, yankKey):
-		_ = clipboard.WriteAll(m.cursorKey())
+		cmd = m.copy(m.cursorKey())
 	case key.Matches(msg, yankValueY, yankValueV):
-		_ = clipboard.WriteAll(m.cursorValue())
+		cmd = m.copy(m.cursorValue())
 	case key.Matches(msg, yankKeyValue):
-		k := m.cursorKey()
-		v := m.cursorValue()
-		keyValue := k + ": " + v
-		_ = clipboard.WriteAll(keyValue)
+		cmd = m.copy(m.cursorKey() + ": " + m.cursorValue())
 	}
 	m.yank = false
-	return m, nil
+	return m, cmd
+}
+
+// copy puts text on the clipboard. OSC52 goes to the terminal the user looks
+// at, so it works over ssh and in sandboxes; locally the system clipboard
+// tool is also used, for terminals without OSC52.
+func (m *model) copy(text string) tea.Cmd {
+	if !m.sshSession {
+		_ = clipboard.WriteAll(text)
+	}
+	return tea.SetClipboard(text)
 }
 
 func (m *model) handleShowSelectorKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
