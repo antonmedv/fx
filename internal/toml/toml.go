@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"maps"
+	"slices"
 	"strings"
 
 	toml "github.com/pelletier/go-toml/v2"
@@ -30,7 +32,7 @@ type jarray struct {
 func ToJSON(in []byte) ([]byte, error) {
 	var typed any
 	if err := toml.Unmarshal(in, &typed); err != nil {
-		panic(in)
+		return nil, err
 	}
 
 	root := &jobject{}
@@ -208,9 +210,10 @@ func toJ(v any) jnode {
 	switch x := v.(type) {
 	case map[string]any:
 		obj := &jobject{}
-		// Map iteration order is undefined; this only affects inline tables.
-		for k, vv := range x {
-			obj.fields = append(obj.fields, jfield{key: k, val: toJ(vv)})
+		// The typed map has no order; this only affects inline tables.
+		// Sorted keys keep the output the same between runs.
+		for _, k := range slices.Sorted(maps.Keys(x)) {
+			obj.fields = append(obj.fields, jfield{key: k, val: toJ(x[k])})
 		}
 		return obj
 	case []any:

@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/antonmedv/fx/internal/engine"
+	"github.com/antonmedv/fx/internal/format"
 	"github.com/antonmedv/fx/internal/jsonx"
 )
 
@@ -254,8 +255,8 @@ func TestReload_KeyPressCancelsPendingRestore(t *testing.T) {
 }
 
 func TestReload_Yaml(t *testing.T) {
-	flagYaml = true
-	t.Cleanup(func() { flagYaml = false })
+	inputFormat = format.YAML
+	t.Cleanup(func() { inputFormat = nil })
 	m, file := newReloadModel(t, "a: 1\n")
 	require.Equal(t, []string{"{", `"a"1`, "}"}, lines(m))
 

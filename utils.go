@@ -1,19 +1,17 @@
 package main
 
 import (
-	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
-	"path"
 	"regexp"
 	"strconv"
 	"strings"
 
-	"github.com/goccy/go-yaml"
-
 	"github.com/antonmedv/fx/internal/engine"
+	"github.com/antonmedv/fx/internal/format"
 	"github.com/antonmedv/fx/internal/jsonpath"
 	"github.com/antonmedv/fx/internal/jsonx"
 )
@@ -28,7 +26,7 @@ func lookup(names []string, defaultEditor string) string {
 	return defaultEditor
 }
 
-func open(filePath string, flagYaml, flagToml, flagEdn *bool) *os.File {
+func open(filePath string) *os.File {
 	f, err := os.Open(filePath)
 	if err != nil {
 		var pathError *fs.PathError
@@ -39,27 +37,68 @@ func open(filePath string, flagYaml, flagToml, flagEdn *bool) *os.File {
 			panic(err)
 		}
 	}
-	fileName := path.Base(filePath)
-	hasYamlExt, _ := regexp.MatchString(`(?i)\.ya?ml$`, fileName)
-	hasTomlExt, _ := regexp.MatchString(`(?i)\.toml$`, fileName)
-	hasEdnExt, _ := regexp.MatchString(`(?i)\.edn$`, fileName)
-	if !*flagYaml && hasYamlExt {
-		*flagYaml = true
-	}
-	if !*flagToml && hasTomlExt {
-		*flagToml = true
-	}
-	if !*flagEdn && hasEdnExt {
-		*flagEdn = true
-	}
 	return f
 }
 
-func btoi(b bool) int {
-	if b {
-		return 1
+// parseFlags reads the command line. It sets the flag variables and returns
+// the other arguments, and the action a flag asks for: "help", "version",
+// "themes", "export-themes", "game-of-life", or "" to read input.
+func parseFlags(argv []string) (args []string, action string, err error) {
+	var formatFlags []string // distinct format flags, in order
+	for _, arg := range argv {
+		if strings.HasPrefix(arg, "--comp") {
+			flagComp = true
+			continue
+		}
+		if f := format.ByFlag(arg); f != nil {
+			if inputFormat != f {
+				formatFlags = append(formatFlags, arg)
+			}
+			inputFormat = f
+			continue
+		}
+		switch arg {
+		case "-h", "--help":
+			return nil, "help", nil
+		case "-v", "-V", "--version":
+			return nil, "version", nil
+		case "--themes":
+			return nil, "themes", nil
+		case "--export-themes":
+			return nil, "export-themes", nil
+		case "--game-of-life":
+			return nil, "game-of-life", nil
+		case "--raw", "-r":
+			flagRaw = true
+		case "--slurp", "-s":
+			flagSlurp = true
+		case "-rs", "-sr":
+			flagRaw = true
+			flagSlurp = true
+		case "--strict":
+			flagStrict = true
+		case "--no-inline":
+			flagNoInline = true
+		default:
+			args = append(args, arg)
+		}
 	}
-	return 0
+	if len(formatFlags) > 1 {
+		return nil, "", fmt.Errorf("can't use %s and %s flags together", formatFlags[0], formatFlags[1])
+	}
+	if len(formatFlags) == 1 && flagRaw {
+		return nil, "", fmt.Errorf("can't use %s and --raw flags together", formatFlags[0])
+	}
+	return args, "", nil
+}
+
+// chooseFormat returns the input format: the one given by a flag, or the
+// one the file extension selects, or nil for JSON.
+func chooseFormat(flag *format.Format, filePath string) *format.Format {
+	if flag != nil {
+		return flag
+	}
+	return format.ByFile(filePath)
 }
 
 func regexCase(code string) (string, bool) {
@@ -94,29 +133,6 @@ func safeSlice(s string, start, end int) string {
 		start = end
 	}
 	return s[start:end]
-}
-
-func parseYAML(b []byte) ([]byte, error) {
-	var out []byte
-	decoder := yaml.NewDecoder(
-		bytes.NewReader(b),
-		yaml.UseOrderedMap(),
-	)
-	for {
-		var v any
-		if err := decoder.Decode(&v); err != nil {
-			if err == io.EOF {
-				break
-			}
-			return nil, err
-		}
-		j, err := yaml.MarshalWithOptions(v, yaml.JSON())
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, j...)
-	}
-	return out, nil
 }
 
 func isRefNode(n *jsonx.Node) (string, bool) {

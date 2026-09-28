@@ -62,8 +62,21 @@ obj = { b = 1, c = 2 }
 `)
 	got, err := ToJSON(in)
 	require.NoError(t, err)
-	// Inline table field order is not guaranteed; compare structurally
-	assertJSONStructEqual(t, got, `{"arr":[1,2,"x"],"obj":{"b":1,"c":2}}`)
+	// Inline table fields are sorted.
+	assertJSONBytesEqual(t, got, `{"arr":[1,2,"x"],"obj":{"b":1,"c":2}}`)
+}
+
+func TestToJSON_InlineTableSorted(t *testing.T) {
+	in := []byte(`t = { b = 1, a = { d = 2, c = 3 } }
+`)
+	got, err := ToJSON(in)
+	require.NoError(t, err)
+	assertJSONBytesEqual(t, got, `{"t":{"a":{"c":3,"d":2},"b":1}}`)
+}
+
+func TestToJSON_Invalid(t *testing.T) {
+	_, err := ToJSON([]byte("a = [1"))
+	require.Error(t, err)
 }
 
 func TestToJSON_ArraysOfTables(t *testing.T) {

@@ -43,7 +43,7 @@ func (m *model) writeThen(c call, then func() tea.Cmd) tea.Cmd {
 	}
 	path = expandHome(path)
 	same := engine.FilePath != "" && sameFile(path, engine.FilePath)
-	if same && (flagYaml || flagToml || flagEdn || flagRaw) {
+	if same && (inputFormat != nil || flagRaw) {
 		return m.errorf("Can't write JSON over \"%s\", write to another file", engine.FilePath)
 	}
 	write := func() tea.Cmd {

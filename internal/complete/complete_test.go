@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/antonmedv/fx/internal/format"
 	"github.com/antonmedv/fx/internal/jsonx"
 )
 
@@ -247,14 +248,21 @@ func TestKeysComplete_DisplayVsValue(t *testing.T) {
 // doCompleteOutput runs doComplete on a file holding json and returns what
 // it prints, one reply per line.
 func doCompleteOutput(t *testing.T, json, words string) []string {
-	file := filepath.Join(t.TempDir(), "file.json")
-	require.NoError(t, os.WriteFile(file, []byte(json), 0644))
+	return doCompleteFile(t, "file.json", json, "", words)
+}
+
+// doCompleteFile runs doComplete on `fx <flags> <file> <words>`, with a file
+// called name holding content, and returns what it prints, one reply per
+// line.
+func doCompleteFile(t *testing.T, name, content, flags, words string) []string {
+	file := filepath.Join(t.TempDir(), name)
+	require.NoError(t, os.WriteFile(file, []byte(content), 0644))
 
 	r, w, err := os.Pipe()
 	require.NoError(t, err)
 	stdout := os.Stdout
 	os.Stdout = w
-	line := "fx " + file + " " + words
+	line := "fx " + flags + file + " " + words
 	doComplete(line, lastWord(line), false)
 	os.Stdout = stdout
 	require.NoError(t, w.Close())
@@ -272,4 +280,25 @@ func TestDoComplete_ArrayRewrite(t *testing.T) {
 	require.Equal(t, []string{".users[].name", ".users[].age"}, doCompleteOutput(t, json, ".users."))
 	require.Equal(t, []string{".users", ".user"}, doCompleteOutput(t, json, ".us"))
 	require.Equal(t, []string{"map"}, doCompleteOutput(t, json, "ma"))
+}
+
+func TestDoComplete_Formats(t *testing.T) {
+	// main registers the format flags in Flags; filterArgs needs them.
+	saved := Flags
+	for _, f := range format.All {
+		Flags = append(Flags, Reply{Display: f.Flag, Value: f.Flag, Type: "flag"})
+	}
+	t.Cleanup(func() { Flags = saved })
+
+	want := []string{".zebra", ".alpha"}
+	require.Equal(t, want, doCompleteFile(t, "file.yaml", "zebra: 1\nalpha: 2\n", "", "."))
+	require.Equal(t, want, doCompleteFile(t, "file.toml", "zebra = 1\nalpha = 2\n", "", "."))
+	require.Equal(t, want, doCompleteFile(t, "file.edn", "{:zebra 1 :alpha 2}", "", "."))
+	// A flag wins over the extension.
+	require.Equal(t, want, doCompleteFile(t, "file.txt", "{:zebra 1 :alpha 2}", "--edn ", "."))
+	require.Equal(t, want, doCompleteFile(t, "file.yaml", "zebra = 1\nalpha = 2\n", "--toml ", "."))
+	// Malformed input gives no candidates and does not panic.
+	require.Nil(t, doCompleteFile(t, "file.toml", "a = [1\n", "", "."))
+	require.Nil(t, doCompleteFile(t, "file.edn", "{:a", "", "."))
+	require.Nil(t, doCompleteFile(t, "file.yaml", "a: [1", "", "."))
 }

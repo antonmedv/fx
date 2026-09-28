@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/antonmedv/fx/internal/engine"
+	"github.com/antonmedv/fx/internal/format"
 	"github.com/antonmedv/fx/internal/ident"
 	"github.com/antonmedv/fx/internal/jsonx"
 )
@@ -270,8 +271,8 @@ func TestWrite_Blocked(t *testing.T) {
 		file := filepath.Join(t.TempDir(), "f.yaml")
 		require.NoError(t, os.WriteFile(file, []byte("a: 1\n"), 0o644))
 		withInputFile(t, file)
-		flagYaml = true
-		t.Cleanup(func() { flagYaml = false })
+		inputFormat = format.YAML
+		t.Cleanup(func() { inputFormat = nil })
 		m := newQueryModel(t, `{"a": 1}`)
 		typeCommand(m, "w")
 		require.Equal(t, `Can't write JSON over "`+file+`", write to another file`, m.message.text)

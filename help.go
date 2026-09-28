@@ -11,6 +11,8 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/antonmedv/fx/internal/format"
 )
 
 func usage() string {
@@ -31,10 +33,7 @@ func usage() string {
     --comp <shell>        print completion script
     -r, --raw             treat input as a raw string
     -s, --slurp           read all inputs into an array
-    --yaml                parse input as YAML
-    --toml                parse input as TOML
-    --edn                 parse input as EDN
-    --strict              strict mode
+%v    --strict              strict mode
     --no-inline           disable inlining in output
     --game-of-life        play the game of life
 
@@ -47,6 +46,7 @@ func usage() string {
 		title.Render("fx "+version),
 		title.Render("Usage"),
 		title.Render("Flags"),
+		formatFlags(),
 		title.Render("More info"),
 		title.Render("Author"),
 	)
@@ -264,4 +264,14 @@ func isFirstTuesdayOfDecember(t time.Time) bool {
 	return t.Year() == firstTuesday.Year() &&
 		t.Month() == firstTuesday.Month() &&
 		t.Day() == firstTuesday.Day()
+}
+
+// formatFlags lists the input format flags for the usage text, one line
+// each, aligned with the other flags.
+func formatFlags() string {
+	var b strings.Builder
+	for _, f := range format.All {
+		fmt.Fprintf(&b, "    %-22s%s\n", f.Flag, f.Help)
+	}
+	return b.String()
 }

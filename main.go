@@ -26,6 +26,7 @@ import (
 
 	"github.com/antonmedv/fx/internal/complete"
 	"github.com/antonmedv/fx/internal/engine"
+	"github.com/antonmedv/fx/internal/format"
 	"github.com/antonmedv/fx/internal/fuzzy"
 	"github.com/antonmedv/fx/internal/jsonpath"
 	. "github.com/antonmedv/fx/internal/jsonx"
@@ -35,9 +36,7 @@ import (
 )
 
 var (
-	flagYaml     bool
-	flagToml     bool
-	flagEdn      bool
+	inputFormat  *format.Format // nil: JSON, or raw lines with flagRaw
 	flagRaw      bool
 	flagSlurp    bool
 	flagComp     bool
@@ -51,14 +50,14 @@ var flags = []string{
 	"--slurp",
 	"--themes",
 	"--version",
-	"--yaml",
-	"--toml",
-	"--edn",
 	"--strict",
 	"--no-inline",
 }
 
 func init() {
+	for _, f := range format.All {
+		flags = append(flags, f.Flag)
+	}
 	for _, name := range flags {
 		complete.Flags = append(complete.Flags, complete.Reply{Display: name, Value: name, Type: "flag"})
 	}
@@ -89,57 +88,27 @@ func main() {
 		return
 	}
 
-	var args []string
-	for _, arg := range os.Args[1:] {
-		if strings.HasPrefix(arg, "--comp") {
-			flagComp = true
-			continue
-		}
-		switch arg {
-		case "-h", "--help":
-			fmt.Println(usage())
-			return
-		case "-v", "-V", "--version":
-			fmt.Println(version)
-			return
-		case "--themes":
-			theme.ThemeTester()
-			return
-		case "--export-themes":
-			theme.ExportThemes()
-			return
-		case "--yaml":
-			flagYaml = true
-		case "--toml":
-			flagToml = true
-		case "--edn":
-			flagEdn = true
-		case "--raw", "-r":
-			flagRaw = true
-		case "--slurp", "-s":
-			flagSlurp = true
-		case "-rs", "-sr":
-			flagRaw = true
-			flagSlurp = true
-		case "--strict":
-			flagStrict = true
-		case "--no-inline":
-			flagNoInline = true
-		case "--game-of-life":
-			utils.GameOfLife()
-			return
-		default:
-			args = append(args, arg)
-		}
-	}
-
-	if (flagYaml || flagToml || flagEdn) && flagRaw {
-		println("Error: can't use --yaml/--toml/--edn and --raw flags together")
+	args, action, err := parseFlags(os.Args[1:])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
 	}
-	if formats := btoi(flagYaml) + btoi(flagToml) + btoi(flagEdn); formats > 1 {
-		println("Error: can't use more than one of --yaml, --toml and --edn flags")
-		os.Exit(1)
+	switch action {
+	case "help":
+		fmt.Println(usage())
+		return
+	case "version":
+		fmt.Println(version)
+		return
+	case "themes":
+		theme.ThemeTester()
+		return
+	case "export-themes":
+		theme.ExportThemes()
+		return
+	case "game-of-life":
+		utils.GameOfLife()
+		return
 	}
 
 	if flagComp {
@@ -181,7 +150,8 @@ func main() {
 	case inputFile:
 		// $ fx file.json arg*
 		filePath := args[0]
-		f := open(filePath, &flagYaml, &flagToml, &flagEdn)
+		f := open(filePath)
+		inputFormat = chooseFormat(inputFormat, filePath)
 		src = f
 		file = f
 		engine.FilePath = filePath
@@ -203,7 +173,7 @@ func main() {
 	if len(args) > 0 || flagSlurp {
 		var err error
 
-		if !flagRaw && !flagYaml && !flagToml && !flagEdn && !flagSlurp {
+		if !flagRaw && inputFormat == nil && !flagSlurp {
 			parser = &nonEmptyParser{Parser: parser}
 		}
 

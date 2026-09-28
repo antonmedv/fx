@@ -9,50 +9,28 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/antonmedv/fx/internal/edn"
 	"github.com/antonmedv/fx/internal/engine"
 	. "github.com/antonmedv/fx/internal/jsonx"
-	"github.com/antonmedv/fx/internal/toml"
 )
 
 // newParser creates the parser for the input format chosen by the flags.
+// A format other than JSON is converted to JSON as a whole first.
 func newParser(src io.Reader) (engine.Parser, error) {
-	switch {
-	case flagYaml:
+	if inputFormat != nil {
 		b, err := io.ReadAll(src)
 		if err != nil {
 			return nil, err
 		}
-		jsonBytes, err := parseYAML(b)
+		jsonBytes, err := inputFormat.ToJSON(b)
 		if err != nil {
 			return nil, err
 		}
 		return NewJsonParser(bytes.NewReader(jsonBytes), flagStrict), nil
-	case flagToml:
-		b, err := io.ReadAll(src)
-		if err != nil {
-			return nil, err
-		}
-		jsonBytes, err := toml.ToJSON(b)
-		if err != nil {
-			return nil, err
-		}
-		return NewJsonParser(bytes.NewReader(jsonBytes), flagStrict), nil
-	case flagEdn:
-		b, err := io.ReadAll(src)
-		if err != nil {
-			return nil, err
-		}
-		jsonBytes, err := edn.ToJSON(b)
-		if err != nil {
-			return nil, err
-		}
-		return NewJsonParser(bytes.NewReader(jsonBytes), flagStrict), nil
-	case flagRaw:
-		return NewLineParser(src), nil
-	default:
-		return NewJsonParser(src, flagStrict), nil
 	}
+	if flagRaw {
+		return NewLineParser(src), nil
+	}
+	return NewJsonParser(src, flagStrict), nil
 }
 
 // loader reads the input in its own goroutine and delivers the documents

@@ -2,17 +2,12 @@ package complete
 
 import (
 	_ "embed"
-	"encoding/json"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 
-	"github.com/goccy/go-yaml"
-	"github.com/pelletier/go-toml/v2"
-
-	"github.com/antonmedv/fx/internal/edn"
+	"github.com/antonmedv/fx/internal/format"
 	"github.com/antonmedv/fx/internal/jsonx"
 	"github.com/antonmedv/fx/internal/shlex"
 )
@@ -72,18 +67,10 @@ func doComplete(compLine string, compWord string, withDisplay bool) {
 
 	compWord = shlex.Parse(compWord)
 
-	var flagYaml bool
-	var flagToml bool
-	var flagEdn bool
+	var inputFormat *format.Format
 	for _, arg := range args {
-		if arg == "--yaml" {
-			flagYaml = true
-		}
-		if arg == "--toml" {
-			flagToml = true
-		}
-		if arg == "--edn" {
-			flagEdn = true
+		if f := format.ByFlag(arg); f != nil {
+			inputFormat = f
 		}
 	}
 
@@ -113,17 +100,8 @@ func doComplete(compLine string, compWord string, withDisplay bool) {
 	if isSecondArgIsFile {
 		file := args[1]
 
-		hasYamlExt, _ := regexp.MatchString(`(?i)\.ya?ml$`, file)
-		hasTomlExt, _ := regexp.MatchString(`(?i)\.toml$`, file)
-		hasEdnExt, _ := regexp.MatchString(`(?i)\.edn$`, file)
-		if !flagYaml && hasYamlExt {
-			flagYaml = true
-		}
-		if !flagToml && hasTomlExt {
-			flagToml = true
-		}
-		if !flagEdn && hasEdnExt {
-			flagEdn = true
+		if inputFormat == nil {
+			inputFormat = format.ByFile(file)
 		}
 
 		if strings.HasPrefix(file, "~") {
@@ -142,26 +120,8 @@ func doComplete(compLine string, compWord string, withDisplay bool) {
 				return
 			}
 
-			if flagYaml {
-				input, err = yaml.YAMLToJSON(input)
-				if err != nil {
-					resultCh <- []Reply{}
-					return
-				}
-			} else if flagToml {
-				var v any
-				if err := toml.Unmarshal(input, &v); err != nil {
-					resultCh <- []Reply{}
-					return
-				}
-				b, err := json.Marshal(v)
-				if err != nil {
-					resultCh <- []Reply{}
-					return
-				}
-				input = b
-			} else if flagEdn {
-				input, err = edn.ToJSON(input)
+			if inputFormat != nil {
+				input, err = inputFormat.ToJSON(input)
 				if err != nil {
 					resultCh <- []Reply{}
 					return

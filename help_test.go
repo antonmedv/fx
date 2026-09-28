@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/antonmedv/fx/internal/format"
 )
 
 func TestHelpSections(t *testing.T) {
@@ -27,6 +29,16 @@ func TestHelpSections(t *testing.T) {
 	} {
 		require.Contains(t, out, want)
 	}
+}
+
+func TestUsageListsFormats(t *testing.T) {
+	out := usage()
+	for _, f := range format.All {
+		require.Contains(t, out, "    "+f.Flag+" ")
+		require.Contains(t, out, f.Help)
+	}
+	// Aligned with the other flags.
+	require.Contains(t, out, "-s, --slurp           read all inputs into an array\n    --yaml                parse input as YAML\n")
 }
 
 func firstTuesdayOfDecember(year int) time.Time {
