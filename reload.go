@@ -9,6 +9,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/antonmedv/fx/internal/edn"
 	"github.com/antonmedv/fx/internal/engine"
 	. "github.com/antonmedv/fx/internal/jsonx"
 	"github.com/antonmedv/fx/internal/toml"
@@ -33,6 +34,16 @@ func newParser(src io.Reader) (engine.Parser, error) {
 			return nil, err
 		}
 		jsonBytes, err := toml.ToJSON(b)
+		if err != nil {
+			return nil, err
+		}
+		return NewJsonParser(bytes.NewReader(jsonBytes), flagStrict), nil
+	case flagEdn:
+		b, err := io.ReadAll(src)
+		if err != nil {
+			return nil, err
+		}
+		jsonBytes, err := edn.ToJSON(b)
 		if err != nil {
 			return nil, err
 		}

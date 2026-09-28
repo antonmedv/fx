@@ -37,6 +37,7 @@ import (
 var (
 	flagYaml     bool
 	flagToml     bool
+	flagEdn      bool
 	flagRaw      bool
 	flagSlurp    bool
 	flagComp     bool
@@ -52,6 +53,7 @@ var flags = []string{
 	"--version",
 	"--yaml",
 	"--toml",
+	"--edn",
 	"--strict",
 	"--no-inline",
 }
@@ -110,6 +112,8 @@ func main() {
 			flagYaml = true
 		case "--toml":
 			flagToml = true
+		case "--edn":
+			flagEdn = true
 		case "--raw", "-r":
 			flagRaw = true
 		case "--slurp", "-s":
@@ -129,12 +133,12 @@ func main() {
 		}
 	}
 
-	if (flagYaml || flagToml) && flagRaw {
-		println("Error: can't use --yaml/--toml and --raw flags together")
+	if (flagYaml || flagToml || flagEdn) && flagRaw {
+		println("Error: can't use --yaml/--toml/--edn and --raw flags together")
 		os.Exit(1)
 	}
-	if flagYaml && flagToml {
-		println("Error: can't use both --yaml and --toml flags together")
+	if formats := btoi(flagYaml) + btoi(flagToml) + btoi(flagEdn); formats > 1 {
+		println("Error: can't use more than one of --yaml, --toml and --edn flags")
 		os.Exit(1)
 	}
 
@@ -177,7 +181,7 @@ func main() {
 	case inputFile:
 		// $ fx file.json arg*
 		filePath := args[0]
-		f := open(filePath, &flagYaml, &flagToml)
+		f := open(filePath, &flagYaml, &flagToml, &flagEdn)
 		src = f
 		file = f
 		engine.FilePath = filePath
@@ -199,7 +203,7 @@ func main() {
 	if len(args) > 0 || flagSlurp {
 		var err error
 
-		if !flagRaw && !flagYaml && !flagToml && !flagSlurp {
+		if !flagRaw && !flagYaml && !flagToml && !flagEdn && !flagSlurp {
 			parser = &nonEmptyParser{Parser: parser}
 		}
 

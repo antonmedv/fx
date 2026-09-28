@@ -12,6 +12,7 @@ import (
 	"github.com/goccy/go-yaml"
 	"github.com/pelletier/go-toml/v2"
 
+	"github.com/antonmedv/fx/internal/edn"
 	"github.com/antonmedv/fx/internal/jsonx"
 	"github.com/antonmedv/fx/internal/shlex"
 )
@@ -73,12 +74,16 @@ func doComplete(compLine string, compWord string, withDisplay bool) {
 
 	var flagYaml bool
 	var flagToml bool
+	var flagEdn bool
 	for _, arg := range args {
 		if arg == "--yaml" {
 			flagYaml = true
 		}
 		if arg == "--toml" {
 			flagToml = true
+		}
+		if arg == "--edn" {
+			flagEdn = true
 		}
 	}
 
@@ -110,11 +115,15 @@ func doComplete(compLine string, compWord string, withDisplay bool) {
 
 		hasYamlExt, _ := regexp.MatchString(`(?i)\.ya?ml$`, file)
 		hasTomlExt, _ := regexp.MatchString(`(?i)\.toml$`, file)
+		hasEdnExt, _ := regexp.MatchString(`(?i)\.edn$`, file)
 		if !flagYaml && hasYamlExt {
 			flagYaml = true
 		}
 		if !flagToml && hasTomlExt {
 			flagToml = true
+		}
+		if !flagEdn && hasEdnExt {
+			flagEdn = true
 		}
 
 		if strings.HasPrefix(file, "~") {
@@ -151,6 +160,12 @@ func doComplete(compLine string, compWord string, withDisplay bool) {
 					return
 				}
 				input = b
+			} else if flagEdn {
+				input, err = edn.ToJSON(input)
+				if err != nil {
+					resultCh <- []Reply{}
+					return
+				}
 			}
 
 			node, err := jsonx.Parse(input)
