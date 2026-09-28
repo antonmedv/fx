@@ -456,14 +456,12 @@ func (p *parser) readToken() error {
 }
 
 // looksNumeric reports whether tok must be a number: it starts with a
-// digit, or with a sign or dot followed by a digit (.5, -.5), which
-// symbols may not.
+// digit, or with a sign or dot followed by a digit. A symbol may start
+// with a sign or dot only if the next character is not a digit, so -.5
+// is a symbol and .5 is an invalid number.
 func looksNumeric(tok string) bool {
 	i := 0
-	if tok[i] == '+' || tok[i] == '-' {
-		i++
-	}
-	if i < len(tok) && tok[i] == '.' {
+	if tok[i] == '+' || tok[i] == '-' || tok[i] == '.' {
 		i++
 	}
 	return i < len(tok) && isDigit(tok[i])
