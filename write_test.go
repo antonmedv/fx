@@ -25,8 +25,8 @@ func withInputFile(t *testing.T, path string) {
 	t.Cleanup(func() { engine.FilePath = old })
 }
 
-// runCommand types :line and presses enter.
-func runCommand(m *model, line string) {
+// typeCommand types :line and presses enter.
+func typeCommand(m *model, line string) {
 	typeKeys(m, ":"+line)
 	enter(m)
 }
@@ -47,7 +47,7 @@ func TestWrite_ToNewFile(t *testing.T) {
 	m := newQueryModel(t, `{"a": [1, 2], "b": "x", "c": {}, "d": []}`)
 	out := filepath.Join(t.TempDir(), "out.json")
 
-	runCommand(m, "w "+out)
+	typeCommand(m, "w "+out)
 
 	want := "{\n  \"a\": [\n    1,\n    2\n  ],\n  \"b\": \"x\",\n  \"c\": {},\n  \"d\": []\n}\n"
 	require.Equal(t, want, readFile(t, out))
@@ -61,7 +61,7 @@ func TestWrite_FullNameAndScalar(t *testing.T) {
 	m := newQueryModel(t, `"hello"`)
 	out := filepath.Join(t.TempDir(), "out.json")
 
-	runCommand(m, "write "+out)
+	typeCommand(m, "write "+out)
 
 	require.Equal(t, "\"hello\"\n", readFile(t, out))
 }
@@ -72,7 +72,7 @@ func TestWrite_SeveralDocuments(t *testing.T) {
 	m := newQueryModel(t, `{"a": 1, "b": [2, 3]}`, `[1]`, `2`)
 	out := filepath.Join(t.TempDir(), "out.json")
 
-	runCommand(m, "w "+out)
+	typeCommand(m, "w "+out)
 
 	require.Equal(t, "{\"a\":1,\"b\":[2,3]}\n[1]\n2\n", readFile(t, out))
 	require.Equal(t, fmt.Sprintf(`"%s" 3L, 24B written`, out), m.message.text)
@@ -82,7 +82,7 @@ func TestWrite_NoFileName(t *testing.T) {
 	withInputFile(t, "")
 	m := newQueryModel(t, `{"a": 1}`)
 
-	runCommand(m, "w")
+	typeCommand(m, "w")
 
 	require.NotNil(t, m.message)
 	require.True(t, m.message.isErr)
@@ -96,7 +96,7 @@ func TestWrite_InputFileWithoutQuery(t *testing.T) {
 	m := newQueryModel(t, `{"a":1,"b":2}`)
 
 	// No query applied: the input file is written without a question.
-	runCommand(m, "w")
+	typeCommand(m, "w")
 
 	require.Nil(t, m.confirm)
 	want := "{\n  \"a\": 1,\n  \"b\": 2\n}\n"
@@ -116,7 +116,7 @@ func TestWrite_QueryResultToInputFileAsks(t *testing.T) {
 	drain(m, m.doQuery(".a"))
 	require.NotNil(t, m.original)
 
-	runCommand(m, "w")
+	typeCommand(m, "w")
 	require.NotNil(t, m.confirm)
 	require.Equal(t, `Overwrite "`+file+`" with the query result? (y/n)`, m.confirm.prompt)
 	require.Contains(t, m.View(), m.clip(m.confirm.prompt))
@@ -129,7 +129,7 @@ func TestWrite_QueryResultToInputFileAsks(t *testing.T) {
 	require.Equal(t, input, readFile(t, file))
 
 	// y writes the result.
-	runCommand(m, "w")
+	typeCommand(m, "w")
 	require.NotNil(t, m.confirm)
 	answer(m, "y")
 	require.Nil(t, m.confirm)
@@ -146,7 +146,7 @@ func TestWrite_QueryResultToInputFileByRelativePath(t *testing.T) {
 	m := newQueryModel(t, `[1, 2]`)
 	drain(m, m.doQuery("len"))
 
-	runCommand(m, "w "+filepath.Join(dir, "f.json"))
+	typeCommand(m, "w "+filepath.Join(dir, "f.json"))
 
 	require.NotNil(t, m.confirm, "the same file by another path still asks")
 	answer(m, "y")
@@ -160,7 +160,7 @@ func TestWrite_BangSkipsConfirmation(t *testing.T) {
 	m := newQueryModel(t, `{"a": 1}`)
 	drain(m, m.doQuery(".a"))
 
-	runCommand(m, "w!")
+	typeCommand(m, "w!")
 
 	require.Nil(t, m.confirm)
 	require.Equal(t, "1\n", readFile(t, file))
@@ -171,14 +171,14 @@ func TestWrite_ExistingFileAsks(t *testing.T) {
 	out := filepath.Join(t.TempDir(), "out.json")
 	require.NoError(t, os.WriteFile(out, []byte("old"), 0o644))
 
-	runCommand(m, "w "+out)
+	typeCommand(m, "w "+out)
 	require.NotNil(t, m.confirm)
 	require.Equal(t, `"`+out+`" exists, overwrite? (y/n)`, m.confirm.prompt)
 	answer(m, "q") // Any key but y cancels.
 	require.Nil(t, m.confirm)
 	require.Equal(t, "old", readFile(t, out))
 
-	runCommand(m, "w! "+out)
+	typeCommand(m, "w! "+out)
 	require.Nil(t, m.confirm)
 	require.Equal(t, "{\n  \"a\": 1\n}\n", readFile(t, out))
 }
@@ -189,7 +189,7 @@ func TestWrite_ExpandsHome(t *testing.T) {
 	t.Setenv("USERPROFILE", home) // Windows
 	m := newQueryModel(t, `1`)
 
-	runCommand(m, "w ~/out.json")
+	typeCommand(m, "w ~/out.json")
 
 	require.Equal(t, "1\n", readFile(t, filepath.Join(home, "out.json")))
 }
@@ -200,7 +200,7 @@ func TestWrite_DeletedNode(t *testing.T) {
 	m.cursor = 2 // "b"
 	m.deleteAtCursor()
 
-	runCommand(m, "w "+out)
+	typeCommand(m, "w "+out)
 
 	require.Equal(t, "{\n  \"a\": 1\n}\n", readFile(t, out))
 }
@@ -214,7 +214,7 @@ func TestWrite_CollapsedAndWrapped(t *testing.T) {
 	m.top.Next.Collapse() // "a"
 	require.True(t, m.top.Next.IsCollapsed())
 
-	runCommand(m, "w "+out)
+	typeCommand(m, "w "+out)
 
 	want := "{\n  \"a\": {\n    \"b\": [\n      1,\n      2\n    ]\n  },\n  \"s\": " + long + "\n}\n"
 	require.Equal(t, want, readFile(t, out))
@@ -226,7 +226,7 @@ func TestWrite_SkipsTextLines(t *testing.T) {
 	require.Equal(t, []string{"note", "1"}, lines(m))
 	out := filepath.Join(t.TempDir(), "out.json")
 
-	runCommand(m, "w "+out)
+	typeCommand(m, "w "+out)
 
 	require.Equal(t, "1\n", readFile(t, out))
 }
@@ -237,7 +237,7 @@ func TestWrite_Blocked(t *testing.T) {
 	t.Run("loading", func(t *testing.T) {
 		m := newQueryModel(t, `{"a": 1}`)
 		m.eof = false
-		runCommand(m, "w "+out)
+		typeCommand(m, "w "+out)
 		require.Equal(t, "Input is still loading", m.message.text)
 	})
 
@@ -246,7 +246,7 @@ func TestWrite_Blocked(t *testing.T) {
 		m.eof = false
 		cmd := m.doQuery(".a")
 		m.eof = true
-		runCommand(m, "w "+out)
+		typeCommand(m, "w "+out)
 		require.Equal(t, "Query is still running", m.message.text)
 		m.Update(eofMsg{})
 		drain(m, cmd)
@@ -256,13 +256,13 @@ func TestWrite_Blocked(t *testing.T) {
 		m := newQueryModel(t, `{"a": 1}`)
 		drain(m, m.doQuery("x => x.a.b.c"))
 		require.NotEmpty(t, m.queryErrors)
-		runCommand(m, "w "+out)
+		typeCommand(m, "w "+out)
 		require.Equal(t, "Query result has errors", m.message.text)
 	})
 
 	t.Run("empty", func(t *testing.T) {
 		m := newQueryModel(t)
-		runCommand(m, "w "+out)
+		typeCommand(m, "w "+out)
 		require.Equal(t, "Nothing to write", m.message.text)
 	})
 
@@ -273,7 +273,7 @@ func TestWrite_Blocked(t *testing.T) {
 		flagYaml = true
 		t.Cleanup(func() { flagYaml = false })
 		m := newQueryModel(t, `{"a": 1}`)
-		runCommand(m, "w")
+		typeCommand(m, "w")
 		require.Equal(t, `Can't write JSON over "`+file+`", write to another file`, m.message.text)
 		require.Equal(t, "a: 1\n", readFile(t, file))
 	})
@@ -286,7 +286,7 @@ func TestWrite_Error(t *testing.T) {
 	m := newQueryModel(t, `1`)
 	out := filepath.Join(t.TempDir(), "missing", "out.json")
 
-	runCommand(m, "w "+out)
+	typeCommand(m, "w "+out)
 
 	require.NotNil(t, m.message)
 	require.True(t, m.message.isErr)
@@ -301,13 +301,13 @@ func TestWrite_RawInputFileRefused(t *testing.T) {
 	t.Cleanup(func() { flagRaw = false })
 	m := newQueryModel(t, `"one"`, `"two"`)
 
-	runCommand(m, "w")
+	typeCommand(m, "w")
 
 	require.Equal(t, `Can't write JSON over "`+file+`", write to another file`, m.message.text)
 	require.Equal(t, "one\ntwo\n", readFile(t, file))
 
 	out := filepath.Join(t.TempDir(), "out.json")
-	runCommand(m, "w "+out)
+	typeCommand(m, "w "+out)
 	require.Equal(t, "\"one\"\n\"two\"\n", readFile(t, out))
 }
 
@@ -317,7 +317,7 @@ func TestWrite_RecoveredTextRefused(t *testing.T) {
 	m.appendNode(parseDoc(t, `{"a": 2}`))
 	out := filepath.Join(t.TempDir(), "out.json")
 
-	runCommand(m, "w "+out)
+	typeCommand(m, "w "+out)
 
 	require.Equal(t, "Input contains text that is not JSON", m.message.text)
 	require.NoFileExists(t, out)
@@ -325,7 +325,7 @@ func TestWrite_RecoveredTextRefused(t *testing.T) {
 	// A query result holds no recovered text; it can be written.
 	drain(m, m.doQuery(".a"))
 	require.Equal(t, []string{"1", "2"}, lines(m))
-	runCommand(m, "w "+out)
+	typeCommand(m, "w "+out)
 	require.Equal(t, "1\n2\n", readFile(t, out))
 }
 
@@ -335,7 +335,7 @@ func TestWrite_ReloadErrorRefused(t *testing.T) {
 	m.Update(errorMsg{err: fmt.Errorf("unexpected end of input\n  at line 3"), gen: 1})
 	out := filepath.Join(t.TempDir(), "out.json")
 
-	runCommand(m, "w "+out)
+	typeCommand(m, "w "+out)
 
 	require.Equal(t, "Input has errors: unexpected end of input", m.message.text)
 	require.NoFileExists(t, out)
@@ -357,7 +357,7 @@ func TestWrite_ReloadErrorSurvivesClearingQuery(t *testing.T) {
 	require.Nil(t, m.original)
 	require.Equal(t, []string{"{", `"a"1`, "}"}, lines(m), "the error line is gone with the result view")
 
-	runCommand(m, "w")
+	typeCommand(m, "w")
 
 	require.Equal(t, "Input has errors: unexpected end of input", m.message.text)
 	require.Equal(t, `{"a": 1}`+"\n"+`{"a": 2`, readFile(t, file), "the file keeps its content")
@@ -374,7 +374,7 @@ func TestWrite_ResultWithoutDocuments(t *testing.T) {
 	out := filepath.Join(t.TempDir(), "out.json")
 	require.NoError(t, os.WriteFile(out, []byte("old"), 0o644))
 
-	runCommand(m, "w! "+out)
+	typeCommand(m, "w! "+out)
 
 	require.Equal(t, "Nothing to write", m.message.text)
 	require.Equal(t, "old", readFile(t, out))
@@ -387,7 +387,7 @@ func TestWrite_HonorsIndent(t *testing.T) {
 	m := newQueryModel(t, `{"a": [1]}`)
 	out := filepath.Join(t.TempDir(), "out.json")
 
-	runCommand(m, "w "+out)
+	typeCommand(m, "w "+out)
 
 	require.Equal(t, "{\n\t\"a\": [\n\t\t1\n\t]\n}\n", readFile(t, out))
 }
@@ -404,7 +404,7 @@ func TestWrite_DeletedAfterCollapsedAndWrapped(t *testing.T) {
 	m.cursor = rowOf(t, m, `"t"`) // after the wrapped "s"
 	m.deleteAtCursor()
 
-	runCommand(m, "w "+out)
+	typeCommand(m, "w "+out)
 
 	require.Equal(t, "{\n  \"a\": {\n    \"x\": 1\n  },\n  \"s\": "+long+"\n}\n", readFile(t, out))
 }
@@ -426,7 +426,7 @@ func TestWrite_MouseKeepsConfirmation(t *testing.T) {
 	out := filepath.Join(t.TempDir(), "out.json")
 	require.NoError(t, os.WriteFile(out, []byte("old"), 0o644))
 
-	runCommand(m, "w "+out)
+	typeCommand(m, "w "+out)
 	require.NotNil(t, m.confirm)
 	m.Update(tea.MouseMsg{Button: tea.MouseButtonWheelDown})
 	require.NotNil(t, m.confirm)
@@ -441,7 +441,7 @@ func TestWrite_PromptClippedToWidth(t *testing.T) {
 	m.termWidth = 30
 	out := filepath.Join(t.TempDir(), strings.Repeat("d", 40), "out.json")
 
-	runCommand(m, "w "+out)
+	typeCommand(m, "w "+out)
 
 	require.True(t, m.message.isErr)
 	view := m.View()
@@ -449,4 +449,67 @@ func TestWrite_PromptClippedToWidth(t *testing.T) {
 	require.Contains(t, last, `Can't write "`)
 	require.Contains(t, last, "…")
 	require.LessOrEqual(t, runewidth.StringWidth(ansi.Strip(last)), 30)
+}
+
+// typeCommandCmd is typeCommand returning the command of enter, for
+// commands that quit.
+func typeCommandCmd(m *model, line string) tea.Cmd {
+	typeKeys(m, ":"+line)
+	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	return cmd
+}
+
+func isQuit(cmd tea.Cmd) bool {
+	if cmd == nil {
+		return false
+	}
+	_, ok := cmd().(tea.QuitMsg)
+	return ok
+}
+
+func TestWriteQuit(t *testing.T) {
+	m := newQueryModel(t, `{"a": 1}`)
+	out := filepath.Join(t.TempDir(), "out.json")
+
+	cmd := typeCommandCmd(m, "wq "+out)
+
+	require.True(t, isQuit(cmd))
+	require.Equal(t, "{\n  \"a\": 1\n}\n", readFile(t, out))
+}
+
+func TestWriteQuit_AsksThenQuits(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "f.json")
+	require.NoError(t, os.WriteFile(file, []byte(`{"a": 1}`), 0o644))
+	withInputFile(t, file)
+	m := newQueryModel(t, `{"a": 1}`)
+	drain(m, m.doQuery(".a"))
+
+	cmd := typeCommandCmd(m, "wq")
+	require.Nil(t, cmd)
+	require.NotNil(t, m.confirm)
+
+	_, cmd = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("y")})
+	require.True(t, isQuit(cmd))
+	require.Equal(t, "1\n", readFile(t, file))
+
+	// ! writes without asking.
+	m = newQueryModel(t, `{"a": 2}`)
+	drain(m, m.doQuery(".a"))
+	require.True(t, isQuit(typeCommandCmd(m, "wq!")))
+	require.Equal(t, "2\n", readFile(t, file))
+}
+
+func TestWriteQuit_StaysOnError(t *testing.T) {
+	m := newQueryModel(t, `{"a": 1}`)
+	out := filepath.Join(t.TempDir(), "missing", "out.json")
+
+	cmd := typeCommandCmd(m, "wq "+out)
+
+	require.Nil(t, cmd)
+	require.True(t, m.message.isErr)
+	require.Contains(t, m.message.text, "Can't write")
+
+	m.eof = false
+	require.Nil(t, typeCommandCmd(m, "wq "+out))
+	require.Equal(t, "Input is still loading", m.message.text)
 }

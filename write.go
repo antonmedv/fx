@@ -21,6 +21,16 @@ import (
 // Overwriting the input file with a query result, or any other existing
 // file, asks for confirmation, unless ! is given.
 func (m *model) write(c call) tea.Cmd {
+	return m.writeThen(c, nil)
+}
+
+// writeQuit runs :wq[!] [file]: write, and quit once written.
+func (m *model) writeQuit(c call) tea.Cmd {
+	return m.writeThen(c, func() tea.Cmd { return tea.Quit })
+}
+
+// writeThen is write, running then once the file is written, if it is.
+func (m *model) writeThen(c call, then func() tea.Cmd) tea.Cmd {
 	if reason := m.writeBlocked(); reason != "" {
 		return m.errorf("%s", reason)
 	}
@@ -36,7 +46,12 @@ func (m *model) write(c call) tea.Cmd {
 	if same && (flagYaml || flagToml || flagRaw) {
 		return m.errorf("Can't write JSON over \"%s\", write to another file", engine.FilePath)
 	}
-	write := func() tea.Cmd { return m.writeFile(path, same) }
+	write := func() tea.Cmd {
+		if !m.writeFile(path, same) || then == nil {
+			return nil
+		}
+		return then()
+	}
 	switch {
 	case c.bang:
 		return write()
@@ -90,9 +105,9 @@ func firstLine(s string) string {
 	return line
 }
 
-// writeFile writes the displayed JSON to path. same reports whether path
-// is the input file.
-func (m *model) writeFile(path string, same bool) tea.Cmd {
+// writeFile writes the displayed JSON to path and reports whether it did.
+// same reports whether path is the input file.
+func (m *model) writeFile(path string, same bool) bool {
 	data := m.viewJSON()
 	if same {
 		// Windows can't rename over the open input file.
@@ -101,11 +116,14 @@ func (m *model) writeFile(path string, same bool) tea.Cmd {
 	if err := engine.WriteFile(path, data); err != nil {
 		var pathErr *fs.PathError
 		if errors.As(err, &pathErr) {
-			return m.errorf("Can't write \"%s\": %v", path, pathErr.Err)
+			m.errorf("Can't write \"%s\": %v", path, pathErr.Err)
+		} else {
+			m.errorf("%v", err)
 		}
-		return m.errorf("%v", err)
+		return false
 	}
-	return m.infof("\"%s\" %dL, %dB written", path, bytes.Count(data, []byte{'\n'}), len(data))
+	m.infof("\"%s\" %dL, %dB written", path, bytes.Count(data, []byte{'\n'}), len(data))
+	return true
 }
 
 // viewJSON serializes the displayed JSON documents: a single one indented,

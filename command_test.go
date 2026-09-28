@@ -50,6 +50,8 @@ func TestFindCommand(t *testing.T) {
 		{"w", "w[rite]"},
 		{"wr", "w[rite]"},
 		{"write", "w[rite]"},
+		{"wq", "wq"},
+		{"wqa", ""},
 		{"W", ""},
 		{"writes", ""},
 		{"", ""},
@@ -104,10 +106,10 @@ func TestCommandUnknownWithoutName(t *testing.T) {
 
 func TestCommandBangNotAllowed(t *testing.T) {
 	m := newQueryModel(t, `{"a": 1}`)
-	typeKeys(m, ":q!")
+	typeKeys(m, ":5!")
 	enter(m)
 	require.NotNil(t, m.message)
-	require.Equal(t, "No ! allowed: q!", m.message.text)
+	require.Equal(t, "No ! allowed: 5!", m.message.text)
 }
 
 func TestCommandEmptyDoesNothing(t *testing.T) {
@@ -119,7 +121,7 @@ func TestCommandEmptyDoesNothing(t *testing.T) {
 }
 
 func TestCommandQuit(t *testing.T) {
-	for _, line := range []string{"q", "quit"} {
+	for _, line := range []string{"q", "quit", "q!", "quit!"} {
 		m := newQueryModel(t, `{"a": 1}`)
 		typeKeys(m, ":"+line)
 		_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})

@@ -50,7 +50,15 @@ var commands = []command{
 		run:  (*model).write,
 	},
 	{
+		name: "wq",
+		bang: true,
+		args: "[file]",
+		desc: "write JSON to file and quit",
+		run:  (*model).writeQuit,
+	},
+	{
 		name: "q[uit]",
+		bang: true,
 		desc: "quit",
 		run: func(m *model, c call) tea.Cmd {
 			return tea.Quit

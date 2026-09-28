@@ -58,7 +58,7 @@ var flags = []string{
 
 func init() {
 	for _, name := range flags {
-		complete.Flags = append(complete.Flags, complete.Reply{name, name, "flag"})
+		complete.Flags = append(complete.Flags, complete.Reply{Display: name, Value: name, Type: "flag"})
 	}
 }
 
