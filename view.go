@@ -20,39 +20,8 @@ func (m *model) View() tea.View {
 	if !m.noMouse {
 		v.MouseMode = tea.MouseModeCellMotion
 	}
-	v.Cursor = m.cursorView(v.Content)
 	v.WindowTitle = m.fileName // empty for stdin, which leaves the title alone
 	return v
-}
-
-// cursorView places the terminal cursor in the focused text input, which is
-// always the last line of content, or hides it.
-func (m *model) cursorView(content string) *tea.Cursor {
-	if m.confirm != nil || m.showHelp {
-		return nil
-	}
-	var c *tea.Cursor
-	switch {
-	case m.showPreview:
-		c = m.previewSearchInput.Cursor()
-	case m.queryInput.Focused():
-		c = &tea.Cursor{Shape: tea.CursorBar, Blink: true}
-		c.X = m.queryCursorX()
-	case m.gotoSymbolInput.Focused():
-		c = m.gotoSymbolInput.Cursor()
-	case m.commandInput.Focused():
-		c = m.commandInput.Cursor()
-	case m.searchInput.Focused():
-		c = m.searchInput.Cursor()
-	}
-	if c == nil {
-		return nil
-	}
-	// The input starts at column 0, so Cursor().X is the column. bubbles
-	// ignores horizontal scrolling there, which only shows with a value wider
-	// than the terminal and the cursor away from its end.
-	c.Y = strings.Count(content, "\n")
-	return c
 }
 
 // render draws the screen content.

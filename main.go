@@ -307,17 +307,14 @@ func main() {
 	}
 }
 
-// newInput returns a text input drawn with the terminal's own cursor, placed
-// by cursorView, and with no colors of its own.
+// newInput returns a text input with no colors of its own: the prompt and
+// text take the terminal's colors and the cursor is a reverse-video block.
 func newInput() textinput.Model {
 	in := textinput.New()
-	in.SetVirtualCursor(false)
 	st := in.Styles()
 	st.Focused.Prompt = lipgloss.NewStyle()
 	st.Blurred.Prompt = lipgloss.NewStyle()
 	st.Blurred.Text = lipgloss.NewStyle()
-	st.Cursor.Shape = tea.CursorBar
-	st.Cursor.Blink = true
 	st.Cursor.Color = nil
 	in.SetStyles(st)
 	return in

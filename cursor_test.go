@@ -4,67 +4,36 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mattn/go-runewidth"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/require"
 )
 
-// lastLine is the row of the last line of the rendered screen, where every
-// text input is drawn.
-func lastLine(m *model) int {
-	return strings.Count(view(m), "\n")
+// last returns the last line of the rendered screen, where the inputs are.
+func last(m *model) string {
+	s := view(m)
+	return s[strings.LastIndex(s, "\n")+1:]
 }
 
-func TestCursor_HiddenOutsideInputs(t *testing.T) {
+// The inputs draw their own cursor; the terminal cursor stays hidden.
+func TestCursor_DrawnByInputs(t *testing.T) {
 	m := newQueryModel(t, `{"a": 1}`)
 	require.Nil(t, m.View().Cursor)
 
-	m.Update(press("?"))
-	require.True(t, m.showHelp)
-	require.Nil(t, m.View().Cursor)
-}
-
-func TestCursor_Query(t *testing.T) {
-	m := newQueryModel(t, `{"a": 1}`)
-	m.queryInput.Prompt = "" // as in main
 	typeKeys(m, ".a")
-	c := m.View().Cursor
-	require.NotNil(t, c)
-	require.Equal(t, 2, c.X)
-	require.Equal(t, lastLine(m), c.Y)
-
-	// Wider than the input: the window scrolls to keep the cursor visible.
-	typeKeys(m, strings.Repeat("b", 100))
-	width := m.termWidth - 1
-	require.Equal(t, width, m.queryInput.Width())
-	require.Equal(t, width, m.View().Cursor.X)
-
+	require.Nil(t, m.View().Cursor)
+	require.True(t, strings.HasSuffix(ansi.Strip(last(m)), "> .a "), "cursor block after the query")
 	pressKey(m, press("left"))
-	pressKey(m, press("left"))
-	pressKey(m, press("left"))
-	require.Equal(t, width-3, m.View().Cursor.X)
+	require.Contains(t, last(m), reverseStyle("a"), "cursor over the character")
+	m.Update(press("esc"))
 
-	pressKey(m, press("home"))
-	require.Equal(t, 0, m.View().Cursor.X)
-}
-
-func TestCursor_SearchAndCommand(t *testing.T) {
-	m := newQueryModel(t, `{"a": 1}`)
 	m.Update(press("/"))
 	typeKeys(m, "ab")
-	c := m.View().Cursor
-	require.NotNil(t, c)
-	require.Equal(t, runewidth.StringWidth(m.searchInput.Prompt)+2, c.X)
-	require.Equal(t, lastLine(m), c.Y)
+	require.Nil(t, m.View().Cursor)
+	require.Contains(t, last(m), m.searchInput.Prompt+"ab"+reverseStyle(" "), "cursor block after the search")
 	m.Update(press("esc"))
 
 	m.Update(press(":"))
 	typeKeys(m, "5")
-	c = m.View().Cursor
-	require.NotNil(t, c)
-	require.Equal(t, runewidth.StringWidth(m.commandInput.Prompt)+1, c.X)
-	require.Equal(t, lastLine(m), c.Y)
-
-	// A question in the command line hides the cursor.
-	m.confirm = &confirmation{prompt: "sure?"}
 	require.Nil(t, m.View().Cursor)
+	require.Contains(t, last(m), m.commandInput.Prompt+"5"+reverseStyle(" "), "cursor block after the command")
 }
