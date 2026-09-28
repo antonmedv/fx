@@ -33,7 +33,11 @@ func usage() string {
     --toml                parse input as TOML
     --strict              strict mode
     --no-inline           disable inlining in output
+    --no-paging            print to stdout without the interactive viewer
     --game-of-life        play the game of life
+
+  %v
+    FX_NO_PAGER            enable --no-paging when set
 
   %v
     https://fx.wtf
@@ -44,6 +48,7 @@ func usage() string {
 		title.Render("fx "+version),
 		title.Render("Usage"),
 		title.Render("Flags"),
+		title.Render("Environment"),
 		title.Render("More info"),
 		title.Render("Author"),
 	)
