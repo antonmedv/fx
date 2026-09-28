@@ -225,19 +225,19 @@ func main() {
 		return
 	}
 
-	queryInput := textinput.New()
+	queryInput := newInput()
 	queryInput.Prompt = ""
 
-	commandInput := textinput.New()
+	commandInput := newInput()
 	commandInput.Prompt = ":"
 
-	searchInput := textinput.New()
+	searchInput := newInput()
 	searchInput.Prompt = "/"
 
-	gotoSymbolInput := textinput.New()
+	gotoSymbolInput := newInput()
 	gotoSymbolInput.Prompt = "@"
 
-	previewSearchInput := textinput.New()
+	previewSearchInput := newInput()
 	previewSearchInput.Prompt = "/"
 
 	spinnerModel := spinner.New()
@@ -302,6 +302,22 @@ func main() {
 	} else {
 		exit()
 	}
+}
+
+// newInput returns a text input drawn with the terminal's own cursor, placed
+// by cursorView, and with no colors of its own.
+func newInput() textinput.Model {
+	in := textinput.New()
+	in.SetVirtualCursor(false)
+	st := in.Styles()
+	st.Focused.Prompt = lipgloss.NewStyle()
+	st.Blurred.Prompt = lipgloss.NewStyle()
+	st.Blurred.Text = lipgloss.NewStyle()
+	st.Cursor.Shape = tea.CursorBar
+	st.Cursor.Blink = true
+	st.Cursor.Color = nil
+	in.SetStyles(st)
+	return in
 }
 
 type model struct {

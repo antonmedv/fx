@@ -42,7 +42,7 @@ func TestComplete_GhostAndGrid(t *testing.T) {
 	require.Equal(t, m.termHeight-2, m.viewHeight())
 
 	screen := ansi.Strip(view(m))
-	require.True(t, strings.HasSuffix(screen, "\n> .id "), screen)
+	require.True(t, strings.HasSuffix(screen, "\n> .id"), screen) // the terminal cursor follows, nothing is drawn for it
 }
 
 func TestComplete_GhostIsRendered(t *testing.T) {

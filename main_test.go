@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/colorprofile"
 	"github.com/charmbracelet/x/exp/teatest/v2"
@@ -42,8 +41,8 @@ func prepare(t *testing.T, opts ...options) *teatest.TestModel {
 		eof:          true,
 		wrap:         true,
 		showCursor:   true,
-		searchInput:  textinput.New(),
-		commandInput: textinput.New(),
+		searchInput:  newInput(),
+		commandInput: newInput(),
 	}
 
 	if len(opts) > 0 {

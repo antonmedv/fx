@@ -673,22 +673,16 @@ func (m *model) queryInputView() string {
 	}
 
 	var v strings.Builder
-	showCursor := m.queryInput.Focused()
 	for i := start; i < end; {
-		if i == pos && showCursor {
-			v.WriteString(reverseStyle(string(value[i])))
-			i++
-			continue
-		}
 		j := i + 1
-		for j < end && kinds[j] == kinds[i] && !(j == pos && showCursor) {
+		for j < end && kinds[j] == kinds[i] {
 			j++
 		}
 		v.WriteString(tokenColor(kinds[i])(string(value[i:j])))
 		i = j
 	}
 	if pos == len(value) {
-		v.WriteString(m.ghostView(value[start:end], showCursor))
+		v.WriteString(m.ghostView(value[start:end]))
 	}
 	return m.queryInput.Prompt + v.String()
 }
@@ -712,6 +706,15 @@ func tokenColor(kind engine.TokenKind) theme.Color {
 		return t.Preview
 	}
 	return func(s string) string { return s }
+}
+
+// queryCursorX is the column of the cursor in the query line, after
+// queryInputView scrolled the value.
+func (m *model) queryCursorX() int {
+	value := []rune(m.queryInput.Value())
+	pos := min(m.queryInput.Position(), len(value))
+	start := min(m.queryInputOffset, pos)
+	return runewidth.StringWidth(m.queryInput.Prompt) + runewidth.StringWidth(string(value[start:pos]))
 }
 
 // queryInputWindow returns the runes [start, end) of the query shown in the

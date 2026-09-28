@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/require"
 
@@ -155,9 +154,9 @@ func newQueryModel(t *testing.T, docs ...string) *model {
 		termHeight:   40,
 		eof:          true,
 		showCursor:   true,
-		queryInput:   textinput.New(),
-		searchInput:  textinput.New(),
-		commandInput: textinput.New(),
+		queryInput:   newInput(),
+		searchInput:  newInput(),
+		commandInput: newInput(),
 		viewState:    viewState{search: newSearch()},
 	}
 	for _, doc := range docs {

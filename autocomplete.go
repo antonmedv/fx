@@ -382,28 +382,20 @@ func (m *model) completionGridView() []string {
 	return lines
 }
 
-// ghostView renders the cursor at the end of the query, followed by the
-// dimmed ghost, cut to the input width. shown is the visible query.
-func (m *model) ghostView(shown []rune, showCursor bool) string {
-	ghost := []rune(m.completionGhost())
-	room := len(ghost)
+// ghostView renders the dimmed ghost after the query, cut to the input
+// width. shown is the visible query; the terminal cursor sits on the first
+// ghost character.
+func (m *model) ghostView(shown []rune) string {
+	ghost := m.completionGhost()
 	if width := m.queryInput.Width(); width > 0 {
-		room = width - runewidth.StringWidth(string(shown))
+		room := width - runewidth.StringWidth(string(shown))
+		if room <= 0 {
+			return ""
+		}
+		ghost = runewidth.Truncate(ghost, room, "")
 	}
-	var v strings.Builder
-	char := " "
-	if len(ghost) > 0 && room > 0 {
-		char = string(ghost[0])
-		ghost = ghost[1:]
-		room -= runewidth.StringWidth(char)
+	if ghost == "" {
+		return ""
 	}
-	if showCursor {
-		v.WriteString(reverseStyle(char))
-	} else if char != " " {
-		v.WriteString(theme.CurrentTheme.Preview(char))
-	}
-	if len(ghost) > 0 && room > 0 {
-		v.WriteString(theme.CurrentTheme.Preview(runewidth.Truncate(string(ghost), room, "")))
-	}
-	return v.String()
+	return theme.CurrentTheme.Preview(ghost)
 }
