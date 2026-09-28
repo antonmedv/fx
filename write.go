@@ -12,6 +12,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/antonmedv/fx/internal/engine"
+	"github.com/antonmedv/fx/internal/ident"
 	. "github.com/antonmedv/fx/internal/jsonx"
 )
 
@@ -32,7 +33,7 @@ func (m *model) write(c call) tea.Cmd {
 	}
 	path = expandHome(path)
 	same := engine.FilePath != "" && sameFile(path, engine.FilePath)
-	if same && (flagYaml || flagToml) {
+	if same && (flagYaml || flagToml || flagRaw) {
 		return m.errorf("Can't write JSON over \"%s\", write to another file", engine.FilePath)
 	}
 	write := func() tea.Cmd { return m.writeFile(path, same) }
@@ -54,12 +55,28 @@ func (m *model) writeBlocked() string {
 		return "Input is still loading"
 	case m.restoring || m.query != nil && !m.query.done:
 		return "Query is still running"
+	case len(m.queryErrors) > 0 && m.original == nil:
+		return "Input has errors" // A failed reload.
 	case len(m.queryErrors) > 0:
 		return "Query result has errors"
+	case m.original == nil && hasTextDocs(m.top):
+		// Recovered non-JSON lines would be dropped from the input.
+		return "Input contains text that is not JSON"
 	case m.top == nil:
 		return "Nothing to write"
 	}
 	return ""
+}
+
+// hasTextDocs reports whether a top-level document from top on is text
+// rather than JSON.
+func hasTextDocs(top *Node) bool {
+	for doc := top; doc != nil; doc = nextDoc(doc) {
+		if doc.Kind == Err {
+			return true
+		}
+	}
+	return false
 }
 
 // writeFile writes the displayed JSON to path. same reports whether path
@@ -80,27 +97,34 @@ func (m *model) writeFile(path string, same bool) tea.Cmd {
 	return m.infof("\"%s\" %dL, %dB written", path, bytes.Count(data, []byte{'\n'}), len(data))
 }
 
-// viewJSON serializes the displayed documents as indented JSON, one after
-// another, like fx prints them to stdout. Text lines (recovered non-JSON
-// input, println output) are left out.
+// viewJSON serializes the displayed JSON documents: a single one indented,
+// several as JSON Lines, so a JSON Lines input keeps its format. Text lines
+// (println output) are left out.
 func (m *model) viewJSON() []byte {
-	var b bytes.Buffer
+	var docs []*Node
 	for doc := m.top; doc != nil; doc = nextDoc(doc) {
-		if doc.Kind == Err {
-			continue
+		if doc.Kind != Err {
+			docs = append(docs, doc)
 		}
-		writeIndented(&b, doc)
+	}
+	var b bytes.Buffer
+	if len(docs) == 1 {
+		writeIndented(&b, docs[0])
+		return b.Bytes()
+	}
+	for _, doc := range docs {
+		writeDoc(&b, doc)
 	}
 	return b.Bytes()
 }
 
-// writeIndented serializes the top-level document doc with two spaces of
-// indentation, the collapsed parts included.
+// writeIndented serializes the top-level document doc indented like the
+// view, the collapsed parts included.
 func writeIndented(b *bytes.Buffer, doc *Node) {
 	for it := doc; it != nil; {
 		if !it.IsWrap() {
 			for range it.Depth {
-				b.WriteString("  ")
+				b.WriteString(ident.Ident)
 			}
 			if it.Key != "" {
 				b.WriteString(it.Key)

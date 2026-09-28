@@ -111,3 +111,61 @@ func TestDeleteNode_EdgeCases(t *testing.T) {
 	require.Equal(t, Number, el.Kind)
 	require.Equal(t, "3", el.Value)
 }
+
+// Deleting after a collapsed sibling must unlink the node from the
+// collapsed sibling's End too, which Expand and every walk through the
+// collapsed part follow.
+func TestDeleteNode_AfterCollapsedSibling(t *testing.T) {
+	root, err := Parse([]byte(`{"a":{"x":1},"b":2,"c":3}`))
+	require.NoError(t, err)
+	a := root.FindByPath([]any{"a"})
+	a.Collapse()
+
+	_, ok := DeleteNode(root.FindByPath([]any{"b"}))
+	require.True(t, ok)
+
+	c := root.FindByPath([]any{"c"})
+	require.Same(t, c, a.Next)
+	require.Same(t, c, a.End.Next)
+	require.Same(t, a, c.Prev)
+
+	a.Expand()
+	require.Same(t, c, a.End.Next)
+	require.Same(t, a.End, c.Prev)
+	var keys []string
+	for it := root; it != nil; it = it.Next {
+		keys = append(keys, it.Key+it.Value)
+	}
+	require.Equal(t, []string{"{", `"a"{`, `"x"1`, "}", `"c"3`, "}"}, keys)
+}
+
+func TestDeleteNode_LastAfterCollapsedSibling(t *testing.T) {
+	root, err := Parse([]byte(`{"a":{"x":1},"b":2}`))
+	require.NoError(t, err)
+	a := root.FindByPath([]any{"a"})
+	a.Collapse()
+	require.True(t, a.End.Comma)
+
+	_, ok := DeleteNode(root.FindByPath([]any{"b"}))
+	require.True(t, ok)
+
+	require.False(t, a.End.Comma)
+	require.Same(t, root.End, a.Next)
+	require.Same(t, root.End, a.End.Next)
+}
+
+func TestDeleteNode_LastAfterWrappedString(t *testing.T) {
+	root, err := Parse([]byte(`{"s":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","t":1}`))
+	require.NoError(t, err)
+	Wrap(root, 12)
+	s := root.FindByPath([]any{"s"})
+	require.NotNil(t, s.ChunkEnd)
+	require.True(t, s.Comma)
+	require.True(t, s.ChunkEnd.Comma)
+
+	_, ok := DeleteNode(root.FindByPath([]any{"t"}))
+	require.True(t, ok)
+
+	require.False(t, s.Comma)
+	require.False(t, s.ChunkEnd.Comma)
+}

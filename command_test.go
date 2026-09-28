@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -89,6 +90,16 @@ func TestCommandUnknownShowsError(t *testing.T) {
 	require.Nil(t, m.message)
 	require.Equal(t, 1, m.cursor)
 	require.Equal(t, m.termHeight-1, m.viewHeight())
+}
+
+func TestCommandUnknownWithoutName(t *testing.T) {
+	for _, line := range []string{"$", "!", "+5", "%s/a/b/", " $ "} {
+		m := newQueryModel(t, `{"a": 1}`)
+		typeKeys(m, ":"+line)
+		enter(m)
+		require.NotNil(t, m.message, line)
+		require.Equal(t, "Not an editor command: "+strings.TrimSpace(line), m.message.text)
+	}
 }
 
 func TestCommandBangNotAllowed(t *testing.T) {

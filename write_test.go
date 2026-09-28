@@ -4,12 +4,16 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/x/ansi"
+	"github.com/mattn/go-runewidth"
 	"github.com/stretchr/testify/require"
 
 	"github.com/antonmedv/fx/internal/engine"
+	"github.com/antonmedv/fx/internal/ident"
 	"github.com/antonmedv/fx/internal/jsonx"
 )
 
@@ -62,13 +66,16 @@ func TestWrite_FullNameAndScalar(t *testing.T) {
 	require.Equal(t, "\"hello\"\n", readFile(t, out))
 }
 
+// Several documents are written as JSON Lines, so the format of a JSON
+// Lines input is kept.
 func TestWrite_SeveralDocuments(t *testing.T) {
-	m := newQueryModel(t, `{"a": 1}`, `[1]`, `2`)
+	m := newQueryModel(t, `{"a": 1, "b": [2, 3]}`, `[1]`, `2`)
 	out := filepath.Join(t.TempDir(), "out.json")
 
 	runCommand(m, "w "+out)
 
-	require.Equal(t, "{\n  \"a\": 1\n}\n[\n  1\n]\n2\n", readFile(t, out))
+	require.Equal(t, "{\"a\":1,\"b\":[2,3]}\n[1]\n2\n", readFile(t, out))
+	require.Equal(t, fmt.Sprintf(`"%s" 3L, 24B written`, out), m.message.text)
 }
 
 func TestWrite_NoFileName(t *testing.T) {
@@ -112,7 +119,7 @@ func TestWrite_QueryResultToInputFileAsks(t *testing.T) {
 	runCommand(m, "w")
 	require.NotNil(t, m.confirm)
 	require.Equal(t, `Overwrite "`+file+`" with the query result? (y/n)`, m.confirm.prompt)
-	require.Contains(t, m.View(), m.confirm.prompt)
+	require.Contains(t, m.View(), m.clip(m.confirm.prompt))
 	require.Equal(t, m.termHeight-2, m.viewHeight())
 
 	// n keeps the file.
@@ -179,6 +186,7 @@ func TestWrite_ExistingFileAsks(t *testing.T) {
 func TestWrite_ExpandsHome(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home) // Windows
 	m := newQueryModel(t, `1`)
 
 	runCommand(m, "w ~/out.json")
@@ -283,4 +291,122 @@ func TestWrite_Error(t *testing.T) {
 	require.NotNil(t, m.message)
 	require.True(t, m.message.isErr)
 	require.Equal(t, `Can't write "`+out+`": no such file or directory`, m.message.text)
+}
+
+func TestWrite_RawInputFileRefused(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "notes.txt")
+	require.NoError(t, os.WriteFile(file, []byte("one\ntwo\n"), 0o644))
+	withInputFile(t, file)
+	flagRaw = true
+	t.Cleanup(func() { flagRaw = false })
+	m := newQueryModel(t, `"one"`, `"two"`)
+
+	runCommand(m, "w")
+
+	require.Equal(t, `Can't write JSON over "`+file+`", write to another file`, m.message.text)
+	require.Equal(t, "one\ntwo\n", readFile(t, file))
+
+	out := filepath.Join(t.TempDir(), "out.json")
+	runCommand(m, "w "+out)
+	require.Equal(t, "\"one\"\n\"two\"\n", readFile(t, out))
+}
+
+func TestWrite_RecoveredTextRefused(t *testing.T) {
+	m := newQueryModel(t, `{"a": 1}`)
+	m.appendNode(&jsonx.Node{Kind: jsonx.Err, Value: "HTTP/1.1 200 OK"})
+	m.appendNode(parseDoc(t, `{"a": 2}`))
+	out := filepath.Join(t.TempDir(), "out.json")
+
+	runCommand(m, "w "+out)
+
+	require.Equal(t, "Input contains text that is not JSON", m.message.text)
+	require.NoFileExists(t, out)
+
+	// A query result holds no recovered text; it can be written.
+	drain(m, m.doQuery(".a"))
+	require.Equal(t, []string{"1", "2"}, lines(m))
+	runCommand(m, "w "+out)
+	require.Equal(t, "1\n2\n", readFile(t, out))
+}
+
+func TestWrite_ReloadErrorRefused(t *testing.T) {
+	m := newQueryModel(t, `{"a": 1}`)
+	m.showReloadError(fmt.Errorf("unexpected end of input"))
+	out := filepath.Join(t.TempDir(), "out.json")
+
+	runCommand(m, "w "+out)
+
+	require.Equal(t, "Input has errors", m.message.text)
+	require.NoFileExists(t, out)
+}
+
+func TestWrite_HonorsIndent(t *testing.T) {
+	old := ident.Ident
+	ident.Ident = "\t"
+	t.Cleanup(func() { ident.Ident = old })
+	m := newQueryModel(t, `{"a": [1]}`)
+	out := filepath.Join(t.TempDir(), "out.json")
+
+	runCommand(m, "w "+out)
+
+	require.Equal(t, "{\n\t\"a\": [\n\t\t1\n\t]\n}\n", readFile(t, out))
+}
+
+func TestWrite_DeletedAfterCollapsedAndWrapped(t *testing.T) {
+	long := `"` + strings.Repeat("x", 40) + `"`
+	m := newQueryModel(t, `{"a": {"x": 1}, "b": 2, "s": `+long+`, "t": 3}`)
+	jsonx.Wrap(m.top, 20)
+	m.top.Next.Collapse() // "a"
+	out := filepath.Join(t.TempDir(), "out.json")
+
+	m.cursor = rowOf(t, m, `"b"`) // after the collapsed "a"
+	m.deleteAtCursor()
+	m.cursor = rowOf(t, m, `"t"`) // after the wrapped "s"
+	m.deleteAtCursor()
+
+	runCommand(m, "w "+out)
+
+	require.Equal(t, "{\n  \"a\": {\n    \"x\": 1\n  },\n  \"s\": "+long+"\n}\n", readFile(t, out))
+}
+
+// rowOf returns the view row showing key.
+func rowOf(t *testing.T, m *model, key string) int {
+	t.Helper()
+	for i := 0; m.at(i) != nil; i++ {
+		if m.at(i).Key == key {
+			return i
+		}
+	}
+	t.Fatalf("key %s not shown", key)
+	return -1
+}
+
+func TestWrite_MouseKeepsConfirmation(t *testing.T) {
+	m := newQueryModel(t, `{"a": 1}`)
+	out := filepath.Join(t.TempDir(), "out.json")
+	require.NoError(t, os.WriteFile(out, []byte("old"), 0o644))
+
+	runCommand(m, "w "+out)
+	require.NotNil(t, m.confirm)
+	m.Update(tea.MouseMsg{Button: tea.MouseButtonWheelDown})
+	require.NotNil(t, m.confirm)
+	require.Equal(t, 0, m.cursor)
+
+	answer(m, "y")
+	require.Equal(t, "{\n  \"a\": 1\n}\n", readFile(t, out))
+}
+
+func TestWrite_PromptClippedToWidth(t *testing.T) {
+	m := newQueryModel(t, `1`)
+	m.termWidth = 30
+	out := filepath.Join(t.TempDir(), strings.Repeat("d", 40), "out.json")
+
+	runCommand(m, "w "+out)
+
+	require.True(t, m.message.isErr)
+	view := m.View()
+	last := view[strings.LastIndex(view, "\n")+1:]
+	require.Contains(t, last, `Can't write "`)
+	require.Contains(t, last, "…")
+	require.LessOrEqual(t, runewidth.StringWidth(ansi.Strip(last)), 30)
 }

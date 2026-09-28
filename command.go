@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/mattn/go-runewidth"
 )
 
 // command is a vim-like command line command, run as :name[!] [args].
@@ -137,10 +138,11 @@ func findCommand(name string) *command {
 
 // runCommand runs a command line entered after :.
 func (m *model) runCommand(line string) (tea.Model, tea.Cmd) {
-	c := parseCall(line)
-	if c.name == "" {
+	line = strings.TrimSpace(line)
+	if line == "" {
 		return m, nil
 	}
+	c := parseCall(line)
 	cmd := findCommand(c.name)
 	if cmd == nil {
 		return m, m.errorf("Not an editor command: %s", line)
@@ -187,4 +189,12 @@ func (m *model) errorf(format string, args ...any) tea.Cmd {
 func (m *model) infof(format string, args ...any) tea.Cmd {
 	m.message = &message{text: fmt.Sprintf(format, args...)}
 	return nil
+}
+
+// clip cuts s to the terminal width, so the command line stays one row.
+func (m *model) clip(s string) string {
+	if m.termWidth <= 0 {
+		return s
+	}
+	return runewidth.Truncate(s, m.termWidth, "…")
 }

@@ -69,7 +69,7 @@ func newVM(writeOut func(string), preview bool, severalValues func() (bool, erro
 		if FilePath == "" {
 			return fmt.Errorf("specify a file as the first argument to be able to save: fx file.json ")
 		}
-		mode, err := saveMode(FilePath)
+		mode, _, err := saveMode(FilePath)
 		if err != nil {
 			return err
 		}
@@ -147,30 +147,56 @@ func newVM(writeOut func(string), preview bool, severalValues func() (bool, erro
 	return vm
 }
 
-// WriteFile replaces the file at path with data, keeping its mode. It is
-// what save() does to FilePath, for the UI.
+// WriteFile replaces the file at path with data, keeping its mode, or
+// creates it with the mode any new file gets. It is what save() does to
+// FilePath, for the UI.
 func WriteFile(path string, data []byte) error {
-	mode, err := saveMode(path)
+	mode, exists, err := saveMode(path)
 	if err != nil {
 		return err
+	}
+	if !exists {
+		return writeNewFile(path, data)
 	}
 	return writeFileAtomic(path, data, mode)
 }
 
-// saveMode returns the mode of the file save() may replace. A missing file
-// gets 0644.
-func saveMode(path string) (os.FileMode, error) {
+// saveMode returns the mode of the file save() may replace, and whether
+// it exists: a missing file gets 0644.
+func saveMode(path string) (mode os.FileMode, exists bool, err error) {
 	info, err := os.Lstat(path)
 	if err != nil {
-		return 0644, nil
+		return 0644, false, nil
 	}
 	if info.Mode()&os.ModeSymlink != 0 {
-		return 0, fmt.Errorf("cannot save to a symbolic link: %s", path)
+		return 0, true, fmt.Errorf("cannot save to a symbolic link: %s", path)
 	}
 	if !info.Mode().IsRegular() {
-		return 0, fmt.Errorf("cannot save to %s: not a regular file", path)
+		return 0, true, fmt.Errorf("cannot save to %s: not a regular file", path)
 	}
-	return info.Mode().Perm(), nil
+	return info.Mode().Perm(), true, nil
+}
+
+// writeNewFile creates path with data. The file is created by the OS with
+// 0666 less the umask, like any new file; a failed write removes it.
+func writeNewFile(path string, data []byte) (err error) {
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o666)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			_ = f.Close()
+			_ = os.Remove(path)
+		}
+	}()
+	if _, err = f.Write(data); err != nil {
+		return err
+	}
+	if err = f.Sync(); err != nil {
+		return err
+	}
+	return f.Close()
 }
 
 // writeFileAtomic replaces path with data via a temp file in the same

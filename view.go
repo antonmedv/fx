@@ -183,10 +183,10 @@ func (m *model) View() string {
 
 	if m.confirm != nil {
 		screen = append(screen, '\n')
-		screen = append(screen, m.confirm.prompt...)
+		screen = append(screen, m.clip(m.confirm.prompt)...)
 	} else if m.message != nil {
 		screen = append(screen, '\n')
-		text := m.message.text
+		text := m.clip(m.message.text)
 		if m.message.isErr {
 			text = theme.CurrentTheme.Error(text)
 		}

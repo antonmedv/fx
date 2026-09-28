@@ -547,6 +547,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.MouseMsg:
+		if m.confirm != nil {
+			return m, nil // Only a key answers the question.
+		}
 		m.reloadPos = nil // The user moved on, don't jump back.
 		m.message = nil
 		m.handlePendingDelete(msg)

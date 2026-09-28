@@ -44,11 +44,20 @@ func DeleteNode(at *Node) (*Node, bool) {
 	isLast := next == parent.End
 	if isLast && prev != nil && prev != parent {
 		prev.Comma = false
+		if prev.IsWrap() {
+			prev.Parent.Comma = false // A wrapped string keeps its comma on both.
+		}
+		if prev.IsCollapsed() {
+			prev.End.Comma = false // A collapsed container shows its End's comma.
+		}
 	}
 
 	// Relink to remove [at..endOf] from the chain
 	if prev != nil {
 		prev.Next = next
+		if prev.IsCollapsed() {
+			prev.End.Next = next // Expand restores Next from End.
+		}
 	}
 	if next != nil {
 		next.Prev = prev
