@@ -99,6 +99,17 @@ void async function main() {
     t.equal(stdout, '[\n  "foo",\n  "bar"\n]\n')
   })
 
+  await test('parseMaml', async t => {
+    const {stdout} = await run('{\n  b: 1\n  a: ["foo", 2]\n}', '--maml')
+    t.equal(stdout, '{\n  "b": 1,\n  "a": [\n    "foo",\n    2\n  ]\n}\n')
+  })
+
+  await test('parseMaml - error', async t => {
+    const {stderr, status} = await run('{a:', '--maml')
+    t.equal(status, 1)
+    t.ok(stderr.includes('Unexpected end of input on line 1.'))
+  })
+
   await test('transform - anonymous function', async t => {
     const {stdout} = await run({'key': 'value'}, '\'function (x) { return x.key }\'')
     t.equal(stdout, 'value\n')

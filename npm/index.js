@@ -11,6 +11,7 @@ void async function main() {
   let flagRaw = false
   let flagSlurp = false
   let flagYaml = false
+  let flagMaml = false
   const args = []
   for (const arg of process.argv.slice(2)) {
     if (arg === '--help' || arg === '-h') flagHelp = true
@@ -18,6 +19,7 @@ void async function main() {
     else if (arg === '--slurp' || arg === '-s') flagSlurp = true
     else if (arg === '-rs' || arg === '-sr') flagRaw = flagSlurp = true
     else if (arg === '--yaml') flagYaml = true
+    else if (arg === '--maml') flagMaml = true
     else args.push(arg)
   }
 
@@ -37,7 +39,10 @@ void async function main() {
     if (filename) {
       globalThis.__file__ = filename
       fd = fs.openSync(filename, 'r')
-      if (!flagYaml) flagYaml = /\.ya?ml$/i.test(filename)
+      if (!flagYaml && !flagMaml) {
+        flagYaml = /\.ya?ml$/i.test(filename)
+        flagMaml = /\.maml$/i.test(filename)
+      }
     }
   }
 
@@ -47,7 +52,9 @@ void async function main() {
       ? readLine(gen)
       : flagYaml
         ? parseYaml(gen)
-        : parseJson(gen)
+        : flagMaml
+          ? parseMaml(gen)
+          : parseJson(gen)
 
   if (flagSlurp) {
     const array = []
@@ -389,6 +396,14 @@ function* parseYaml(gen) {
   } catch (err) {
     throw new SyntaxError(err.message)
   }
+}
+
+function* parseMaml(gen) {
+  let buffer = ''
+  for (const ch of gen) {
+    buffer += ch
+  }
+  yield MAML.parse(buffer)
 }
 
 function* parseJson(gen) {
@@ -806,9 +821,36 @@ Flags
   -h, --help    print help
   -r, --raw     treat input as a raw string
   -s, --slurp   read all inputs into an array
-  --yaml        parse input as YAML`
+  --yaml        parse input as YAML
+  --maml        parse input as MAML`
   console.log(usage)
 }
+
+// maml v1.0.1
+// @formatter:off
+void function () {function I(e){if(typeof e!="string")throw TypeError("Source must be a string");let o=0,a=1,n,l=!1;t();let d=w();if(g(),!l)throw new SyntaxError(f());return m(d),d;function t(){o<e.length?(n=e[o],o++):(n="",l=!0),n===`
+`&&a++}function c(r){return e.substring(o,o+r)}function w(){var r,s,i,u,p,S,M;return g(),(M=(S=(p=(u=(i=(s=(r=_())!=null?r:x())!=null?s:O())!=null?i:C())!=null?u:R())!=null?p:E("true",!0))!=null?S:E("false",!1))!=null?M:E("null",null)}function x(){if(n!=='"')return;let r="",s=!1;for(;;)if(t(),s){if(n==="u"){if(t(),n!=="{")throw new SyntaxError(f(h.u+" "+JSON.stringify(n)+' (expected "{")'));let i="";for(;t(),n!=="}";){if(!j(n))throw new SyntaxError(f(h.u+" "+JSON.stringify(n)));if(i+=n,i.length>6)throw new SyntaxError(f(h.u+" (too many hex digits)"))}if(i.length===0)throw new SyntaxError(f(h.u));let u=parseInt(i,16);if(u>1114111||u>=55296&&u<=57343)throw new SyntaxError(f(h.u+" (out of range)"));r+=String.fromCodePoint(u)}else{let i=L[n];if(!i)throw new SyntaxError(f(h.u+" "+JSON.stringify(n)));r+=i}s=!1}else if(n==="\\")s=!0;else{if(n==='"')break;if(n===`
+`)throw new SyntaxError(f());if(n<" "&&n!=="	"||n==="\x7F")throw new SyntaxError(f());r+=n}return t(),r}function _(){if(n!=='"'||c(2)!=='""')return;t(),t(),t();let r=!1;n==="\r"&&c(1)===`
+`&&t(),n===`
+`&&(r=!0,t());let s="";for(;!l;){if(n==='"'&&c(2)==='""'){if(t(),t(),t(),s===""&&!r)throw new SyntaxError(f("Raw strings cannot be empty"));return s}s+=n,t()}throw new SyntaxError(f())}function O(){if(!y(n)&&n!=="-")return;let r="",s=!1;if(n==="-"&&(r+=n,t(),!y(n)))throw new SyntaxError(f());if(n==="0")r+=n,t();else for(;y(n);)r+=n,t();if(n==="."){if(s=!0,r+=n,t(),!y(n))throw new SyntaxError(f());for(;y(n);)r+=n,t()}if(n==="e"||n==="E"){if(s=!0,r+=n,t(),(n==="+"||n==="-")&&(r+=n,t()),!y(n))throw new SyntaxError(f());for(;y(n);)r+=n,t()}return s?parseFloat(r):K(r)}function C(){if(n!=="{")return;t(),g();let r={};if(n==="}")return t(),r;for(;;){let s=o,i;if(n==='"'?i=x():i=F(),Object.prototype.hasOwnProperty.call(r,i))throw o=s,new SyntaxError(f(`Duplicate key ${JSON.stringify(i)}`));if(g(),n!==":")throw new SyntaxError(f());t();let u=w();m(u),r[i]=u;let p=g();if(n==="}")return t(),r;if(n===","){if(t(),g(),n==="}")return t(),r}else{if(p)continue;throw new SyntaxError(f("Expected comma or newline between key-value pairs"))}}}function F(){let r="";for(;J(n);)r+=n,t();if(r==="")throw new SyntaxError(f());return r}function R(){if(n!=="[")return;t(),g();let r=[];if(n==="]")return t(),r;for(;;){let s=w();m(s),r.push(s);let i=g();if(n==="]")return t(),r;if(n===","){if(t(),g(),n==="]")return t(),r}else{if(i)continue;throw new SyntaxError(f("Expected comma or newline between values"))}}}function E(r,s){if(n===r[0]){for(let i=1;i<r.length;i++)if(t(),n!==r[i])throw new SyntaxError(f());if(t(),A(n)||n===","||n==="}"||n==="]"||l)return s;throw new SyntaxError(f())}}function g(){let r=!1;for(;A(n);)r||(r=n===`
+`),t();let s=T();return r||s}function T(){if(n==="#"){for(;!l&&n!==`
+`;)t();return g()}return!1}function A(r){return r===" "||r===`
+`||r==="	"||r==="\r"}function j(r){return r>="0"&&r<="9"||r>="A"&&r<="F"}function y(r){return r>="0"&&r<="9"}function J(r){return r>="A"&&r<="Z"||r>="a"&&r<="z"||r>="0"&&r<="9"||r==="_"||r==="-"}function K(r){if(r=="-0")return-0;let s=Number(r);if(s>=Number.MIN_SAFE_INTEGER&&s<=Number.MAX_SAFE_INTEGER)return s;let i=BigInt(r),u=-(2n**63n),p=2n**63n-1n;if(i<u||i>p)throw new SyntaxError(`Integer ${r} is outside the 64-bit signed integer range on line ${a}.`);return i}function m(r){if(r===void 0)throw new SyntaxError(f())}function f(r=`Unexpected character ${JSON.stringify(n)}`){n||(r="Unexpected end of input");let s=e.substring(o-40,o).split(`
+`),i=s.at(-1)||"",u=e.substring(o,o+40).split(`
+`,1).at(0)||"";i===""&&(i=s.at(-2)||"",i+=" ",a--,u="");let p=`    ${i}${u}
+`,S=`    ${".".repeat(Math.max(0,i.length-1))}^
+`;return`${r} on line ${a}.
+
+${p}${S}`}}var L={'"':'"',"\\":"\\",n:`
+`,r:"\r",t:"	"},h={u:"Invalid escape sequence"};function $(e){return N(e,0)}function N(e,o){let a=e===null?"null":Array.isArray(e)?"array":typeof e;switch(a){case"string":return k(e);case"boolean":return`${e}`;case"bigint":{let n=-(2n**63n),l=2n**63n-1n;if(e<n||e>l)throw new Error(`Integer ${e} is outside the 64-bit signed integer range`);return`${e}`}case"number":{if(!Number.isFinite(e))throw new Error(`Cannot encode ${e} as a MAML value`);let n=`${e}`;if(!n.includes(".")&&!n.includes("e")&&!Number.isSafeInteger(e))throw new Error(`Integer ${e} cannot be represented losslessly as a number, use BigInt instead`);return n}case"null":case"undefined":return"null";case"array":{let n=e.length;if(n===0)return"[]";let l=b(o+1),d=b(o),t=`[
+`;for(let c=0;c<n;c++)c>0&&(t+=`
+`),t+=l+N(e[c],o+1);return t+`
+`+d+"]"}case"object":{let n=Object.keys(e),l=n.length;if(l===0)return"{}";let d=b(o+1),t=b(o),c=`{
+`;for(let w=0;w<l;w++){w>0&&(c+=`
+`);let x=n[w];c+=d+U(x)+": "+N(e[x],o+1)}return c+`
+`+t+"}"}default:throw new Error(`Unsupported value type: ${a}`)}}function k(e){let o='"';for(let a of e){let n=a.codePointAt(0);a==='"'?o+='\\"':a==="\\"?o+="\\\\":a===`
+`?o+="\\n":a==="\r"?o+="\\r":a==="	"?o+="\\t":n<32||n===127?o+=`\\u{${n.toString(16).toUpperCase()}}`:o+=a}return o+'"'}var P=/^[A-Za-z0-9_-]+$/;function U(e){return P.test(e)?e:k(e)}function b(e){return" ".repeat(2*e)}(function(){return typeof globalThis<"u"?globalThis:typeof window<"u"?window:typeof global<"u"?global:Function("return this")()})().MAML={parse:I,stringify:$};
+}()
 
 // yaml v2.4.0
 // @formatter:off
