@@ -1,0 +1,23 @@
+{
+  "users": [
+    {
+      "name": "Alice",
+      "age": 34,
+      "email": "alice@example.com",
+      "active": true
+    },
+    {
+      "name": "Bob",
+      "age": 27,
+      "email": "bob@example.com",
+      "active": false
+    },
+    {
+      "name": "Carol",
+      "age": 41,
+      "email": "carol@example.com",
+      "active": true
+    }
+  ],
+  "total": 3
+}
