@@ -1,12 +1,14 @@
 package main
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/antonmedv/fx/internal/complete"
 	"github.com/antonmedv/fx/internal/format"
+	"github.com/antonmedv/fx/internal/jsonx"
 )
 
 // resetFlags clears the flag variables parseFlags sets.
@@ -25,7 +27,7 @@ func TestParseFlags(t *testing.T) {
 		name   string
 		argv   []string
 		args   []string
-		action string
+		action action
 		format *format.Format
 		raw    bool
 		slurp  bool
@@ -41,24 +43,24 @@ func TestParseFlags(t *testing.T) {
 		{name: "raw and format", argv: []string{"-r", "--toml"}, err: "can't use --toml and --raw flags together"},
 		{name: "raw slurp", argv: []string{"-rs"}, raw: true, slurp: true},
 		{name: "raw and slurp", argv: []string{"--raw", "-s", "."}, args: []string{"."}, raw: true, slurp: true},
-		{name: "help wins over conflict", argv: []string{"--yaml", "--toml", "-h"}, action: "help"},
-		{name: "version", argv: []string{"--version"}, action: "version"},
-		{name: "themes", argv: []string{"--themes"}, action: "themes"},
-		{name: "export themes", argv: []string{"--export-themes"}, action: "export-themes"},
-		{name: "game of life", argv: []string{"--game-of-life"}, action: "game-of-life"},
+		{name: "help wins over conflict", argv: []string{"--yaml", "--toml", "-h"}, action: actionHelp},
+		{name: "version", argv: []string{"--version"}, action: actionVersion},
+		{name: "themes", argv: []string{"--themes"}, action: actionThemes},
+		{name: "export themes", argv: []string{"--export-themes"}, action: actionExportThemes},
+		{name: "game of life", argv: []string{"--game-of-life"}, action: actionGameOfLife},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			resetFlags(t)
-			args, action, err := parseFlags(tt.argv)
+			args, act, err := parseFlags(tt.argv)
 			if tt.err != "" {
 				require.EqualError(t, err, tt.err)
 				return
 			}
 			require.NoError(t, err)
 			require.Equal(t, tt.args, args)
-			require.Equal(t, tt.action, action)
-			if tt.action != "" {
+			require.Equal(t, tt.action, act)
+			if tt.action != actionRead {
 				return // The flags before an action do not matter.
 			}
 			require.Same(t, tt.format, inputFormat)
@@ -70,22 +72,39 @@ func TestParseFlags(t *testing.T) {
 
 func TestParseFlags_Others(t *testing.T) {
 	resetFlags(t)
-	args, action, err := parseFlags([]string{"--strict", "--no-inline", "--comp=zsh", "x"})
+	args, act, err := parseFlags([]string{"--strict", "--no-inline", "--comp=zsh", "x"})
 	require.NoError(t, err)
 	require.Equal(t, []string{"x"}, args)
-	require.Equal(t, "", action)
+	require.Equal(t, actionRead, act)
 	require.True(t, flagStrict)
 	require.True(t, flagNoInline)
 	require.True(t, flagComp)
 }
 
-func TestChooseFormat(t *testing.T) {
-	require.Same(t, format.TOML, chooseFormat(format.TOML, "x.yaml"), "flag wins over extension")
-	require.Same(t, format.YAML, chooseFormat(nil, "x.yaml"))
-	require.Same(t, format.YAML, chooseFormat(nil, "dir/X.YML"))
-	require.Same(t, format.EDN, chooseFormat(nil, "deps.edn"))
-	require.Nil(t, chooseFormat(nil, "x.json"))
-	require.Nil(t, chooseFormat(nil, "x"))
+// Converted input is parsed without --strict: the converter validated the
+// source, and the JSON it makes may hold Infinity or NaN.
+func TestNewParser_ConvertedInputNotStrict(t *testing.T) {
+	resetFlags(t)
+	inputFormat, flagStrict = format.EDN, true
+	p, err := newParser(strings.NewReader("[##Inf ##NaN]"))
+	require.NoError(t, err)
+	node, err := p.Parse()
+	require.NoError(t, err)
+	require.Equal(t, jsonx.Array, node.Kind)
+	require.Equal(t, "Infinity", node.Next.Value)
+	require.Equal(t, "NaN", node.Next.Next.Value)
+}
+
+// --raw wins over a format set from the file extension.
+func TestNewParser_RawWinsOverFormat(t *testing.T) {
+	resetFlags(t)
+	inputFormat, flagRaw = format.YAML, true
+	p, err := newParser(strings.NewReader("a: 1\n"))
+	require.NoError(t, err)
+	node, err := p.Parse()
+	require.NoError(t, err)
+	require.Equal(t, jsonx.String, node.Kind)
+	require.Equal(t, `"a: 1"`, node.Value)
 }
 
 func TestCompleteFlagsListFormats(t *testing.T) {

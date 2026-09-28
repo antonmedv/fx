@@ -16,6 +16,9 @@ import (
 // newParser creates the parser for the input format chosen by the flags.
 // A format other than JSON is converted to JSON as a whole first.
 func newParser(src io.Reader) (engine.Parser, error) {
+	if flagRaw {
+		return NewLineParser(src), nil
+	}
 	if inputFormat != nil {
 		b, err := io.ReadAll(src)
 		if err != nil {
@@ -25,10 +28,9 @@ func newParser(src io.Reader) (engine.Parser, error) {
 		if err != nil {
 			return nil, err
 		}
-		return NewJsonParser(bytes.NewReader(jsonBytes), flagStrict), nil
-	}
-	if flagRaw {
-		return NewLineParser(src), nil
+		// The converter validated the source; --strict is about JSON
+		// syntax, and the converted JSON may hold Infinity or NaN.
+		return NewJsonParser(bytes.NewReader(jsonBytes), false), nil
 	}
 	return NewJsonParser(src, flagStrict), nil
 }

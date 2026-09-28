@@ -49,3 +49,9 @@ func TestToJSON_Invalid(t *testing.T) {
 	_, err := ToJSON([]byte("a: [1"))
 	require.Error(t, err)
 }
+
+func TestToJSON_Specials(t *testing.T) {
+	got, err := ToJSON([]byte("a: .inf\nb: [-.Inf, .NaN, 1.5]\nc: {d: .nan}\n"))
+	require.NoError(t, err)
+	require.Equal(t, "{\"a\": Infinity, \"b\": [-Infinity, NaN, 1.5], \"c\": {\"d\": NaN}}\n", string(got))
+}

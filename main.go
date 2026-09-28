@@ -88,25 +88,25 @@ func main() {
 		return
 	}
 
-	args, action, err := parseFlags(os.Args[1:])
+	args, act, err := parseFlags(os.Args[1:])
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
 	}
-	switch action {
-	case "help":
+	switch act {
+	case actionHelp:
 		fmt.Println(usage())
 		return
-	case "version":
+	case actionVersion:
 		fmt.Println(version)
 		return
-	case "themes":
+	case actionThemes:
 		theme.ThemeTester()
 		return
-	case "export-themes":
+	case actionExportThemes:
 		theme.ExportThemes()
 		return
-	case "game-of-life":
+	case actionGameOfLife:
 		utils.GameOfLife()
 		return
 	}
@@ -151,7 +151,10 @@ func main() {
 		// $ fx file.json arg*
 		filePath := args[0]
 		f := open(filePath)
-		inputFormat = chooseFormat(inputFormat, filePath)
+		if !flagRaw {
+			// --raw wins over the extension, like an explicit format flag.
+			inputFormat = format.Choose(inputFormat, filePath)
+		}
 		src = f
 		file = f
 		engine.FilePath = filePath

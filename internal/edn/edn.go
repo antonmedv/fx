@@ -437,13 +437,13 @@ func (p *parser) readToken() error {
 		return p.errorf(start, "unexpected %q", tok[0])
 	}
 	if tok[0] == ':' {
-		if len(tok) == 1 {
+		if len(tok) == 1 || tok[1] == ':' {
 			return p.errorf(start, "invalid keyword %q", tok)
 		}
 		p.out.WriteString(engine.Quote(tok[1:]))
 		return nil
 	}
-	if isDigit(tok[0]) || len(tok) > 1 && (tok[0] == '+' || tok[0] == '-') && isDigit(tok[1]) {
+	if looksNumeric(tok) {
 		n, ok := number(tok)
 		if !ok {
 			return p.errorf(start, "invalid number %q", tok)
@@ -453,6 +453,20 @@ func (p *parser) readToken() error {
 	}
 	p.out.WriteString(engine.Quote(tok))
 	return nil
+}
+
+// looksNumeric reports whether tok must be a number: it starts with a
+// digit, or with a sign or dot followed by a digit (.5, -.5), which
+// symbols may not.
+func looksNumeric(tok string) bool {
+	i := 0
+	if tok[i] == '+' || tok[i] == '-' {
+		i++
+	}
+	if i < len(tok) && tok[i] == '.' {
+		i++
+	}
+	return i < len(tok) && isDigit(tok[i])
 }
 
 // number converts an EDN number to a JSON number.

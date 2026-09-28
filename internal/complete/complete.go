@@ -100,9 +100,7 @@ func doComplete(compLine string, compWord string, withDisplay bool) {
 	if isSecondArgIsFile {
 		file := args[1]
 
-		if inputFormat == nil {
-			inputFormat = format.ByFile(file)
-		}
+		inputFormat = format.Choose(inputFormat, file)
 
 		if strings.HasPrefix(file, "~") {
 			home, err := os.UserHomeDir()

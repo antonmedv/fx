@@ -40,11 +40,22 @@ func open(filePath string) *os.File {
 	return f
 }
 
+// action is what a flag asks main to do instead of reading input.
+type action int
+
+const (
+	actionRead action = iota // read the input
+	actionHelp
+	actionVersion
+	actionThemes
+	actionExportThemes
+	actionGameOfLife
+)
+
 // parseFlags reads the command line. It sets the flag variables and returns
-// the other arguments, and the action a flag asks for: "help", "version",
-// "themes", "export-themes", "game-of-life", or "" to read input.
-func parseFlags(argv []string) (args []string, action string, err error) {
-	var formatFlags []string // distinct format flags, in order
+// the other arguments and the action asked for.
+func parseFlags(argv []string) (args []string, act action, err error) {
+	var formatArgs []string // distinct format flags, in order
 	for _, arg := range argv {
 		if strings.HasPrefix(arg, "--comp") {
 			flagComp = true
@@ -52,22 +63,22 @@ func parseFlags(argv []string) (args []string, action string, err error) {
 		}
 		if f := format.ByFlag(arg); f != nil {
 			if inputFormat != f {
-				formatFlags = append(formatFlags, arg)
+				formatArgs = append(formatArgs, arg)
 			}
 			inputFormat = f
 			continue
 		}
 		switch arg {
 		case "-h", "--help":
-			return nil, "help", nil
+			return nil, actionHelp, nil
 		case "-v", "-V", "--version":
-			return nil, "version", nil
+			return nil, actionVersion, nil
 		case "--themes":
-			return nil, "themes", nil
+			return nil, actionThemes, nil
 		case "--export-themes":
-			return nil, "export-themes", nil
+			return nil, actionExportThemes, nil
 		case "--game-of-life":
-			return nil, "game-of-life", nil
+			return nil, actionGameOfLife, nil
 		case "--raw", "-r":
 			flagRaw = true
 		case "--slurp", "-s":
@@ -83,22 +94,13 @@ func parseFlags(argv []string) (args []string, action string, err error) {
 			args = append(args, arg)
 		}
 	}
-	if len(formatFlags) > 1 {
-		return nil, "", fmt.Errorf("can't use %s and %s flags together", formatFlags[0], formatFlags[1])
+	if len(formatArgs) > 1 {
+		return nil, actionRead, fmt.Errorf("can't use %s and %s flags together", formatArgs[0], formatArgs[1])
 	}
-	if len(formatFlags) == 1 && flagRaw {
-		return nil, "", fmt.Errorf("can't use %s and --raw flags together", formatFlags[0])
+	if len(formatArgs) == 1 && flagRaw {
+		return nil, actionRead, fmt.Errorf("can't use %s and --raw flags together", formatArgs[0])
 	}
-	return args, "", nil
-}
-
-// chooseFormat returns the input format: the one given by a flag, or the
-// one the file extension selects, or nil for JSON.
-func chooseFormat(flag *format.Format, filePath string) *format.Format {
-	if flag != nil {
-		return flag
-	}
-	return format.ByFile(filePath)
+	return args, actionRead, nil
 }
 
 func regexCase(code string) (string, bool) {

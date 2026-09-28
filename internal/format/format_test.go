@@ -57,3 +57,12 @@ func TestLookupMisses(t *testing.T) {
 	require.Nil(t, ByFile("x"))
 	require.Nil(t, ByFile("yaml"))
 }
+
+func TestChoose(t *testing.T) {
+	require.Same(t, TOML, Choose(TOML, "x.yaml"), "flag wins over extension")
+	require.Same(t, YAML, Choose(nil, "x.yaml"))
+	require.Same(t, YAML, Choose(nil, "dir/X.YML"))
+	require.Same(t, EDN, Choose(nil, "deps.edn"))
+	require.Nil(t, Choose(nil, "x.json"))
+	require.Nil(t, Choose(nil, "x"))
+}

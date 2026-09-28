@@ -64,6 +64,15 @@ func ByFlag(arg string) *Format {
 	return nil
 }
 
+// Choose returns the format given by a flag, or the one the file name
+// selects by its extension, or nil for JSON.
+func Choose(flag *Format, name string) *Format {
+	if flag != nil {
+		return flag
+	}
+	return ByFile(name)
+}
+
 // ByFile returns the format a file name selects by its extension, or nil.
 // The comparison ignores case.
 func ByFile(name string) *Format {
