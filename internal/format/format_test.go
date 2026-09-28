@@ -16,6 +16,7 @@ var samples = map[string]struct{ ok, want, bad string }{
 	"yaml": {"a: 1\n", `{"a":1}`, "a: [1"},
 	"toml": {"a = 1\n", `{"a":1}`, "a = [1"},
 	"edn":  {"{:a 1}", `{"a":1}`, "{:a"},
+	"maml": {"{a: 1}", `{"a":1}`, "{a:"},
 	"xml":  {"<a>1</a>", `{"a":"1"}`, "<a>"},
 	"html": {"<a>1</a>", `{"html":{"head":null,"body":{"a":"1"}}}`, ""},
 }

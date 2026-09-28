@@ -13,6 +13,7 @@ import (
 
 	"github.com/antonmedv/fx/internal/edn"
 	"github.com/antonmedv/fx/internal/html"
+	"github.com/antonmedv/fx/internal/maml"
 	"github.com/antonmedv/fx/internal/toml"
 	"github.com/antonmedv/fx/internal/xml"
 	"github.com/antonmedv/fx/internal/yaml"
@@ -69,8 +70,16 @@ var HTML = &Format{
 	ToJSON: html.ToJSON,
 }
 
+var MAML = &Format{
+	Name:   "maml",
+	Flag:   "--maml",
+	Help:   "parse input as MAML",
+	Exts:   []string{".maml"},
+	ToJSON: maml.ToJSON,
+}
+
 // All lists the formats in the order of the usage text.
-var All = []*Format{YAML, TOML, EDN, XML, HTML}
+var All = []*Format{YAML, TOML, EDN, MAML, XML, HTML}
 
 // ByFlag returns the format selected by a command line argument, or nil.
 func ByFlag(arg string) *Format {
