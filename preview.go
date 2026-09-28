@@ -14,6 +14,10 @@ var reverseStyle = lipgloss.NewStyle().Reverse(true).Render
 
 func (m *model) handlePreviewKey(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
+	if paste, ok := msg.(tea.PasteMsg); ok && m.previewSearchInput.Focused() {
+		m.previewSearchInput, cmd = m.previewSearchInput.Update(paste)
+		return m, cmd
+	}
 	if msg, ok := msg.(tea.KeyPressMsg); ok {
 		if m.previewSearchInput.Focused() {
 			return m.handlePreviewSearchInput(msg)

@@ -587,6 +587,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+	case tea.PasteMsg:
+		return m, m.handlePaste(msg)
+
 	case tea.KeyPressMsg:
 		m.message = nil
 		// Quit on Ctrl-C, no matter what.
@@ -672,16 +675,43 @@ func (m *model) handleQueryKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 				return m, cmd
 			}
 		}
-		before, pos := m.queryInput.Value(), m.queryInput.Position()
-		m.queryInput, cmd = m.queryInput.Update(msg)
-		if m.queryInput.Value() != before {
-			cmd = tea.Batch(cmd, m.schedulePreview())
-		}
-		if m.queryInput.Value() != before || m.queryInput.Position() != pos || m.completion.menu {
-			cmd = tea.Batch(cmd, m.updateCompletion())
-		}
+		cmd = m.editQuery(msg)
 	}
 	return m, cmd
+}
+
+// editQuery passes msg to the query input and schedules the preview and
+// completion updates the edit calls for.
+func (m *model) editQuery(msg tea.Msg) tea.Cmd {
+	before, pos := m.queryInput.Value(), m.queryInput.Position()
+	var cmd tea.Cmd
+	m.queryInput, cmd = m.queryInput.Update(msg)
+	if m.queryInput.Value() != before {
+		cmd = tea.Batch(cmd, m.schedulePreview())
+	}
+	if m.queryInput.Value() != before || m.queryInput.Position() != pos || m.completion.menu {
+		cmd = tea.Batch(cmd, m.updateCompletion())
+	}
+	return cmd
+}
+
+// handlePaste inserts pasted text into the focused input, if any.
+func (m *model) handlePaste(msg tea.PasteMsg) tea.Cmd {
+	if m.confirm != nil {
+		return nil
+	}
+	var cmd tea.Cmd
+	switch {
+	case m.queryInput.Focused():
+		cmd = m.editQuery(msg)
+	case m.commandInput.Focused():
+		m.commandInput, cmd = m.commandInput.Update(msg)
+	case m.searchInput.Focused():
+		m.searchInput, cmd = m.searchInput.Update(msg)
+	case m.gotoSymbolInput.Focused():
+		cmd = m.editGotoSymbol(msg)
+	}
+	return cmd
 }
 
 func (m *model) handleHelpKey(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -747,13 +777,7 @@ func (m *model) handleGotoSymbolKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.recordHistory()
 
 	default:
-		m.gotoSymbolInput, cmd = m.gotoSymbolInput.Update(msg)
-		pattern := []rune(m.gotoSymbolInput.Value())
-		found := fuzzy.Find(pattern, m.keysIndex)
-		if found != nil {
-			m.fuzzyMatch = found
-			m.selectNode(m.keysIndexNodes[found.Index])
-		}
+		cmd = m.editGotoSymbol(msg)
 	}
 
 	switch msg.String() {
@@ -765,6 +789,20 @@ func (m *model) handleGotoSymbolKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, cmd
+}
+
+// editGotoSymbol passes msg to the goto-symbol input and jumps to the best
+// fuzzy match of its value.
+func (m *model) editGotoSymbol(msg tea.Msg) tea.Cmd {
+	var cmd tea.Cmd
+	m.gotoSymbolInput, cmd = m.gotoSymbolInput.Update(msg)
+	pattern := []rune(m.gotoSymbolInput.Value())
+	found := fuzzy.Find(pattern, m.keysIndex)
+	if found != nil {
+		m.fuzzyMatch = found
+		m.selectNode(m.keysIndexNodes[found.Index])
+	}
+	return cmd
 }
 
 func (m *model) handleYankKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
