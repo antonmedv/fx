@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -178,7 +180,7 @@ func help(keyMap KeyMap) string {
 }
 
 func exit() {
-	if showLetter(time.Now()) {
+	if showLetter(time.Now(), letterDir()) {
 		style := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).Padding(1, 2)
 		_, _ = fmt.Fprintln(os.Stderr, style.Render(`Hello, kind human. :)
 
@@ -202,7 +204,55 @@ Thank you for using fx.`))
 	}
 }
 
-func showLetter(t time.Time) bool {
+// letterDir returns the directory where fx remembers that the letter was
+// shown: $XDG_CONFIG_HOME/fx, or ~/.config/fx. Empty if neither is known.
+func letterDir() string {
+	dir := os.Getenv("XDG_CONFIG_HOME")
+	if dir == "" {
+		home, err := os.UserHomeDir()
+		if err != nil || home == "" {
+			return ""
+		}
+		dir = filepath.Join(home, ".config")
+	}
+	return filepath.Join(dir, "fx")
+}
+
+// showLetter reports whether the letter should be shown at time t. The letter
+// is shown in December before Christmas, once per year: a marker file in dir
+// records the year it was shown. If the marker cannot be read or written,
+// the letter is shown on the first Tuesday of December instead.
+func showLetter(t time.Time, dir string) bool {
+	if t.Month() != time.December || t.Day() >= 25 {
+		return false
+	}
+	if dir != "" {
+		if shown, ok := markLetterShown(dir, t.Year()); ok {
+			return !shown
+		}
+	}
+	return isFirstTuesdayOfDecember(t)
+}
+
+// markLetterShown records year in the marker file in dir. shown is true if
+// the file already recorded year. ok is false if the marker could not be
+// read or written, in which case nothing is recorded.
+func markLetterShown(dir string, year int) (shown, ok bool) {
+	path := filepath.Join(dir, "letter")
+	data, err := os.ReadFile(path)
+	if err == nil && strings.TrimSpace(string(data)) == strconv.Itoa(year) {
+		return true, true
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return false, false
+	}
+	if err := os.WriteFile(path, []byte(strconv.Itoa(year)+"\n"), 0o644); err != nil {
+		return false, false
+	}
+	return false, true
+}
+
+func isFirstTuesdayOfDecember(t time.Time) bool {
 	if t.Month() != time.December {
 		return false
 	}
