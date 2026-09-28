@@ -22,9 +22,8 @@ import (
 //	symbol                      "symbol"
 //	42, 42N, 4.2, 4.2M, 1e3     number, N and M suffixes dropped
 //	(list), [vector], #{set}    array
-//	{map}                       object; a key that is not a string,
-//	                            keyword, symbol or character keeps
-//	                            its EDN text
+//	{map}                       object; a key whose JSON form is not
+//	                            a string keeps its EDN text
 //	#tag value                  value, tag dropped
 //	##Inf, ##-Inf, ##NaN        Infinity, -Infinity, NaN
 //	#_ form, ; comment          dropped
@@ -83,14 +82,14 @@ func isLetter(c byte) bool {
 	return 'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z'
 }
 
-// skipSpace skips whitespace and comments.
+// skipSpace skips whitespace, comments and a leading #! line.
 func (p *parser) skipSpace() {
 	for p.pos < len(p.src) {
 		c := p.src[p.pos]
 		switch {
 		case isSpace(c):
 			p.pos++
-		case c == ';' || c == '#' && p.pos+1 < len(p.src) && p.src[p.pos+1] == '!':
+		case c == ';' || c == '#' && p.pos == 0 && bytes.HasPrefix(p.src, []byte("#!")):
 			for p.pos < len(p.src) && p.src[p.pos] != '\n' {
 				p.pos++
 			}
@@ -218,9 +217,8 @@ func (p *parser) readMap(start int) error {
 	return nil
 }
 
-// readKey reads a map key as a JSON string. A key that is not a string
-// (or a keyword, symbol or character, which are strings in JSON) keeps
-// its EDN text.
+// readKey reads a map key as a JSON string. A key whose JSON form is not
+// a string (a keyword, symbol or character is one) keeps its EDN text.
 func (p *parser) readKey() error {
 	start := p.pos
 	mark := p.out.Len()
@@ -251,7 +249,7 @@ func (p *parser) readString() error {
 			p.out.WriteString(engine.Quote(b.String()))
 			return nil
 		case '\\':
-			r, err := p.readEscape()
+			r, err := p.readEscape(start)
 			if err != nil {
 				return err
 			}
@@ -263,12 +261,13 @@ func (p *parser) readString() error {
 	}
 }
 
-// readEscape reads an escape sequence in a string, at a backslash.
-func (p *parser) readEscape() (rune, error) {
+// readEscape reads an escape sequence in a string, at a backslash. The
+// string starts at strStart.
+func (p *parser) readEscape(strStart int) (rune, error) {
 	start := p.pos
 	p.pos++ // backslash
 	if p.pos >= len(p.src) {
-		return 0, p.errorf(start, "unclosed string")
+		return 0, p.errorf(strStart, "unclosed string")
 	}
 	c := p.src[p.pos]
 	p.pos++
@@ -292,19 +291,25 @@ func (p *parser) readEscape() (rune, error) {
 		if !ok {
 			return 0, p.errorf(start, "invalid escape %q", p.text(start, 6))
 		}
-		if utf16.IsSurrogate(r) && bytes.HasPrefix(p.src[p.pos:], []byte(`\u`)) {
+		if isHighSurrogate(r) && bytes.HasPrefix(p.src[p.pos:], []byte(`\u`)) {
 			// A surrogate pair is two \u escapes.
 			p.pos += 2
 			low, ok := p.readHex4()
 			if !ok {
 				return 0, p.errorf(start, "invalid escape %q", p.text(start, 12))
 			}
-			r = utf16.DecodeRune(r, low)
+			if isLowSurrogate(low) {
+				return utf16.DecodeRune(r, low), nil
+			}
+			p.pos -= 6 // Not a pair: the second escape stands on its own.
 		}
 		return r, nil
 	}
 	return 0, p.errorf(start, "invalid escape %q", p.text(start, 2))
 }
+
+func isHighSurrogate(r rune) bool { return 0xD800 <= r && r < 0xDC00 }
+func isLowSurrogate(r rune) bool  { return 0xDC00 <= r && r < 0xE000 }
 
 // readHex4 reads four hex digits.
 func (p *parser) readHex4() (rune, bool) {
@@ -453,8 +458,17 @@ func (p *parser) readToken() error {
 // number converts an EDN number to a JSON number.
 func number(tok string) (string, bool) {
 	s := strings.TrimPrefix(tok, "+")
-	if n := len(s); n > 1 && (s[n-1] == 'N' || s[n-1] == 'M') {
-		s = s[:n-1]
+	if n := len(s); n > 1 {
+		switch s[n-1] {
+		case 'N':
+			// Arbitrary precision integers only.
+			if strings.ContainsAny(s, ".eE") {
+				return "", false
+			}
+			s = s[:n-1]
+		case 'M':
+			s = s[:n-1]
+		}
 	}
 	i := 0
 	if i < len(s) && s[i] == '-' {
