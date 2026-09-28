@@ -20,8 +20,8 @@ func replyValues(m *model) []string {
 	return out
 }
 
-func press(m *model, t tea.KeyType) tea.Cmd {
-	_, cmd := m.Update(tea.KeyMsg{Type: t})
+func pressKey(m *model, k tea.KeyPressMsg) tea.Cmd {
+	_, cmd := m.Update(k)
 	return cmd
 }
 
@@ -41,21 +41,21 @@ func TestComplete_GhostAndGrid(t *testing.T) {
 	require.Nil(t, m.completionGridView(), "a typed key is not listed")
 	require.Equal(t, m.termHeight-2, m.viewHeight())
 
-	view := ansi.Strip(m.View())
-	require.True(t, strings.HasSuffix(view, "\n> .id "), view)
+	screen := ansi.Strip(view(m))
+	require.True(t, strings.HasSuffix(screen, "\n> .id "), screen)
 }
 
 func TestComplete_GhostIsRendered(t *testing.T) {
 	m := newQueryModel(t, completeData)
 	typeKeys(m, ".it")
-	lines := strings.Split(ansi.Strip(m.View()), "\n")
+	lines := strings.Split(ansi.Strip(view(m)), "\n")
 	require.Equal(t, "> .items", lines[len(lines)-1])
 }
 
 func TestComplete_ArraysAndTab(t *testing.T) {
 	m := newQueryModel(t, completeData)
 	typeKeys(m, ".it")
-	drain(m, press(m, tea.KeyTab))
+	drain(m, pressKey(m, press("tab")))
 	require.Equal(t, ".items", m.queryInput.Value())
 
 	typeKeys(m, ".")
@@ -63,18 +63,18 @@ func TestComplete_ArraysAndTab(t *testing.T) {
 	require.Equal(t, "", m.completionGhost(), "the replies do not extend `.items.`")
 	require.Len(t, m.completionGridView(), 1)
 
-	drain(m, press(m, tea.KeyTab)) // common prefix
+	drain(m, pressKey(m, press("tab"))) // common prefix
 	require.Equal(t, ".items[].", m.queryInput.Value())
-	drain(m, press(m, tea.KeyTab)) // menu
+	drain(m, pressKey(m, press("tab"))) // menu
 	require.Equal(t, ".items[].name", m.queryInput.Value())
-	drain(m, press(m, tea.KeyTab))
+	drain(m, pressKey(m, press("tab")))
 	require.Equal(t, ".items[].nick", m.queryInput.Value())
-	drain(m, press(m, tea.KeyShiftTab))
-	drain(m, press(m, tea.KeyShiftTab))
+	drain(m, pressKey(m, press("shift+tab")))
+	drain(m, pressKey(m, press("shift+tab")))
 	require.Equal(t, ".items[].id", m.queryInput.Value())
 	require.Contains(t, m.completionGridView()[0], reverseStyle(".id"))
 
-	press(m, tea.KeyBackspace) // leaves the menu
+	pressKey(m, press("backspace")) // leaves the menu
 	require.False(t, m.completion.menu)
 	require.Equal(t, []string{".items[].id"}, replyValues(m))
 }
@@ -82,19 +82,19 @@ func TestComplete_ArraysAndTab(t *testing.T) {
 func TestComplete_RightAcceptsGhost(t *testing.T) {
 	m := newQueryModel(t, completeData)
 	typeKeys(m, ".it")
-	drain(m, press(m, tea.KeyRight))
+	drain(m, pressKey(m, press("right")))
 	require.Equal(t, ".items", m.queryInput.Value())
 
 	// Without a ghost, right moves the cursor as usual.
-	press(m, tea.KeyLeft)
-	press(m, tea.KeyRight)
+	pressKey(m, press("left"))
+	pressKey(m, press("right"))
 	require.Equal(t, ".items", m.queryInput.Value())
 }
 
 func TestComplete_OnlyAtEnd(t *testing.T) {
 	m := newQueryModel(t, completeData)
 	typeKeys(m, ".i")
-	press(m, tea.KeyLeft)
+	pressKey(m, press("left"))
 	require.Nil(t, m.completion.replies)
 	require.Equal(t, "", m.completionGhost())
 }
@@ -104,14 +104,14 @@ func TestComplete_Bracket(t *testing.T) {
 	typeKeys(m, `.["i`)
 	require.Equal(t, []string{`.["items"]`, `.["id"]`, `.["i-d"]`}, replyValues(m))
 	typeKeys(m, `-`)
-	drain(m, press(m, tea.KeyTab))
+	drain(m, pressKey(m, press("tab")))
 	require.Equal(t, `.["i-d"]`, m.queryInput.Value())
 }
 
 func TestComplete_Engine(t *testing.T) {
 	m := newQueryModel(t, completeData)
 	typeKeys(m, ".items.map(x => x")
-	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'.'}})
+	_, cmd := m.Update(press("."))
 	require.Nil(t, m.completion.replies)
 	require.NotNil(t, cmd, "the engine is scheduled")
 
@@ -157,7 +157,7 @@ func TestComplete_AfterPreviewUsesOriginal(t *testing.T) {
 func TestComplete_EscAndEnterHide(t *testing.T) {
 	m := newQueryModel(t, completeData)
 	typeKeys(m, ".")
-	press(m, tea.KeyEscape)
+	pressKey(m, press("esc"))
 	require.Nil(t, m.completion.replies)
 	require.Equal(t, m.termHeight-1, m.viewHeight())
 
@@ -184,9 +184,9 @@ func TestComplete_GridScrolls(t *testing.T) {
 	require.Equal(t, "rows 1 to 9 of 23", grid[len(grid)-1])
 	require.Equal(t, m.termHeight-2-completeMaxRows, m.viewHeight())
 
-	drain(m, press(m, tea.KeyShiftTab)) // common prefix
+	drain(m, pressKey(m, press("shift+tab"))) // common prefix
 	require.Equal(t, ".key", m.queryInput.Value())
-	drain(m, press(m, tea.KeyShiftTab)) // menu at the last reply
+	drain(m, pressKey(m, press("shift+tab"))) // menu at the last reply
 	require.Equal(t, ".key199", m.queryInput.Value())
 	grid = plain(m.completionGridView())
 	require.Equal(t, "rows 15 to 23 of 23", grid[len(grid)-1])
@@ -195,7 +195,7 @@ func TestComplete_GridScrolls(t *testing.T) {
 // typeQuery opens the query input and types query in place of its ".".
 func typeQuery(m *model, query string) {
 	typeKeys(m, ".")
-	press(m, tea.KeyBackspace)
+	pressKey(m, press("backspace"))
 	typeKeys(m, query)
 }
 
@@ -230,7 +230,7 @@ func BenchmarkComplete_Keystroke(b *testing.B) {
 	b.Run("typing", func(b *testing.B) {
 		for b.Loop() {
 			typeKeys(m, "1")
-			press(m, tea.KeyBackspace)
+			pressKey(m, press("backspace"))
 		}
 	})
 	b.Run("streaming", func(b *testing.B) {
@@ -277,7 +277,7 @@ func TestComplete_ReopenDropsOldTick(t *testing.T) {
 	m := newQueryModel(t, completeData)
 	typeKeys(m, ".items.map(x => x.")
 	old := completeTickMsg{seq: m.completion.seq}
-	press(m, tea.KeyEscape)
+	pressKey(m, press("esc"))
 	typeKeys(m, ".items.map(x => x.")
 	require.Nil(t, m.handleCompleteTick(old), "a tick of the closed input started an engine")
 }
@@ -288,13 +288,13 @@ func TestComplete_GridFitsShortTerminal(t *testing.T) {
 	typeKeys(m, ".")
 	require.Greater(t, m.layoutGrid().rows, 1)
 	require.Len(t, m.completionGridView(), m.completionRows())
-	require.Len(t, strings.Split(m.View(), "\n"), m.termHeight)
+	require.Len(t, strings.Split(view(m), "\n"), m.termHeight)
 }
 
 func TestComplete_SingleQuotedControlCharacters(t *testing.T) {
 	m := newQueryModel(t, `{"hello\nworld": 42}`)
 	typeQuery(m, `.['h`)
-	press(m, tea.KeyTab)
+	pressKey(m, press("tab"))
 	require.Equal(t, `.['hello\nworld']`, m.queryInput.Value())
 	enter(m)
 	require.Equal(t, []string{"42"}, lines(m), "the key is found")

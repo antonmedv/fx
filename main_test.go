@@ -9,7 +9,7 @@ import (
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/colorprofile"
 	"github.com/charmbracelet/x/exp/teatest/v2"
 	"github.com/stretchr/testify/require"
 
@@ -54,6 +54,7 @@ func prepare(t *testing.T, opts ...options) *teatest.TestModel {
 	tm := teatest.NewTestModel(
 		t, m,
 		teatest.WithInitialTermSize(80, 40),
+		teatest.WithProgramOptions(tea.WithColorProfile(colorprofile.ANSI)),
 	)
 	return tm
 }
@@ -77,7 +78,7 @@ func TestOutput(t *testing.T) {
 
 	teatest.RequireEqualOutput(t, read(t, tm))
 
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
+	tm.Send(press("q"))
 	tm.WaitFinished(t, teatest.WithFinalTimeout(time.Second))
 }
 
@@ -106,31 +107,31 @@ func TestCursorValueDecodesJsonEscapesInWrappedArrayString(t *testing.T) {
 func TestNavigation(t *testing.T) {
 	tm := prepare(t)
 
-	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
-	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
-	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
+	tm.Send(press("down"))
+	tm.Send(press("down"))
+	tm.Send(press("down"))
 	teatest.RequireEqualOutput(t, read(t, tm))
 
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
+	tm.Send(press("q"))
 	tm.WaitFinished(t, teatest.WithFinalTimeout(time.Second))
 }
 
 func TestCollapseRecursive(t *testing.T) {
 	tm := prepare(t)
 
-	tm.Send(tea.KeyMsg{Type: tea.KeyShiftLeft})
+	tm.Send(press("shift+left"))
 	teatest.RequireEqualOutput(t, read(t, tm))
 
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
+	tm.Send(press("q"))
 	tm.WaitFinished(t, teatest.WithFinalTimeout(time.Second))
 }
 
 func TestCollapseRecursiveWithSizes(t *testing.T) {
 	tm := prepare(t, options{showSizes: true})
 
-	tm.Send(tea.KeyMsg{Type: tea.KeyShiftLeft})
+	tm.Send(press("shift+left"))
 	teatest.RequireEqualOutput(t, read(t, tm))
 
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
+	tm.Send(press("q"))
 	tm.WaitFinished(t, teatest.WithFinalTimeout(time.Second))
 }

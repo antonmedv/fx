@@ -32,8 +32,8 @@ func typeCommand(m *model, line string) {
 	enter(m)
 }
 
-func answer(m *model, key string) {
-	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(key)})
+func answer(m *model, s string) {
+	_, cmd := m.Update(press(s))
 	drain(m, cmd)
 }
 
@@ -120,7 +120,7 @@ func TestWrite_QueryResultToInputFileAsks(t *testing.T) {
 	typeCommand(m, "w")
 	require.NotNil(t, m.confirm)
 	require.Equal(t, `Overwrite "`+file+`" with the query result? (y/n)`, m.confirm.prompt)
-	require.Contains(t, m.View(), m.clip(m.confirm.prompt))
+	require.Contains(t, view(m), m.clip(m.confirm.prompt))
 	require.Equal(t, m.termHeight-2, m.viewHeight())
 
 	// n keeps the file.
@@ -429,7 +429,7 @@ func TestWrite_MouseKeepsConfirmation(t *testing.T) {
 
 	typeCommand(m, "w "+out)
 	require.NotNil(t, m.confirm)
-	m.Update(tea.MouseMsg{Button: tea.MouseButtonWheelDown})
+	m.Update(tea.MouseWheelMsg{Button: tea.MouseWheelDown})
 	require.NotNil(t, m.confirm)
 	require.Equal(t, 0, m.cursor)
 
@@ -445,8 +445,8 @@ func TestWrite_PromptClippedToWidth(t *testing.T) {
 	typeCommand(m, "w "+out)
 
 	require.True(t, m.message.isErr)
-	view := m.View()
-	last := view[strings.LastIndex(view, "\n")+1:]
+	screen := view(m)
+	last := screen[strings.LastIndex(screen, "\n")+1:]
 	require.Contains(t, last, `Can't write "`)
 	require.Contains(t, last, "…")
 	require.LessOrEqual(t, runewidth.StringWidth(ansi.Strip(last)), 30)
@@ -456,7 +456,7 @@ func TestWrite_PromptClippedToWidth(t *testing.T) {
 // commands that quit.
 func typeCommandCmd(m *model, line string) tea.Cmd {
 	typeKeys(m, ":"+line)
-	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	_, cmd := m.Update(press("enter"))
 	return cmd
 }
 
@@ -489,7 +489,7 @@ func TestWriteQuit_AsksThenQuits(t *testing.T) {
 	require.Nil(t, cmd)
 	require.NotNil(t, m.confirm)
 
-	_, cmd = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("y")})
+	_, cmd = m.Update(press("y"))
 	require.True(t, isQuit(cmd))
 	require.Equal(t, "1\n", readFile(t, file))
 

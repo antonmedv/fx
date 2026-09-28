@@ -54,7 +54,7 @@ func runAll(m *model, cmd tea.Cmd) {
 }
 
 func reloadKey(m *model) {
-	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
+	_, cmd := m.Update(press("r"))
 	runAll(m, cmd)
 }
 
@@ -244,10 +244,10 @@ func TestReload_KeyPressCancelsPendingRestore(t *testing.T) {
 	m.selectNode(m.top.End.Next.Next)
 
 	require.NoError(t, os.WriteFile(file, []byte(`{"id": 10}`+"\n"+`{"id": 20}`), 0o644))
-	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
+	_, cmd := m.Update(press("r"))
 	msg := cmd().(tea.BatchMsg)[0]() // First document only.
 	_, cmd = m.Update(msg)
-	m.Update(tea.KeyMsg{Type: tea.KeyDown})
+	m.Update(press("down"))
 	runAll(m, cmd)
 	at, _ := m.cursorPointsTo()
 	require.Equal(t, `"id"`, at.Key)

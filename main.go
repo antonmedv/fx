@@ -618,7 +618,7 @@ func (m *model) mouseEvent(msg tea.Msg) bool {
 func (m *model) handleQueryKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch {
-	case msg.Code == tea.KeyEscape:
+	case msg.String() == "esc":
 		// Cancel like search: drop the query and restore the original.
 		m.showCursor = true
 		m.queryInput.Blur()
@@ -627,7 +627,7 @@ func (m *model) handleQueryKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.queryInput.SetValue("")
 		cmd = m.clearQuery()
 
-	case msg.Code == tea.KeyEnter:
+	case msg.String() == "enter":
 		m.showCursor = true
 		m.queryInput.Blur()
 		m.cancelPreview()
@@ -635,22 +635,22 @@ func (m *model) handleQueryKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.addQueryHistory(m.queryInput.Value())
 		cmd = m.doQuery(m.queryInput.Value())
 
-	case msg.Code == tea.KeyUp:
+	case msg.String() == "up":
 		m.queryHistoryPrev()
 		cmd = m.updateCompletion()
 
-	case msg.Code == tea.KeyDown:
+	case msg.String() == "down":
 		m.queryHistoryNext()
 		cmd = m.updateCompletion()
 
-	case msg.Code == tea.KeyTab:
+	case msg.String() == "tab":
 		cmd = m.completeKey(+1)
 
 	case msg.String() == "shift+tab":
 		cmd = m.completeKey(-1)
 
 	default:
-		if msg.Code == tea.KeyRight || msg.Code == tea.KeyEnd || msg.String() == "ctrl+e" {
+		if msg.String() == "right" || msg.String() == "end" || msg.String() == "ctrl+e" {
 			if cmd, ok := m.acceptGhost(); ok {
 				return m, cmd
 			}
@@ -682,12 +682,12 @@ func (m *model) handleHelpKey(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *model) handleCommandKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch {
-	case msg.Code == tea.KeyEscape:
+	case msg.String() == "esc":
 		m.commandInput.Blur()
 		m.commandInput.SetValue("")
 		m.showCursor = true
 
-	case msg.Code == tea.KeyEnter:
+	case msg.String() == "enter":
 		m.commandInput.Blur()
 		command := m.commandInput.Value()
 		m.commandInput.SetValue("")
@@ -702,14 +702,14 @@ func (m *model) handleCommandKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 func (m *model) handleSearchKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch {
-	case msg.Code == tea.KeyEscape:
+	case msg.String() == "esc":
 		m.cancelSearch()
 		m.search = newSearch()
 		m.searchInput.Blur()
 		m.searchInput.SetValue("")
 		m.showCursor = true
 
-	case msg.Code == tea.KeyEnter:
+	case msg.String() == "enter":
 		m.searchInput.Blur()
 		m.cancelSearch()
 		m.search = newSearch()
@@ -723,8 +723,8 @@ func (m *model) handleSearchKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 
 func (m *model) handleGotoSymbolKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
-	switch msg.Code {
-	case tea.KeyEscape, tea.KeyEnter, tea.KeyUp, tea.KeyDown:
+	switch msg.String() {
+	case "esc", "enter", "up", "down":
 		m.gotoSymbolInput.Blur()
 		m.gotoSymbolInput.SetValue("")
 		m.recordHistory()
@@ -739,11 +739,11 @@ func (m *model) handleGotoSymbolKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	switch msg.Code {
-	case tea.KeyUp:
+	switch msg.String() {
+	case "up":
 		m.up()
 
-	case tea.KeyDown:
+	case "down":
 		m.down()
 	}
 

@@ -85,10 +85,10 @@ func TestCommandUnknownShowsError(t *testing.T) {
 	require.Equal(t, "Not an editor command: invalid", m.message.text)
 	require.True(t, m.message.isErr)
 	require.Equal(t, m.termHeight-2, m.viewHeight())
-	require.Contains(t, m.View(), "Not an editor command: invalid")
+	require.Contains(t, view(m), "Not an editor command: invalid")
 
 	// The next key clears the message and is handled as usual.
-	m.Update(tea.KeyMsg{Type: tea.KeyDown})
+	m.Update(press("down"))
 	require.Nil(t, m.message)
 	require.Equal(t, 1, m.cursor)
 	require.Equal(t, m.termHeight-1, m.viewHeight())
@@ -124,7 +124,7 @@ func TestCommandQuit(t *testing.T) {
 	for _, line := range []string{"q", "quit", "q!", "quit!"} {
 		m := newQueryModel(t, `{"a": 1}`)
 		typeKeys(m, ":"+line)
-		_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+		_, cmd := m.Update(press("enter"))
 		require.NotNil(t, cmd, line)
 		require.IsType(t, tea.QuitMsg{}, cmd(), line)
 	}

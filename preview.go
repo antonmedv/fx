@@ -82,7 +82,7 @@ func (m *model) handlePreviewKey(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *model) handlePreviewSearchInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch {
-	case msg.Code == tea.KeyEscape:
+	case msg.String() == "esc":
 		m.previewSearchInput.Blur()
 		m.previewSearchInput.SetValue("")
 		m.previewSearchResults = nil
@@ -90,7 +90,7 @@ func (m *model) handlePreviewSearchInput(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 		m.preview.SetContent(m.wrapString(m.previewValue))
 		return m, nil
 
-	case msg.Code == tea.KeyEnter:
+	case msg.String() == "enter":
 		m.previewSearchInput.Blur()
 		found := m.doPreviewSearch(m.previewSearchInput.Value())
 		if !found {

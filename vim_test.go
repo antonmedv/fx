@@ -5,116 +5,112 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/exp/teatest/v2"
 	"github.com/stretchr/testify/require"
 
 	. "github.com/antonmedv/fx/internal/jsonx"
 )
 
-func init() {
-}
-
 func TestGotoLine(t *testing.T) {
 	tm := prepare(t, options{showLineNumbers: true})
 
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(":")})
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("5")})
-	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
+	tm.Send(press(":"))
+	tm.Send(press("5"))
+	tm.Send(press("enter"))
 
 	teatest.RequireEqualOutput(t, read(t, tm))
 
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
+	tm.Send(press("q"))
 	tm.WaitFinished(t, teatest.WithFinalTimeout(time.Second))
 }
 
 func TestGotoLineCollapsed(t *testing.T) {
 	tm := prepare(t, options{showLineNumbers: true})
 
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("E")})
+	tm.Send(press("E"))
 
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(":")})
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("5")})
-	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
+	tm.Send(press(":"))
+	tm.Send(press("5"))
+	tm.Send(press("enter"))
 
 	teatest.RequireEqualOutput(t, read(t, tm))
 
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
+	tm.Send(press("q"))
 	tm.WaitFinished(t, teatest.WithFinalTimeout(time.Second))
 }
 
 func TestGotoLineInputInvalid(t *testing.T) {
 	tm := prepare(t, options{showLineNumbers: true})
 
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("E")})
+	tm.Send(press("E"))
 
-	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
-	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
-	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(":")})
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("invalid")})
-	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
+	tm.Send(press("down"))
+	tm.Send(press("down"))
+	tm.Send(press("down"))
+	tm.Send(press(":"))
+	tm.Type("invalid")
+	tm.Send(press("enter"))
 
 	teatest.RequireEqualOutput(t, read(t, tm))
 
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
+	tm.Send(press("q"))
 	tm.WaitFinished(t, teatest.WithFinalTimeout(time.Second))
 }
 
 func TestGotoLineInputGreaterThanTotalLines(t *testing.T) {
 	tm := prepare(t, options{showLineNumbers: true})
 
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(":")})
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("500")})
-	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
+	tm.Send(press(":"))
+	tm.Type("500")
+	tm.Send(press("enter"))
 
 	teatest.RequireEqualOutput(t, read(t, tm))
 
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
+	tm.Send(press("q"))
 	tm.WaitFinished(t, teatest.WithFinalTimeout(time.Second))
 }
 
 func TestGotoLineInputLessThanOne(t *testing.T) {
 	tm := prepare(t, options{showLineNumbers: true})
 
-	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
-	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
-	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(":")})
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("-2")})
-	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
+	tm.Send(press("down"))
+	tm.Send(press("down"))
+	tm.Send(press("down"))
+	tm.Send(press(":"))
+	tm.Type("-2")
+	tm.Send(press("enter"))
 
 	teatest.RequireEqualOutput(t, read(t, tm))
 
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
+	tm.Send(press("q"))
 	tm.WaitFinished(t, teatest.WithFinalTimeout(time.Second))
 }
 
 func TestGotoLineKeepsHistory(t *testing.T) {
 	tm := prepare(t, options{showLineNumbers: true})
 
-	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
-	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
-	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
+	tm.Send(press("down"))
+	tm.Send(press("down"))
+	tm.Send(press("down"))
 
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(":")})
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("4")})
-	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
+	tm.Send(press(":"))
+	tm.Send(press("4"))
+	tm.Send(press("enter"))
 
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(":")})
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("14")})
-	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
+	tm.Send(press(":"))
+	tm.Type("14")
+	tm.Send(press("enter"))
 
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("[")})
+	tm.Send(press("["))
 
 	teatest.RequireEqualOutput(t, read(t, tm))
 
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
+	tm.Send(press("q"))
 	tm.WaitFinished(t, teatest.WithFinalTimeout(time.Second))
 }
 
 func finalModel(t *testing.T, tm *teatest.TestModel) *model {
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
+	tm.Send(press("q"))
 	return tm.FinalModel(t, teatest.WithFinalTimeout(time.Second)).(*model)
 }
 
@@ -124,21 +120,17 @@ func cursorNode(t *testing.T, m *model) *Node {
 	return n
 }
 
-func sendKeys(tm *teatest.TestModel, keys ...tea.KeyMsg) {
+func sendKeys(tm *teatest.TestModel, keys ...tea.KeyPressMsg) {
 	for _, k := range keys {
 		tm.Send(k)
 	}
 }
 
-func commandKeys(s string) []tea.KeyMsg {
-	return []tea.KeyMsg{
-		{Type: tea.KeyRunes, Runes: []rune(":")},
-		{Type: tea.KeyRunes, Runes: []rune(s)},
-		{Type: tea.KeyEnter},
-	}
+func commandKeys(s string) []tea.KeyPressMsg {
+	return append(append([]tea.KeyPressMsg{press(":")}, typed(s)...), press("enter"))
 }
 
-var keyPercent = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("%")}
+var keyPercent = press("%")
 
 func requireTagsEnd(t *testing.T, m *model) {
 	n := cursorNode(t, m)
@@ -180,7 +172,7 @@ func TestMatchBracketFromElement(t *testing.T) {
 func TestMatchBracketFromWrappedString(t *testing.T) {
 	tm := prepare(t)
 	sendKeys(tm, commandKeys("3")...)
-	sendKeys(tm, tea.KeyMsg{Type: tea.KeyDown}, keyPercent)
+	sendKeys(tm, press("down"), keyPercent)
 	m := finalModel(t, tm)
 	require.Equal(t, m.top.End, cursorNode(t, m))
 }
@@ -188,16 +180,16 @@ func TestMatchBracketFromWrappedString(t *testing.T) {
 func TestMatchBracketCollapsed(t *testing.T) {
 	tm := prepare(t)
 	sendKeys(tm, commandKeys("4")...)
-	sendKeys(tm, tea.KeyMsg{Type: tea.KeyLeft}, keyPercent)
+	sendKeys(tm, press("left"), keyPercent)
 	m := finalModel(t, tm)
 	requireTagsEnd(t, m)
 	require.Nil(t, cursorNode(t, m).Parent.Collapsed)
 }
 
 var (
-	keyCtrlE = tea.KeyMsg{Type: tea.KeyCtrlE}
-	keyCtrlY = tea.KeyMsg{Type: tea.KeyCtrlY}
-	keyDown  = tea.KeyMsg{Type: tea.KeyDown}
+	keyCtrlE = press("ctrl+e")
+	keyCtrlY = press("ctrl+y")
+	keyDown  = press("down")
 )
 
 // smallWindow is a 6-row terminal, which leaves 5 lines for the view.

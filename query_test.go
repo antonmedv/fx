@@ -182,12 +182,12 @@ func drain(m *model, cmd tea.Cmd) {
 
 func typeKeys(m *model, s string) {
 	for _, r := range s {
-		m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		m.Update(press(string(r)))
 	}
 }
 
 func enter(m *model) {
-	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	_, cmd := m.Update(press("enter"))
 	drain(m, cmd)
 }
 
@@ -548,7 +548,7 @@ func TestQuery_EscCancelsLikeSearch(t *testing.T) {
 
 	typeKeys(m, ".b")
 	require.Equal(t, ".ab", m.queryInput.Value())
-	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEscape})
+	_, cmd := m.Update(press("esc"))
 	drain(m, cmd)
 
 	require.False(t, m.queryInput.Focused())
@@ -564,7 +564,7 @@ func TestQuery_EscDropsPreviewResult(t *testing.T) {
 	preview(m, ".a")
 	require.NotNil(t, m.original)
 
-	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEscape})
+	_, cmd := m.Update(press("esc"))
 	drain(m, cmd)
 	require.Nil(t, m.original)
 	require.Same(t, top, m.top)
@@ -713,7 +713,7 @@ func TestPreview_EscDropsRunningPreview(t *testing.T) {
 	run := m.livePreview
 	require.NotNil(t, run)
 
-	m.Update(tea.KeyMsg{Type: tea.KeyEscape})
+	m.Update(press("esc"))
 	require.Nil(t, m.livePreview)
 	require.True(t, run.stopped)
 
@@ -725,7 +725,7 @@ func TestPreview_TypingSchedulesTick(t *testing.T) {
 	m := newQueryModel(t, `{"a": 1}`)
 	typeKeys(m, ".")
 	seq := m.previewSeq
-	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	_, cmd := m.Update(press("a"))
 	require.NotNil(t, cmd)
 	require.Equal(t, seq+1, m.previewSeq)
 }
@@ -755,8 +755,8 @@ func TestSnapshot(t *testing.T) {
 	}, docs)
 }
 
-func up(m *model)   { m.Update(tea.KeyMsg{Type: tea.KeyUp}) }
-func down(m *model) { m.Update(tea.KeyMsg{Type: tea.KeyDown}) }
+func up(m *model)   { m.Update(press("up")) }
+func down(m *model) { m.Update(press("down")) }
 
 func TestHistory_UpDownAndDraft(t *testing.T) {
 	m := newQueryModel(t, `{"a": 1, "b": 2}`)
@@ -818,7 +818,7 @@ func TestQuery_StatusBarKept(t *testing.T) {
 	m.termHeight = 10
 
 	screenLines := func() []string {
-		return strings.Split(m.View(), "\n")
+		return strings.Split(view(m), "\n")
 	}
 
 	typeKeys(m, ".a")
@@ -871,7 +871,7 @@ func TestPreview_NeverEndingQueryStops(t *testing.T) {
 	cmd := m.handlePreviewTick(previewTickMsg{seq: m.previewSeq})
 	run := m.livePreview
 	time.Sleep(50 * time.Millisecond)
-	m.Update(tea.KeyMsg{Type: tea.KeyEscape})
+	m.Update(press("esc"))
 
 	done := make(chan struct{})
 	go func() {
@@ -897,7 +897,7 @@ func TestQuery_RestoreAfterWrapToggle(t *testing.T) {
 		return false
 	}
 	toggleWrap := func(m *model) {
-		m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(keyMap.ToggleWrap.Keys()[0])})
+		m.Update(press(keyMap.ToggleWrap.Keys()[0]))
 	}
 
 	t.Run("turned off", func(t *testing.T) {
@@ -1027,14 +1027,14 @@ func TestPreview_IdentityShowsOriginal(t *testing.T) {
 }
 
 func TestQuery_EmptyResultView(t *testing.T) {
-	keys := []tea.KeyMsg{
-		{Type: tea.KeyPgUp}, {Type: tea.KeyPgDown}, {Type: tea.KeyHome}, {Type: tea.KeyEnd},
-		{Type: tea.KeyUp}, {Type: tea.KeyDown}, {Type: tea.KeyLeft}, {Type: tea.KeyRight},
-		{Type: tea.KeyCtrlU}, {Type: tea.KeyCtrlD}, {Type: tea.KeyShiftUp}, {Type: tea.KeyShiftDown},
-		{Type: tea.KeyShiftLeft}, {Type: tea.KeyShiftRight}, {Type: tea.KeyCtrlG},
+	keys := []tea.KeyPressMsg{
+		press("pgup"), press("pgdown"), press("home"), press("end"),
+		press("up"), press("down"), press("left"), press("right"),
+		press("ctrl+u"), press("ctrl+d"), press("shift+up"), press("shift+down"),
+		press("shift+left"), press("shift+right"), press("ctrl+g"),
 	}
 	for _, r := range "bfgGjkhlJKHLeE123zsnN[]" {
-		keys = append(keys, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		keys = append(keys, press(string(r)))
 	}
 	for _, k := range keys {
 		t.Run(k.String(), func(t *testing.T) {
@@ -1060,7 +1060,7 @@ func TestQuery_EmptyResultView(t *testing.T) {
 // runSearch runs a search and delivers its result, skipping the spinner.
 func runSearch(m *model, s string) {
 	typeKeys(m, "/"+s)
-	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	_, cmd := m.Update(press("enter"))
 	for _, c := range cmd().(tea.BatchMsg) {
 		if msg, ok := c().(searchResultMsg); ok {
 			m.Update(msg)
@@ -1122,7 +1122,7 @@ func TestQueryInputView_Unicode(t *testing.T) {
 
 func TestQueryInputView_Scrolls(t *testing.T) {
 	m := newQueryInputModel(t, "aaaaa bbbbb")
-	m.queryInput.Width = 5
+	m.queryInput.SetWidth(5)
 
 	m.queryInput.CursorEnd()
 	require.Equal(t, "bbbbb", m.queryInputView(), "end: last 5 columns, cursor after")
@@ -1142,7 +1142,7 @@ func TestQueryInputView_Scrolls(t *testing.T) {
 
 func TestQueryInputView_WideRunes(t *testing.T) {
 	m := newQueryInputModel(t, `"日本語"`)
-	m.queryInput.Width = 4
+	m.queryInput.SetWidth(4)
 	m.queryInput.CursorEnd()
 	require.Equal(t, `str(語")`, m.queryInputView())
 }
