@@ -21,6 +21,7 @@ func (m *model) View() tea.View {
 		v.MouseMode = tea.MouseModeCellMotion
 	}
 	v.Cursor = m.cursorView(v.Content)
+	v.WindowTitle = m.fileName // empty for stdin, which leaves the title alone
 	return v
 }
 
