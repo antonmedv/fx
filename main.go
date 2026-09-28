@@ -42,6 +42,7 @@ var (
 	flagComp     bool
 	flagStrict   bool
 	flagNoInline bool
+	flagNoTUI    bool
 )
 
 var flags = []string{
@@ -52,6 +53,7 @@ var flags = []string{
 	"--version",
 	"--strict",
 	"--no-inline",
+	"--no-tui",
 }
 
 func init() {
@@ -92,6 +94,9 @@ func main() {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
+	}
+	if _, ok := os.LookupEnv("FX_NO_TUI"); ok {
+		flagNoTUI = true
 	}
 	switch act {
 	case actionHelp:
@@ -171,6 +176,11 @@ func main() {
 		fmt.Print(err.Error())
 		os.Exit(1)
 		return
+	}
+
+	if flagNoTUI && len(args) == 0 {
+		// Print the input instead of opening the viewer.
+		args = []string{"."}
 	}
 
 	if len(args) > 0 || flagSlurp {

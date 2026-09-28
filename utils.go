@@ -90,6 +90,8 @@ func parseFlags(argv []string) (args []string, act action, err error) {
 			flagStrict = true
 		case "--no-inline":
 			flagNoInline = true
+		case "--no-tui":
+			flagNoTUI = true
 		default:
 			args = append(args, arg)
 		}

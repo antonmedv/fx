@@ -16,7 +16,7 @@ func resetFlags(t *testing.T) {
 	t.Helper()
 	reset := func() {
 		inputFormat = nil
-		flagRaw, flagSlurp, flagStrict, flagNoInline, flagComp = false, false, false, false, false
+		flagRaw, flagSlurp, flagStrict, flagNoInline, flagNoTUI, flagComp = false, false, false, false, false, false
 	}
 	reset()
 	t.Cleanup(reset)
@@ -72,12 +72,13 @@ func TestParseFlags(t *testing.T) {
 
 func TestParseFlags_Others(t *testing.T) {
 	resetFlags(t)
-	args, act, err := parseFlags([]string{"--strict", "--no-inline", "--comp=zsh", "x"})
+	args, act, err := parseFlags([]string{"--strict", "--no-inline", "--no-tui", "--comp=zsh", "x"})
 	require.NoError(t, err)
 	require.Equal(t, []string{"x"}, args)
 	require.Equal(t, actionRead, act)
 	require.True(t, flagStrict)
 	require.True(t, flagNoInline)
+	require.True(t, flagNoTUI)
 	require.True(t, flagComp)
 }
 

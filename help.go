@@ -35,6 +35,7 @@ func usage() string {
     -s, --slurp           read all inputs into an array
 %v    --strict              strict mode
     --no-inline           disable inlining in output
+    --no-tui              print output instead of the viewer
     --game-of-life        play the game of life
 
   %v
