@@ -825,10 +825,15 @@ func (m *model) handleYankKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 // at, so it works over ssh and in sandboxes; locally the system clipboard
 // tool is also used, for terminals without OSC52.
 func (m *model) copy(text string) tea.Cmd {
+	cmds := []tea.Cmd{tea.SetClipboard(text)}
 	if !m.sshSession {
-		_ = clipboard.WriteAll(text)
+		// Off the event loop: the tool may be slow to start or to fail.
+		cmds = append(cmds, func() tea.Msg {
+			_ = clipboard.WriteAll(text)
+			return nil
+		})
 	}
-	return tea.SetClipboard(text)
+	return tea.Batch(cmds...)
 }
 
 func (m *model) handleShowSelectorKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
