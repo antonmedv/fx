@@ -50,6 +50,7 @@ const (
 	actionThemes
 	actionExportThemes
 	actionGameOfLife
+	actionDungeon
 )
 
 // parseFlags reads the command line. It sets the flag variables and returns
@@ -79,6 +80,8 @@ func parseFlags(argv []string) (args []string, act action, err error) {
 			return nil, actionExportThemes, nil
 		case "--game-of-life":
 			return nil, actionGameOfLife, nil
+		case "--dungeon":
+			return nil, actionDungeon, nil
 		case "--raw", "-r":
 			flagRaw = true
 		case "--slurp", "-s":

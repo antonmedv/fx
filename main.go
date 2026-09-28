@@ -25,6 +25,7 @@ import (
 	"github.com/mattn/go-isatty"
 
 	"github.com/antonmedv/fx/internal/complete"
+	"github.com/antonmedv/fx/internal/dungeon"
 	"github.com/antonmedv/fx/internal/engine"
 	"github.com/antonmedv/fx/internal/format"
 	"github.com/antonmedv/fx/internal/fuzzy"
@@ -113,6 +114,12 @@ func main() {
 		return
 	case actionGameOfLife:
 		utils.GameOfLife()
+		return
+	case actionDungeon:
+		if err := dungeon.Run(); err != nil {
+			fmt.Fprintln(os.Stderr, "Error:", err)
+			os.Exit(1)
+		}
 		return
 	}
 
