@@ -383,38 +383,38 @@ func ThemeTester() {
 		colon := t.Syntax(":")
 
 		fmt.Println(fmt.Sprintf("export FX_THEME=%q", name))
-		fmt.Println(t.Syntax("{"))
+		lipgloss.Println(t.Syntax("{"))
 
-		fmt.Printf("  %v%v %v%v\n",
+		lipgloss.Printf("  %v%v %v%v\n",
 			t.Key("\"string\""),
 			colon,
 			t.String("\"Fox jumps over the lazy dog\""),
 			comma)
 
-		fmt.Printf("  %v%v %v%v\n",
+		lipgloss.Printf("  %v%v %v%v\n",
 			t.Key("\"number\""),
 			colon,
 			t.Number("1234567890"),
 			comma)
 
-		fmt.Printf("  %v%v %v%v\n",
+		lipgloss.Printf("  %v%v %v%v\n",
 			t.Key("\"boolean\""),
 			colon,
 			t.Boolean("true"),
 			comma)
-		fmt.Printf("  %v%v %v%v\n",
+		lipgloss.Printf("  %v%v %v%v\n",
 			t.Key("\"null\""),
 			colon,
 			t.Null("null"),
 			comma)
-		fmt.Printf("  %v%v %v%v%v\n",
+		lipgloss.Printf("  %v%v %v%v%v\n",
 			t.Key("\"collapsed\""),
 			colon,
 			t.Syntax("{"),
 			t.Preview("\"preview\":…"),
 			t.Syntax("}"),
 		)
-		fmt.Println(t.Syntax("}"))
+		lipgloss.Println(t.Syntax("}"))
 		println()
 	}
 }

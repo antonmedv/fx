@@ -95,7 +95,7 @@ func main() {
 	}
 	switch act {
 	case actionHelp:
-		fmt.Println(usage())
+		lipgloss.Println(usage())
 		return
 	case actionVersion:
 		fmt.Println(version)
@@ -145,7 +145,7 @@ func main() {
 	switch chooseInput(stdinIsTty, stdinIsInput, args, os.Stat) {
 	case inputUsage:
 		// $ fx
-		fmt.Println(usage())
+		lipgloss.Println(usage())
 		return
 	case inputFile:
 		// $ fx file.json arg*
@@ -210,7 +210,7 @@ func main() {
 					}
 					fmt.Println(unquoted)
 				} else {
-					fmt.Println(pretty.Print(node, !flagNoInline))
+					lipgloss.Println(pretty.Print(node, !flagNoInline))
 				}
 			case err := <-errCh:
 				fmt.Fprintln(os.Stderr, err)
