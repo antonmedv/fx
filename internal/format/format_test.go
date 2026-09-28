@@ -9,12 +9,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// samples gives, per format name, an input that converts to {"a":1} and
-// one that is invalid. Every format in All needs an entry.
-var samples = map[string]struct{ ok, bad string }{
-	"yaml": {"a: 1\n", "a: [1"},
-	"toml": {"a = 1\n", "a = [1"},
-	"edn":  {"{:a 1}", "{:a"},
+// samples gives, per format name, an input, the JSON it converts to and
+// an invalid input (empty for a format that accepts anything). Every
+// format in All needs an entry.
+var samples = map[string]struct{ ok, want, bad string }{
+	"yaml": {"a: 1\n", `{"a":1}`, "a: [1"},
+	"toml": {"a = 1\n", `{"a":1}`, "a = [1"},
+	"edn":  {"{:a 1}", `{"a":1}`, "{:a"},
+	"xml":  {"<a>1</a>", `{"a":"1"}`, "<a>"},
+	"html": {"<a>1</a>", `{"html":{"head":null,"body":{"a":"1"}}}`, ""},
 }
 
 func TestAll(t *testing.T) {
@@ -42,10 +45,12 @@ func TestAll(t *testing.T) {
 			require.NoError(t, err)
 			var buf bytes.Buffer
 			require.NoError(t, json.Compact(&buf, got))
-			require.Equal(t, `{"a":1}`, buf.String())
+			require.Equal(t, sample.want, buf.String())
 
-			_, err = f.ToJSON([]byte(sample.bad))
-			require.Error(t, err)
+			if sample.bad != "" {
+				_, err = f.ToJSON([]byte(sample.bad))
+				require.Error(t, err)
+			}
 		})
 	}
 }

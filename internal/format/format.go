@@ -12,7 +12,9 @@ import (
 	"strings"
 
 	"github.com/antonmedv/fx/internal/edn"
+	"github.com/antonmedv/fx/internal/html"
 	"github.com/antonmedv/fx/internal/toml"
+	"github.com/antonmedv/fx/internal/xml"
 	"github.com/antonmedv/fx/internal/yaml"
 )
 
@@ -51,8 +53,24 @@ var EDN = &Format{
 	ToJSON: edn.ToJSON,
 }
 
+var XML = &Format{
+	Name:   "xml",
+	Flag:   "--xml",
+	Help:   "parse input as XML",
+	Exts:   []string{".xml", ".svg"},
+	ToJSON: xml.ToJSON,
+}
+
+var HTML = &Format{
+	Name:   "html",
+	Flag:   "--html",
+	Help:   "parse input as HTML",
+	Exts:   []string{".html", ".htm"},
+	ToJSON: html.ToJSON,
+}
+
 // All lists the formats in the order of the usage text.
-var All = []*Format{YAML, TOML, EDN}
+var All = []*Format{YAML, TOML, EDN, XML, HTML}
 
 // ByFlag returns the format selected by a command line argument, or nil.
 func ByFlag(arg string) *Format {

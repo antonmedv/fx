@@ -294,6 +294,8 @@ func TestDoComplete_Formats(t *testing.T) {
 	require.Equal(t, want, doCompleteFile(t, "file.yaml", "zebra: 1\nalpha: 2\n", "", "."))
 	require.Equal(t, want, doCompleteFile(t, "file.toml", "zebra = 1\nalpha = 2\n", "", "."))
 	require.Equal(t, want, doCompleteFile(t, "file.edn", "{:zebra 1 :alpha 2}", "", "."))
+	require.Equal(t, []string{".r.zebra", ".r.alpha"}, doCompleteFile(t, "file.xml", "<r><zebra/><alpha/></r>", "", ".r."))
+	require.Equal(t, []string{".html.head", ".html.body"}, doCompleteFile(t, "file.html", "<p>x</p>", "", ".html."))
 	// A flag wins over the extension.
 	require.Equal(t, want, doCompleteFile(t, "file.txt", "{:zebra 1 :alpha 2}", "--edn ", "."))
 	require.Equal(t, want, doCompleteFile(t, "file.yaml", "zebra = 1\nalpha = 2\n", "--toml ", "."))
@@ -301,4 +303,5 @@ func TestDoComplete_Formats(t *testing.T) {
 	require.Nil(t, doCompleteFile(t, "file.toml", "a = [1\n", "", "."))
 	require.Nil(t, doCompleteFile(t, "file.edn", "{:a", "", "."))
 	require.Nil(t, doCompleteFile(t, "file.yaml", "a: [1", "", "."))
+	require.Nil(t, doCompleteFile(t, "file.xml", "<a>", "", "."))
 }
