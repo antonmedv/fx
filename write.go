@@ -55,28 +55,39 @@ func (m *model) writeBlocked() string {
 		return "Input is still loading"
 	case m.restoring || m.query != nil && !m.query.done:
 		return "Query is still running"
-	case len(m.queryErrors) > 0 && m.original == nil:
-		return "Input has errors" // A failed reload.
+	case m.loadErr != nil:
+		// The input is incomplete, whatever view is shown.
+		return "Input has errors: " + firstLine(m.loadErr.Error())
 	case len(m.queryErrors) > 0:
 		return "Query result has errors"
-	case m.original == nil && hasTextDocs(m.top):
+	}
+	json, text := countDocs(m.top)
+	switch {
+	case m.original == nil && text > 0:
 		// Recovered non-JSON lines would be dropped from the input.
 		return "Input contains text that is not JSON"
-	case m.top == nil:
+	case json == 0:
 		return "Nothing to write"
 	}
 	return ""
 }
 
-// hasTextDocs reports whether a top-level document from top on is text
-// rather than JSON.
-func hasTextDocs(top *Node) bool {
+// countDocs counts the top-level documents from top on that are JSON and
+// that are text (recovered non-JSON input, println output).
+func countDocs(top *Node) (json, text int) {
 	for doc := top; doc != nil; doc = nextDoc(doc) {
 		if doc.Kind == Err {
-			return true
+			text++
+		} else {
+			json++
 		}
 	}
-	return false
+	return json, text
+}
+
+func firstLine(s string) string {
+	line, _, _ := strings.Cut(s, "\n")
+	return line
 }
 
 // writeFile writes the displayed JSON to path. same reports whether path

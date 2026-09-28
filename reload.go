@@ -155,6 +155,7 @@ func (m *model) reload() tea.Cmd {
 	}
 	m.loader.stopLoading()
 	m.loadGen++
+	m.loadErr = nil
 
 	m.reloadPos = m.cursorReloadPos()
 	m.cancelPreview()
@@ -207,8 +208,10 @@ func (m *model) setEOF() {
 
 // showReloadError shows err below what was read, so the file can be fixed
 // and reloaded again. The query is stopped, not given EOF: the input is
-// incomplete, and save() would overwrite the file with the part read.
+// incomplete, and save() would overwrite the file with the part read. The
+// error is kept in loadErr, as clearing a query drops the line shown.
 func (m *model) showReloadError(err error) {
+	m.loadErr = err
 	m.stopQuery()
 	m.setEOF()
 	m.appendText(err.Error(), true)

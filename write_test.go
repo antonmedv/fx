@@ -331,13 +331,53 @@ func TestWrite_RecoveredTextRefused(t *testing.T) {
 
 func TestWrite_ReloadErrorRefused(t *testing.T) {
 	m := newQueryModel(t, `{"a": 1}`)
-	m.showReloadError(fmt.Errorf("unexpected end of input"))
+	m.loadGen = 1
+	m.Update(errorMsg{err: fmt.Errorf("unexpected end of input\n  at line 3"), gen: 1})
 	out := filepath.Join(t.TempDir(), "out.json")
 
 	runCommand(m, "w "+out)
 
-	require.Equal(t, "Input has errors", m.message.text)
+	require.Equal(t, "Input has errors: unexpected end of input", m.message.text)
 	require.NoFileExists(t, out)
+}
+
+// A reload that fails while a query is shown puts its error in the result
+// view only. Clearing the query must not make the read part writable.
+func TestWrite_ReloadErrorSurvivesClearingQuery(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "f.json")
+	require.NoError(t, os.WriteFile(file, []byte(`{"a": 1}`+"\n"+`{"a": 2`), 0o644))
+	withInputFile(t, file)
+	m := newQueryModel(t, `{"a": 1}`)
+	m.loadGen = 1
+	drain(m, m.doQuery(".a"))
+	m.Update(errorMsg{err: fmt.Errorf("unexpected end of input"), gen: 1})
+	require.Equal(t, []string{"1", "unexpected end of input"}, lines(m))
+
+	drain(m, m.clearQuery())
+	require.Nil(t, m.original)
+	require.Equal(t, []string{"{", `"a"1`, "}"}, lines(m), "the error line is gone with the result view")
+
+	runCommand(m, "w")
+
+	require.Equal(t, "Input has errors: unexpected end of input", m.message.text)
+	require.Equal(t, `{"a": 1}`+"\n"+`{"a": 2`, readFile(t, file), "the file keeps its content")
+
+	// A reload that succeeds makes the input writable again.
+	drain(m, m.reload())
+	require.Nil(t, m.loadErr)
+}
+
+func TestWrite_ResultWithoutDocuments(t *testing.T) {
+	m := newQueryModel(t, `{"a": 1}`)
+	drain(m, m.doQuery(`x => { println("note"); return skip }`))
+	require.Equal(t, []string{"note"}, lines(m))
+	out := filepath.Join(t.TempDir(), "out.json")
+	require.NoError(t, os.WriteFile(out, []byte("old"), 0o644))
+
+	runCommand(m, "w! "+out)
+
+	require.Equal(t, "Nothing to write", m.message.text)
+	require.Equal(t, "old", readFile(t, out))
 }
 
 func TestWrite_HonorsIndent(t *testing.T) {

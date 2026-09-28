@@ -379,6 +379,7 @@ type model struct {
 	rawModeOnEOF          bool          // stdin is piped, reapply raw mode once it is read
 	loader                *loader       // reads the input, replaced on reload
 	loadGen               uint64        // generation of loader, stale messages are dropped
+	loadErr               error         // why the last reload failed, nil if the input is complete
 	reloadPos             *reloadPos    // cursor position to restore after reload, nil if none
 }
 
