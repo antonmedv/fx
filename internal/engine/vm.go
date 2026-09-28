@@ -29,7 +29,8 @@ func SetInput(c io.Closer) {
 	input = c
 }
 
-func closeInput() {
+// CloseInput closes the open FilePath, so it can be replaced on Windows.
+func CloseInput() {
 	inputMu.Lock()
 	defer inputMu.Unlock()
 	if input != nil {
@@ -86,7 +87,7 @@ func newVM(writeOut func(string), preview bool, severalValues func() (bool, erro
 			return fmt.Errorf("save supports a single JSON value, but %s contains several", FilePath)
 		}
 		// All input is read, so the parser no longer needs the file.
-		closeInput()
+		CloseInput()
 		return writeFileAtomic(FilePath, []byte(json), mode)
 	}); err != nil {
 		panic(err)
@@ -144,6 +145,16 @@ func newVM(writeOut func(string), preview bool, severalValues func() (bool, erro
 	}
 
 	return vm
+}
+
+// WriteFile replaces the file at path with data, keeping its mode. It is
+// what save() does to FilePath, for the UI.
+func WriteFile(path string, data []byte) error {
+	mode, err := saveMode(path)
+	if err != nil {
+		return err
+	}
+	return writeFileAtomic(path, data, mode)
 }
 
 // saveMode returns the mode of the file save() may replace. A missing file

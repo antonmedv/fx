@@ -132,7 +132,7 @@ func sendKeys(tm *teatest.TestModel, keys ...tea.KeyMsg) {
 	}
 }
 
-func command(s string) []tea.KeyMsg {
+func commandKeys(s string) []tea.KeyMsg {
 	return []tea.KeyMsg{
 		{Type: tea.KeyRunes, Runes: []rune(":")},
 		{Type: tea.KeyRunes, Runes: []rune(s)},
@@ -157,14 +157,14 @@ func TestMatchBracketRoot(t *testing.T) {
 
 func TestMatchBracketToggle(t *testing.T) {
 	tm := prepare(t)
-	sendKeys(tm, command("4")...)
+	sendKeys(tm, commandKeys("4")...)
 	sendKeys(tm, keyPercent, keyPercent, keyPercent)
 	requireTagsEnd(t, finalModel(t, tm))
 }
 
 func TestMatchBracketBackToOpening(t *testing.T) {
 	tm := prepare(t)
-	sendKeys(tm, command("4")...)
+	sendKeys(tm, commandKeys("4")...)
 	sendKeys(tm, keyPercent, keyPercent)
 	m := finalModel(t, tm)
 	n := cursorNode(t, m)
@@ -174,14 +174,14 @@ func TestMatchBracketBackToOpening(t *testing.T) {
 
 func TestMatchBracketFromElement(t *testing.T) {
 	tm := prepare(t)
-	sendKeys(tm, command("6")...)
+	sendKeys(tm, commandKeys("6")...)
 	sendKeys(tm, keyPercent)
 	requireTagsEnd(t, finalModel(t, tm))
 }
 
 func TestMatchBracketFromWrappedString(t *testing.T) {
 	tm := prepare(t)
-	sendKeys(tm, command("3")...)
+	sendKeys(tm, commandKeys("3")...)
 	sendKeys(tm, tea.KeyMsg{Type: tea.KeyDown}, keyPercent)
 	m := finalModel(t, tm)
 	require.Equal(t, m.top.End, cursorNode(t, m))
@@ -189,7 +189,7 @@ func TestMatchBracketFromWrappedString(t *testing.T) {
 
 func TestMatchBracketCollapsed(t *testing.T) {
 	tm := prepare(t)
-	sendKeys(tm, command("4")...)
+	sendKeys(tm, commandKeys("4")...)
 	sendKeys(tm, tea.KeyMsg{Type: tea.KeyLeft}, keyPercent)
 	m := finalModel(t, tm)
 	requireTagsEnd(t, m)

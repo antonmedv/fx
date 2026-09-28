@@ -374,10 +374,12 @@ type model struct {
 	printErrorOnExit      error
 	spinner               spinner.Model
 	deletePending         bool
-	rawModeOnEOF          bool       // stdin is piped, reapply raw mode once it is read
-	loader                *loader    // reads the input, replaced on reload
-	loadGen               uint64     // generation of loader, stale messages are dropped
-	reloadPos             *reloadPos // cursor position to restore after reload, nil if none
+	confirm               *confirmation // yes/no question in the command line, nil if none
+	message               *message      // shown in the command line until the next key press
+	rawModeOnEOF          bool          // stdin is piped, reapply raw mode once it is read
+	loader                *loader       // reads the input, replaced on reload
+	loadGen               uint64        // generation of loader, stale messages are dropped
+	reloadPos             *reloadPos    // cursor position to restore after reload, nil if none
 }
 
 // viewState is the part of the model describing the displayed node list.
@@ -546,6 +548,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.MouseMsg:
 		m.reloadPos = nil // The user moved on, don't jump back.
+		m.message = nil
 		m.handlePendingDelete(msg)
 
 		switch {
@@ -590,16 +593,20 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tea.KeyMsg:
+		m.message = nil
 		// Quit on Ctrl-C, no matter what.
 		if key.Matches(msg, ctrlC) {
 			return m, tea.Quit
 		}
 
+		if m.confirm != nil {
+			return m.handleConfirmKey(msg)
+		}
 		if m.queryInput.Focused() {
 			return m.handleQueryKey(msg)
 		}
 		if m.commandInput.Focused() {
-			return m.handleGotoLineKey(msg)
+			return m.handleCommandKey(msg)
 		}
 		if m.searchInput.Focused() {
 			return m.handleSearchKey(msg)
@@ -682,7 +689,7 @@ func (m *model) handleHelpKey(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m *model) handleGotoLineKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *model) handleCommandKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch {
 	case msg.Type == tea.KeyEscape:
@@ -1400,7 +1407,7 @@ func (m *model) viewHeight() int {
 	if m.gotoSymbolInput.Focused() {
 		return m.termHeight - 2
 	}
-	if m.commandInput.Focused() {
+	if m.commandInput.Focused() || m.confirm != nil || m.message != nil {
 		return m.termHeight - 2
 	}
 	if m.searchInput.Focused() || m.searchInput.Value() != "" {

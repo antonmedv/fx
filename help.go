@@ -146,8 +146,9 @@ func help(keyMap KeyMap) string {
 	section("Commands")
 	text("Press : to open the command line.")
 	sb.WriteString("\n")
-	row(":<n>", "goto line n")
-	row(":q", "quit")
+	for _, c := range commands {
+		row(":"+c.usage(), c.desc)
+	}
 
 	sb.WriteString("\n")
 	section("Query")

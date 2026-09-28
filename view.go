@@ -181,7 +181,17 @@ func (m *model) View() string {
 		screen = append(screen, theme.CurrentTheme.StatusBar(statusBar)...)
 	}
 
-	if m.yank {
+	if m.confirm != nil {
+		screen = append(screen, '\n')
+		screen = append(screen, m.confirm.prompt...)
+	} else if m.message != nil {
+		screen = append(screen, '\n')
+		text := m.message.text
+		if m.message.isErr {
+			text = theme.CurrentTheme.Error(text)
+		}
+		screen = append(screen, text...)
+	} else if m.yank {
 		screen = append(screen, '\n')
 		screen = append(screen, []byte("(y)value  (p)path  (k)key  (b)key+value")...)
 	} else if m.showShowSelector {
