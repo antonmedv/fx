@@ -135,6 +135,18 @@ func newVM(writeOut func(string), preview bool, severalValues func() (bool, erro
 		panic(err)
 	}
 
+	if err := vm.Set("__maml_parse__", func(x string) (goja.Value, error) {
+		return mamlParse(vm, x)
+	}); err != nil {
+		panic(err)
+	}
+
+	if err := vm.Set("__maml_stringify__", func(x goja.Value) (string, error) {
+		return mamlStringify(vm, x)
+	}); err != nil {
+		panic(err)
+	}
+
 	if err := vm.Set("__exit__", func(code int) error {
 		if preview {
 			return fmt.Errorf("exit is disabled in preview")

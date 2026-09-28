@@ -335,6 +335,7 @@ func TestReplies_BuiltinsIfNoStdlibMatches(t *testing.T) {
 		"Obj": {"Object"},
 		"con": {"console"},
 		"YA":  {"YAML"},
+		"MA":  {"MAML"},
 		"sk":  {"skip"},
 		"esc": nil, // not a constructor or namespace
 	} {

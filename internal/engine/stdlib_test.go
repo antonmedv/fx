@@ -818,6 +818,67 @@ func TestYAML(t *testing.T) {
 	})
 }
 
+// TestMAML tests MAML.parse and MAML.stringify.
+func TestMAML(t *testing.T) {
+	vm := setupVM(t)
+
+	t.Run("MAML.parse keeps key order", func(t *testing.T) {
+		result, err := vm.RunString(`Object.keys(MAML.parse('{\n  zebra: 1\n  alpha: [1, 2.5, "x"]\n}')).join()`)
+		require.NoError(t, err)
+		assert.Equal(t, "zebra,alpha", result.String())
+	})
+
+	t.Run("MAML.parse values", func(t *testing.T) {
+		result, err := vm.RunString(`MAML.parse('{a: [1, 2.5, "x", true, null], b: """\nraw"""}')`)
+		require.NoError(t, err)
+		expected := map[string]interface{}{
+			"a": []interface{}{int64(1), 2.5, "x", true, nil},
+			"b": "raw",
+		}
+		assert.Equal(t, expected, result.Export())
+	})
+
+	t.Run("MAML.parse invalid", func(t *testing.T) {
+		_, err := vm.RunString(`MAML.parse('{a:')`)
+		assert.ErrorContains(t, err, "Unexpected end of input on line 1.")
+	})
+
+	t.Run("MAML.stringify", func(t *testing.T) {
+		result, err := vm.RunString(`MAML.stringify({name: 'John', "a b": [1, 2**60, 1.5, -0, null, true], n: {}, inf: Infinity, u: undefined})`)
+		require.NoError(t, err)
+		expected := `{
+  name: "John"
+  "a b": [
+    1
+    1152921504606846976
+    1.5
+    -0
+    null
+    true
+  ]
+  n: {}
+  inf: null
+  u: null
+}`
+		assert.Equal(t, expected, result.String())
+	})
+
+	t.Run("MAML.stringify bigint", func(t *testing.T) {
+		result, err := vm.RunString(`MAML.stringify([2n**62n])`)
+		require.NoError(t, err)
+		assert.Equal(t, "[\n  4611686018427387904\n]", result.String())
+
+		_, err = vm.RunString(`MAML.stringify(2n**64n)`)
+		assert.ErrorContains(t, err, "outside the 64-bit integer range")
+	})
+
+	t.Run("MAML round trip", func(t *testing.T) {
+		result, err := vm.RunString(`JSON.stringify(MAML.parse(MAML.stringify({b: "x\ny", a: [{c: 1}]})))`)
+		require.NoError(t, err)
+		assert.Equal(t, `{"b":"x\ny","a":[{"c":1}]}`, result.String())
+	})
+}
+
 // TestIsFalsely tests the internal isFalsely function behavior.
 func TestIsFalsely(t *testing.T) {
 	vm := setupVM(t)

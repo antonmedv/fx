@@ -202,3 +202,8 @@ const YAML = {
   stringify: x => __yaml_stringify__(x),
   parse: x => JSON.parse(__yaml_parse__(x)),
 }
+
+const MAML = {
+  stringify: x => __maml_stringify__(x),
+  parse: x => __maml_parse__(x),
+}
