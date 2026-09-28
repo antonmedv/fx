@@ -12,7 +12,8 @@ import (
 )
 
 // mamlParse converts MAML source to a JS value. Object keys keep their
-// order, integers come back as numbers.
+// order. Integers come back as numbers, or as BigInts when a number would
+// lose precision.
 func mamlParse(vm *goja.Runtime, src string) (goja.Value, error) {
 	v, err := maml.Parse(src)
 	if err != nil {
@@ -20,6 +21,9 @@ func mamlParse(vm *goja.Runtime, src string) (goja.Value, error) {
 	}
 	return mamlToJS(vm, v), nil
 }
+
+// maxSafeInteger is Number.MAX_SAFE_INTEGER.
+const maxSafeInteger = 1<<53 - 1
 
 func mamlToJS(vm *goja.Runtime, v maml.Value) goja.Value {
 	switch {
@@ -38,6 +42,12 @@ func mamlToJS(vm *goja.Runtime, v maml.Value) goja.Value {
 			items[i] = mamlToJS(vm, item)
 		}
 		return vm.NewArray(items...)
+	case v.IsInt():
+		n := v.AsInt()
+		if n > maxSafeInteger || n < -maxSafeInteger {
+			return vm.ToValue(big.NewInt(n))
+		}
+		return vm.ToValue(n)
 	default:
 		return vm.ToValue(v.Raw())
 	}
@@ -45,16 +55,34 @@ func mamlToJS(vm *goja.Runtime, v maml.Value) goja.Value {
 
 // mamlStringify converts a JS value to MAML. NaN and Infinity become null
 // as in JSON.stringify; undefined becomes null and dates become strings
-// as in Stringify.
+// as in Stringify. A circular structure is an error.
 func mamlStringify(vm *goja.Runtime, value goja.Value) (string, error) {
-	v, err := jsToMAML(vm, value)
+	e := mamlEncoder{vm: vm, parents: map[*goja.Object]bool{}}
+	v, err := e.encode(value)
 	if err != nil {
 		return "", err
 	}
 	return maml.Stringify(v), nil
 }
 
-func jsToMAML(vm *goja.Runtime, value goja.Value) (maml.Value, error) {
+type mamlEncoder struct {
+	vm *goja.Runtime
+	// parents holds the objects and arrays being encoded, so a value that
+	// contains itself is caught instead of recursing forever.
+	parents map[*goja.Object]bool
+}
+
+// enter marks obj as being encoded. The returned func unmarks it.
+func (e *mamlEncoder) enter(obj *goja.Object) (func(), error) {
+	if e.parents[obj] {
+		return nil, fmt.Errorf("MAML.stringify: converting circular structure")
+	}
+	e.parents[obj] = true
+	return func() { delete(e.parents, obj) }, nil
+}
+
+func (e *mamlEncoder) encode(value goja.Value) (maml.Value, error) {
+	vm := e.vm
 	rtype := value.ExportType()
 	if rtype == nil {
 		return maml.NewNull(), nil
@@ -90,9 +118,14 @@ func jsToMAML(vm *goja.Runtime, value goja.Value) (maml.Value, error) {
 		return maml.NewString(value.String()), nil
 	case reflect.Map:
 		obj := value.ToObject(vm)
+		leave, err := e.enter(obj)
+		if err != nil {
+			return maml.Value{}, err
+		}
+		defer leave()
 		m := maml.NewOrderedMap()
 		for _, key := range obj.Keys() {
-			v, err := jsToMAML(vm, obj.Get(key))
+			v, err := e.encode(obj.Get(key))
 			if err != nil {
 				return maml.Value{}, err
 			}
@@ -101,10 +134,15 @@ func jsToMAML(vm *goja.Runtime, value goja.Value) (maml.Value, error) {
 		return maml.NewObject(m), nil
 	case reflect.Slice:
 		arr := value.ToObject(vm)
+		leave, err := e.enter(arr)
+		if err != nil {
+			return maml.Value{}, err
+		}
+		defer leave()
 		keys := arr.Keys()
 		items := make([]maml.Value, len(keys))
 		for i, key := range keys {
-			v, err := jsToMAML(vm, arr.Get(key))
+			v, err := e.encode(arr.Get(key))
 			if err != nil {
 				return maml.Value{}, err
 			}

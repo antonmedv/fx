@@ -872,6 +872,23 @@ func TestMAML(t *testing.T) {
 		assert.ErrorContains(t, err, "outside the 64-bit integer range")
 	})
 
+	t.Run("MAML.parse big integers", func(t *testing.T) {
+		result, err := vm.RunString(`const big = MAML.parse('[9007199254740991, 9007199254740993, -9223372036854775808]'); [typeof big[0], typeof big[1], String(big[1]), String(big[2])].join()`)
+		require.NoError(t, err)
+		assert.Equal(t, "number,bigint,9007199254740993,-9223372036854775808", result.String())
+	})
+
+	t.Run("MAML.stringify circular", func(t *testing.T) {
+		_, err := vm.RunString(`(() => { const a = {b: [1]}; a.b.push(a); return MAML.stringify(a) })()`)
+		assert.ErrorContains(t, err, "MAML.stringify: converting circular structure")
+	})
+
+	t.Run("MAML.stringify shared value", func(t *testing.T) {
+		result, err := vm.RunString(`(() => { const s = {x: 1}; return MAML.stringify({a: s, b: [s]}) })()`)
+		require.NoError(t, err)
+		assert.Equal(t, "{\n  a: {\n    x: 1\n  }\n  b: [\n    {\n      x: 1\n    }\n  ]\n}", result.String())
+	})
+
 	t.Run("MAML round trip", func(t *testing.T) {
 		result, err := vm.RunString(`JSON.stringify(MAML.parse(MAML.stringify({b: "x\ny", a: [{c: 1}]})))`)
 		require.NoError(t, err)
