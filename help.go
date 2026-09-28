@@ -182,33 +182,23 @@ func exit() {
 		style := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).Padding(1, 2)
 		_, _ = fmt.Fprintln(os.Stderr, style.Render(`Hello, kind human. :)
 
-This is fx speaking. I know you’re busy, and I won’t take much
-of your time.
+This is fx speaking.
 
-Every day, I quietly sit in your terminal, helping you explore
-and shape your data. No popups, no ads, quiet, helpful work.
+Most days, I quietly sit in your terminal and help you work
+with JSON. No ads, no popups, no interruptions.
 
-But today is different.
+Today, I have one small request.
 
-Today, I’m asking for something small in return. Just for today.
-
-If fx has saved you time, solved a problem, or simply made your 
-life in the terminal a little easier, please consider supporting 
-the developer who made me:
+If fx has been useful to you, please consider supporting
+the developer who keeps me alive and improving:
 
     https://github.com/sponsors/antonmedv
 
-He built fx as a passion project, shared it freely with the world, 
-and has kept improving it—all without asking much.
+Even a small contribution helps.
 
-Your support helps keep fx alive, maintained, and improving.
-Even a small donation means a lot. It shows that you care, that 
-this kind of work matters.
+That’s all. Tomorrow I’ll be quiet again.
 
-This message only appears once, on the first Tuesday of December.
-Tomorrow I’ll be silent again.
-
-Thank you for reading. And thank you for using fx.`))
+Thank you for using fx.`))
 	}
 }
 
