@@ -3,18 +3,25 @@ package html
 
 import (
 	"bytes"
+	"regexp"
 
 	nethtml "golang.org/x/net/html"
 
+	"github.com/antonmedv/fx/internal/charset"
 	"github.com/antonmedv/fx/internal/xml"
 )
 
 // ToJSON parses HTML the way a browser does and writes the document with
 // the mapping of xml.ToJSON: {"html": {"head": ..., "body": ...}}. The
 // parser lowercases names, closes void and unclosed elements and adds
-// the elements HTML implies, so a fragment ends up under "body". Blank
-// input gives no output.
+// the elements HTML implies, so a fragment ends up under "body". A byte
+// order mark or a <meta charset> in the first 1024 bytes selects the
+// charset; an unknown one is read as UTF-8. Blank input gives no output.
 func ToJSON(in []byte) ([]byte, error) {
+	in, err := decode(in)
+	if err != nil {
+		return nil, err
+	}
 	if len(bytes.TrimSpace(in)) == 0 {
 		return nil, nil
 	}
@@ -35,6 +42,33 @@ func ToJSON(in []byte) ([]byte, error) {
 	return out.Bytes(), nil
 }
 
+// reMetaCharset matches <meta charset="x"> and the charset parameter of
+// <meta http-equiv="Content-Type" content="text/html; charset=x">.
+var reMetaCharset = regexp.MustCompile(`(?i)<meta[^>]*?charset\s*=\s*["']?\s*([a-z0-9_.:-]+)`)
+
+// decode returns in as UTF-8 by its byte order mark or meta charset.
+func decode(in []byte) ([]byte, error) {
+	enc, in := charset.Sniff(in)
+	if enc == nil {
+		head := in
+		if len(head) > 1024 {
+			head = head[:1024]
+		}
+		m := reMetaCharset.FindSubmatch(head)
+		if m == nil {
+			return in, nil
+		}
+		if enc = charset.Lookup(string(m[1])); enc == nil {
+			return in, nil
+		}
+	}
+	out, err := charset.Decode(enc, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func convert(n *nethtml.Node) *xml.Element {
 	el := &xml.Element{Name: n.Data}
 	for _, a := range n.Attr {
@@ -49,7 +83,7 @@ func convert(n *nethtml.Node) *xml.Element {
 		case nethtml.ElementNode:
 			el.Children = append(el.Children, convert(c))
 		case nethtml.TextNode:
-			el.Text += c.Data
+			el.AddText(c.Data)
 		}
 	}
 	return el

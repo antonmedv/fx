@@ -1,6 +1,7 @@
 package html
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -30,6 +31,12 @@ func TestToJSON(t *testing.T) {
 		{"mixed content", `<p>Hello <b>w</b>!</p>`, `{"html":{"head":null,"body":{"p":{"b":"w","#text":"Hello !"}}}}`},
 		{"whitespace between elements", "<div>\n  <p>x</p>\n  <p>y</p>\n</div>", `{"html":{"head":null,"body":{"div":{"p":["x","y"]}}}}`},
 		{"unicode", `<p>привет 😀</p>`, `{"html":{"head":null,"body":{"p":"привет 😀"}}}`},
+		{"utf-8 bom stripped", "\xEF\xBB\xBF<p>x</p>", `{"html":{"head":null,"body":{"p":"x"}}}`},
+		{"utf-16le bom", "\xFF\xFE<\x00p\x00>\x00\xe9\x00<\x00/\x00p\x00>\x00", `{"html":{"head":null,"body":{"p":"é"}}}`},
+		{"meta charset", `<meta charset="windows-1252"><p>` + "\x93q\x94" + `</p>`, `{"html":{"head":{"meta":{"@charset":"windows-1252"}},"body":{"p":"“q”"}}}`},
+		{"meta http-equiv", `<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><p>` + "\xe9" + `</p>`, `{"html":{"head":{"meta":{"@http-equiv":"Content-Type","@content":"text/html; charset=ISO-8859-1"}},"body":{"p":"é"}}}`},
+		{"unknown meta charset read as utf-8", `<meta charset="shift_jis"><p>é</p>`, `{"html":{"head":{"meta":{"@charset":"shift_jis"}},"body":{"p":"é"}}}`},
+		{"meta charset beyond 1024 bytes ignored", `<!--` + strings.Repeat("x", 1024) + `--><meta charset="windows-1252"><p>é</p>`, `{"html":{"head":{"meta":{"@charset":"windows-1252"}},"body":{"p":"é"}}}`},
 		{"empty", ``, ``},
 		{"blank", " \n\t", ``},
 	}

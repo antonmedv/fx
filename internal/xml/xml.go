@@ -2,13 +2,15 @@
 package xml
 
 import (
-	"bufio"
 	"bytes"
 	goxml "encoding/xml"
+	"errors"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 
+	"github.com/antonmedv/fx/internal/charset"
 	"github.com/antonmedv/fx/internal/engine"
 )
 
@@ -24,11 +26,19 @@ import (
 //
 // Values stay strings; text is trimmed and whitespace between elements
 // is dropped. Names keep their namespace prefix. Comments, processing
-// instructions and the DOCTYPE are dropped.
+// instructions and the DOCTYPE are dropped, except that entities the
+// DOCTYPE declares inline are expanded. A byte order mark or the
+// declaration's encoding selects the charset.
 func ToJSON(in []byte) ([]byte, error) {
-	in = bytes.TrimPrefix(in, []byte("\xEF\xBB\xBF"))
+	enc, in := charset.Sniff(in)
+	if enc != nil {
+		var err error
+		if in, err = charset.Decode(enc, in); err != nil {
+			return nil, fmt.Errorf("xml: %w", err)
+		}
+	}
 	d := goxml.NewDecoder(bytes.NewReader(in))
-	d.CharsetReader = charsetReader
+	d.CharsetReader = charset.Reader
 	errorf := func(format string, args ...any) error {
 		line, column := d.InputPos()
 		return fmt.Errorf("xml: line %d, column %d: %s", line, column, fmt.Sprintf(format, args...))
@@ -44,6 +54,10 @@ func ToJSON(in []byte) ([]byte, error) {
 			break
 		}
 		if err != nil {
+			var syntaxErr *goxml.SyntaxError
+			if errors.As(err, &syntaxErr) {
+				return nil, errorf("%s", syntaxErr.Msg)
+			}
 			return nil, err
 		}
 		switch t := tok.(type) {
@@ -79,8 +93,9 @@ func ToJSON(in []byte) ([]byte, error) {
 				}
 				continue
 			}
-			top := stack[len(stack)-1]
-			top.Text += string(t)
+			stack[len(stack)-1].AddText(string(t))
+		case goxml.Directive:
+			declareEntities(d, t)
 		}
 	}
 	if len(stack) > 0 {
@@ -96,43 +111,24 @@ func name(n goxml.Name) string {
 	return n.Space + ":" + n.Local
 }
 
-// charsetReader decodes the encodings an XML declaration commonly names
-// without pulling in the Unicode tables of golang.org/x/text.
-func charsetReader(charset string, r io.Reader) (io.Reader, error) {
-	switch strings.ToLower(charset) {
-	case "utf-8", "utf8", "us-ascii", "ascii":
-		return r, nil
-	case "iso-8859-1", "iso8859-1", "latin1", "latin-1":
-		return &latin1Reader{r: bufio.NewReader(r)}, nil
-	}
-	return nil, fmt.Errorf("unsupported encoding %q", charset)
-}
+// reEntity matches an internal general entity declaration in a DOCTYPE:
+// <!ENTITY name "value">. Parameter (%) and external (SYSTEM, PUBLIC)
+// entities do not match.
+var reEntity = regexp.MustCompile(`<!ENTITY\s+([^\s%"'>]+)\s+(?:"([^"]*)"|'([^']*)')`)
 
-// latin1Reader re-encodes ISO-8859-1 bytes as UTF-8.
-type latin1Reader struct {
-	r *bufio.Reader
-}
-
-func (l *latin1Reader) Read(p []byte) (int, error) {
-	n := 0
-	for n+2 <= len(p) {
-		b, err := l.r.ReadByte()
-		if err != nil {
-			if n > 0 {
-				return n, nil
-			}
-			return 0, err
+// declareEntities registers the entities a DOCTYPE declares inline, so
+// the decoder expands references to them in text and attributes.
+func declareEntities(d *goxml.Decoder, directive []byte) {
+	for _, m := range reEntity.FindAllSubmatch(directive, -1) {
+		if d.Entity == nil {
+			d.Entity = map[string]string{}
 		}
-		if b < 0x80 {
-			p[n] = b
-			n++
-		} else {
-			p[n] = 0xC0 | b>>6
-			p[n+1] = 0x80 | b&0x3F
-			n += 2
+		value := m[2]
+		if value == nil {
+			value = m[3]
 		}
+		d.Entity[string(m[1])] = string(value)
 	}
-	return n, nil
 }
 
 // Element is a parsed element. The xml and html packages build this
@@ -141,12 +137,17 @@ type Element struct {
 	Name     string
 	Attrs    []Attr
 	Children []*Element
-	Text     string // character data of the element itself, untrimmed
+	text     strings.Builder
 }
 
 // Attr is an attribute of an Element.
 type Attr struct {
 	Name, Value string
+}
+
+// AddText appends character data of the element itself.
+func (e *Element) AddText(s string) {
+	e.text.WriteString(s)
 }
 
 // WriteDocument writes the root element as a JSON object with one key,
@@ -165,7 +166,7 @@ func WriteDocument(b *bytes.Buffer, root *Element) {
 // appearance (a repeated name becomes an array) and the text as "#text".
 // A repeated attribute keeps its first value.
 func (e *Element) WriteJSON(b *bytes.Buffer) {
-	text := strings.TrimSpace(e.Text)
+	text := strings.TrimSpace(e.text.String())
 	if len(e.Attrs) == 0 && len(e.Children) == 0 {
 		if text == "" {
 			b.WriteString("null")
@@ -196,23 +197,14 @@ func (e *Element) WriteJSON(b *bytes.Buffer) {
 		b.WriteString(engine.Quote(a.Value))
 	}
 
-	var names []string
-	groups := map[string][]*Element{}
-	for _, c := range e.Children {
-		if _, ok := groups[c.Name]; !ok {
-			names = append(names, c.Name)
-		}
-		groups[c.Name] = append(groups[c.Name], c)
-	}
-	for _, n := range names {
-		key(n)
-		group := groups[n]
-		if len(group) == 1 {
-			group[0].WriteJSON(b)
+	for _, g := range e.groups() {
+		key(g.name)
+		if len(g.elems) == 1 {
+			g.elems[0].WriteJSON(b)
 			continue
 		}
 		b.WriteByte('[')
-		for i, c := range group {
+		for i, c := range g.elems {
 			if i > 0 {
 				b.WriteByte(',')
 			}
@@ -226,4 +218,43 @@ func (e *Element) WriteJSON(b *bytes.Buffer) {
 		b.WriteString(engine.Quote(text))
 	}
 	b.WriteByte('}')
+}
+
+type group struct {
+	name  string
+	elems []*Element
+}
+
+// groups collects the children by name in order of first appearance. A
+// map is only worth its allocation for elements with many children.
+func (e *Element) groups() []group {
+	var groups []group
+	var index map[string]int
+	if len(e.Children) > 8 {
+		index = make(map[string]int, len(e.Children))
+	}
+	for _, c := range e.Children {
+		i := -1
+		if index != nil {
+			if j, ok := index[c.Name]; ok {
+				i = j
+			}
+		} else {
+			for j := range groups {
+				if groups[j].name == c.Name {
+					i = j
+					break
+				}
+			}
+		}
+		if i < 0 {
+			groups = append(groups, group{name: c.Name})
+			i = len(groups) - 1
+			if index != nil {
+				index[c.Name] = i
+			}
+		}
+		groups[i].elems = append(groups[i].elems, c)
+	}
+	return groups
 }
