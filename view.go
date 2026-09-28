@@ -6,13 +6,25 @@ import (
 	"strconv"
 	"strings"
 
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/antonmedv/fx/internal/ident"
 	. "github.com/antonmedv/fx/internal/jsonx"
 	"github.com/antonmedv/fx/internal/theme"
 	"github.com/antonmedv/fx/internal/utils"
 )
 
-func (m *model) View() string {
+func (m *model) View() tea.View {
+	v := tea.NewView(m.render())
+	v.AltScreen = true
+	if !m.noMouse {
+		v.MouseMode = tea.MouseModeCellMotion
+	}
+	return v
+}
+
+// render draws the screen content.
+func (m *model) render() string {
 	if m.suspending {
 		return ""
 	}

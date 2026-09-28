@@ -10,7 +10,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/mattn/go-runewidth"
 
 	"github.com/antonmedv/fx/internal/engine"
@@ -673,12 +673,10 @@ func (m *model) queryInputView() string {
 	}
 
 	var v strings.Builder
-	cursor := m.queryInput.Cursor
-	showCursor := m.queryInput.Focused() && !cursor.Blink
+	showCursor := m.queryInput.Focused()
 	for i := start; i < end; {
 		if i == pos && showCursor {
-			cursor.SetChar(string(value[i]))
-			v.WriteString(cursor.View())
+			v.WriteString(reverseStyle(string(value[i])))
 			i++
 			continue
 		}
@@ -720,7 +718,7 @@ func tokenColor(kind engine.TokenKind) theme.Color {
 // input, scrolling it like the textinput does: the window moves only as far
 // as needed to keep the cursor visible.
 func (m *model) queryInputWindow(value []rune, pos int) (start, end int) {
-	width := m.queryInput.Width
+	width := m.queryInput.Width()
 	if width <= 0 || runewidth.StringWidth(string(value)) <= width {
 		m.queryInputOffset = 0
 		return 0, len(value)

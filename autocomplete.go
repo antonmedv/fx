@@ -8,7 +8,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/mattn/go-runewidth"
 
 	"github.com/antonmedv/fx/internal/complete"
@@ -387,7 +387,7 @@ func (m *model) completionGridView() []string {
 func (m *model) ghostView(shown []rune, showCursor bool) string {
 	ghost := []rune(m.completionGhost())
 	room := len(ghost)
-	if width := m.queryInput.Width; width > 0 {
+	if width := m.queryInput.Width(); width > 0 {
 		room = width - runewidth.StringWidth(string(shown))
 	}
 	var v strings.Builder
@@ -398,9 +398,7 @@ func (m *model) ghostView(shown []rune, showCursor bool) string {
 		room -= runewidth.StringWidth(char)
 	}
 	if showCursor {
-		cursor := m.queryInput.Cursor
-		cursor.SetChar(char)
-		v.WriteString(cursor.View())
+		v.WriteString(reverseStyle(char))
 	} else if char != " " {
 		v.WriteString(theme.CurrentTheme.Preview(char))
 	}

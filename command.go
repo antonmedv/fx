@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/mattn/go-runewidth"
 )
 
@@ -174,10 +174,10 @@ func (m *model) ask(prompt string, yes func() tea.Cmd) tea.Cmd {
 	return nil
 }
 
-func (m *model) handleConfirmKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *model) handleConfirmKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	c := m.confirm
 	m.confirm = nil
-	if msg.Type == tea.KeyRunes && (msg.String() == "y" || msg.String() == "Y") {
+	if msg.Text == "y" || msg.Text == "Y" {
 		return m, c.yes()
 	}
 	return m, nil

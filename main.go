@@ -15,13 +15,13 @@ import (
 	"strconv"
 	"strings"
 
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/textinput"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/antonmedv/clipboard"
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/mattn/go-isatty"
 
 	"github.com/antonmedv/fx/internal/complete"
@@ -278,17 +278,13 @@ func main() {
 		spinner:             spinnerModel,
 	}
 
-	lipgloss.SetColorProfile(theme.TermOutput.ColorProfile())
-
-	withMouse := tea.WithMouseCellMotion()
 	if _, ok := os.LookupEnv("FX_NO_MOUSE"); ok {
-		withMouse = tea.WithAltScreen()
+		m.noMouse = true
 	}
 
 	p := tea.NewProgram(m,
-		tea.WithAltScreen(),
-		withMouse,
 		tea.WithOutput(os.Stderr),
+		tea.WithColorProfile(theme.Profile),
 	)
 
 	m.rawModeOnEOF = !stdinIsTty
@@ -319,6 +315,7 @@ type model struct {
 	showShowSelector      bool
 	showSizes             bool
 	showLineNumbers       bool
+	noMouse               bool // FX_NO_MOUSE: leave the mouse to the terminal
 	fileName              string
 	queryInput            textinput.Model
 	queryInputOffset      int        // first rune of the query shown, when it is wider than the input
@@ -415,10 +412,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.termWidth = msg.Width
 		m.termHeight = msg.Height
-		m.help.Width = m.termWidth
-		m.help.Height = m.termHeight - 1
-		m.preview.Width = m.termWidth
-		m.preview.Height = m.termHeight - 1
+		m.help.SetWidth(m.termWidth)
+		m.help.SetHeight(m.termHeight - 1)
+		m.preview.SetWidth(m.termWidth)
+		m.preview.SetHeight(m.termHeight - 1)
 		Wrap(m.top, m.viewWidth())
 		m.redoSearch()
 
@@ -524,22 +521,22 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
-	case tea.MouseMsg:
-		if m.confirm != nil {
-			return m, nil // Only a key answers the question.
+	case tea.MouseWheelMsg:
+		if !m.mouseEvent(msg) {
+			return m, nil
 		}
-		m.reloadPos = nil // The user moved on, don't jump back.
-		m.message = nil
-		m.handlePendingDelete(msg)
-
-		switch {
-		case msg.Button == tea.MouseButtonWheelUp:
+		switch msg.Button {
+		case tea.MouseWheelUp:
 			m.up()
-
-		case msg.Button == tea.MouseButtonWheelDown:
+		case tea.MouseWheelDown:
 			m.down()
+		}
 
-		case msg.Button == tea.MouseButtonLeft && msg.Action == tea.MouseActionPress:
+	case tea.MouseClickMsg:
+		if !m.mouseEvent(msg) {
+			return m, nil
+		}
+		if msg.Button == tea.MouseLeft {
 			m.showCursor = true
 			if msg.Y < m.viewHeight() {
 				if m.cursor == msg.Y {
@@ -573,7 +570,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		m.message = nil
 		// Quit on Ctrl-C, no matter what.
 		if key.Matches(msg, ctrlC) {
@@ -606,10 +603,22 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *model) handleQueryKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+// mouseEvent does the bookkeeping shared by all mouse messages and reports
+// whether the event should be handled. A pending question swallows it.
+func (m *model) mouseEvent(msg tea.Msg) bool {
+	if m.confirm != nil {
+		return false // Only a key answers the question.
+	}
+	m.reloadPos = nil // The user moved on, don't jump back.
+	m.message = nil
+	m.handlePendingDelete(msg)
+	return true
+}
+
+func (m *model) handleQueryKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch {
-	case msg.Type == tea.KeyEscape:
+	case msg.Code == tea.KeyEscape:
 		// Cancel like search: drop the query and restore the original.
 		m.showCursor = true
 		m.queryInput.Blur()
@@ -618,7 +627,7 @@ func (m *model) handleQueryKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.queryInput.SetValue("")
 		cmd = m.clearQuery()
 
-	case msg.Type == tea.KeyEnter:
+	case msg.Code == tea.KeyEnter:
 		m.showCursor = true
 		m.queryInput.Blur()
 		m.cancelPreview()
@@ -626,22 +635,22 @@ func (m *model) handleQueryKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.addQueryHistory(m.queryInput.Value())
 		cmd = m.doQuery(m.queryInput.Value())
 
-	case msg.Type == tea.KeyUp:
+	case msg.Code == tea.KeyUp:
 		m.queryHistoryPrev()
 		cmd = m.updateCompletion()
 
-	case msg.Type == tea.KeyDown:
+	case msg.Code == tea.KeyDown:
 		m.queryHistoryNext()
 		cmd = m.updateCompletion()
 
-	case msg.Type == tea.KeyTab:
+	case msg.Code == tea.KeyTab:
 		cmd = m.completeKey(+1)
 
-	case msg.Type == tea.KeyShiftTab:
+	case msg.String() == "shift+tab":
 		cmd = m.completeKey(-1)
 
 	default:
-		if msg.Type == tea.KeyRight || msg.Type == tea.KeyEnd || msg.Type == tea.KeyCtrlE {
+		if msg.Code == tea.KeyRight || msg.Code == tea.KeyEnd || msg.String() == "ctrl+e" {
 			if cmd, ok := m.acceptGhost(); ok {
 				return m, cmd
 			}
@@ -660,7 +669,7 @@ func (m *model) handleQueryKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m *model) handleHelpKey(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
-	if msg, ok := msg.(tea.KeyMsg); ok {
+	if msg, ok := msg.(tea.KeyPressMsg); ok {
 		switch {
 		case key.Matches(msg, keyMap.Quit), key.Matches(msg, keyMap.Help), key.Matches(msg, escKey):
 			m.showHelp = false
@@ -670,15 +679,15 @@ func (m *model) handleHelpKey(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m *model) handleCommandKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *model) handleCommandKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch {
-	case msg.Type == tea.KeyEscape:
+	case msg.Code == tea.KeyEscape:
 		m.commandInput.Blur()
 		m.commandInput.SetValue("")
 		m.showCursor = true
 
-	case msg.Type == tea.KeyEnter:
+	case msg.Code == tea.KeyEnter:
 		m.commandInput.Blur()
 		command := m.commandInput.Value()
 		m.commandInput.SetValue("")
@@ -690,17 +699,17 @@ func (m *model) handleCommandKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m *model) handleSearchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *model) handleSearchKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch {
-	case msg.Type == tea.KeyEscape:
+	case msg.Code == tea.KeyEscape:
 		m.cancelSearch()
 		m.search = newSearch()
 		m.searchInput.Blur()
 		m.searchInput.SetValue("")
 		m.showCursor = true
 
-	case msg.Type == tea.KeyEnter:
+	case msg.Code == tea.KeyEnter:
 		m.searchInput.Blur()
 		m.cancelSearch()
 		m.search = newSearch()
@@ -712,9 +721,9 @@ func (m *model) handleSearchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m *model) handleGotoSymbolKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *model) handleGotoSymbolKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
-	switch msg.Type {
+	switch msg.Code {
 	case tea.KeyEscape, tea.KeyEnter, tea.KeyUp, tea.KeyDown:
 		m.gotoSymbolInput.Blur()
 		m.gotoSymbolInput.SetValue("")
@@ -730,7 +739,7 @@ func (m *model) handleGotoSymbolKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	switch msg.Type {
+	switch msg.Code {
 	case tea.KeyUp:
 		m.up()
 
@@ -741,7 +750,7 @@ func (m *model) handleGotoSymbolKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m *model) handleYankKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *model) handleYankKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, yankPath):
 		_ = clipboard.WriteAll(m.cursorPath())
@@ -759,7 +768,7 @@ func (m *model) handleYankKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *model) handleShowSelectorKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *model) handleShowSelectorKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, showSizes):
 		m.showSizes = !m.showSizes
@@ -774,7 +783,7 @@ func (m *model) handleShowSelectorKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m *model) handlePendingDelete(msg tea.Msg) {
 	// Handle potential 'dd' sequence for delete
 	if m.deletePending {
-		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+		if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
 			if key.Matches(keyMsg, keyMap.Delete) {
 				m.deleteAtCursor()
 				m.deletePending = true
@@ -785,7 +794,7 @@ func (m *model) handlePendingDelete(msg tea.Msg) {
 	}
 }
 
-func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	m.reloadPos = nil // The user moved on, don't jump back.
 	m.handlePendingDelete(msg)
 
@@ -1057,7 +1066,7 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keyMap.GotoSymbol):
 		m.gotoSymbolInput.CursorEnd()
-		m.gotoSymbolInput.Width = m.termWidth - 2 // -1 for the prompt, -1 for the cursor
+		m.gotoSymbolInput.SetWidth(m.termWidth - 2) // -1 for the prompt, -1 for the cursor
 		m.gotoSymbolInput.Focus()
 		m.createKeysIndex()
 
@@ -1077,12 +1086,12 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keyMap.CommandLine):
 		m.commandInput.CursorEnd()
-		m.commandInput.Width = m.termWidth - 2 // -1 for the prompt, -1 for the cursor
+		m.commandInput.SetWidth(m.termWidth - 2) // -1 for the prompt, -1 for the cursor
 		m.commandInput.Focus()
 
 	case key.Matches(msg, keyMap.Search):
 		m.searchInput.CursorEnd()
-		m.searchInput.Width = m.termWidth - 2 // -1 for the prompt, -1 for the cursor
+		m.searchInput.SetWidth(m.termWidth - 2) // -1 for the prompt, -1 for the cursor
 		m.searchInput.Focus()
 
 	case key.Matches(msg, keyMap.SearchNext):
@@ -1124,7 +1133,7 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keyMap.Query):
 		m.showCursor = false
 		m.queryInput.CursorEnd()
-		m.queryInput.Width = m.termWidth - 1 // -1 for the cursor
+		m.queryInput.SetWidth(m.termWidth - 1) // -1 for the cursor
 		if m.queryInput.Value() == "" {
 			m.queryInput.SetValue(".")
 		}

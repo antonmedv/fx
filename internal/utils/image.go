@@ -9,7 +9,7 @@ import (
 	_ "image/png"
 	"io"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/nfnt/resize"
 )
 

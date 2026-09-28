@@ -4,17 +4,15 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/x/exp/teatest"
-	"github.com/muesli/termenv"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/exp/teatest/v2"
 	"github.com/stretchr/testify/require"
 
 	. "github.com/antonmedv/fx/internal/jsonx"
 )
 
 func init() {
-	lipgloss.SetColorProfile(termenv.ANSI)
 }
 
 func TestGotoLine(t *testing.T) {

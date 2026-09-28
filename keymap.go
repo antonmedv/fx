@@ -1,6 +1,6 @@
 package main
 
-import "github.com/charmbracelet/bubbles/key"
+import "charm.land/bubbles/v2/key"
 
 type KeyMap struct {
 	Up                  key.Binding `category:"Navigation"`
@@ -58,7 +58,7 @@ func init() {
 			key.WithHelp("", "suspend program"),
 		),
 		PageDown: key.NewBinding(
-			key.WithKeys("pgdown", " ", "f"),
+			key.WithKeys("pgdown", "space", "f"),
 			key.WithHelp("pgdown, space, f", "page down"),
 		),
 		PageUp: key.NewBinding(
