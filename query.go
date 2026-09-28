@@ -286,7 +286,7 @@ func (m *model) appendResult(node *Node) {
 
 // appendText attaches text lines (errors, println output) to the result view.
 func (m *model) appendText(text string, isErr bool) {
-	for _, line := range strings.Split(strings.Trim(text, "\n"), "\n") {
+	for _, line := range strings.Split(strings.TrimRight(text, "\n"), "\n") {
 		m.totalLines++
 		node := &Node{Kind: Err, Value: line, LineNumber: m.totalLines}
 		if isErr {

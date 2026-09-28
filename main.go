@@ -1371,8 +1371,6 @@ func (m *model) prettyPrint(node *Node, isSelected, isRef bool) string {
 
 	if isSelected {
 		style = theme.CurrentTheme.Cursor
-	} else if m.isQueryError(node) {
-		style = theme.CurrentTheme.Error
 	} else {
 		style = theme.Value(node.Kind)
 	}

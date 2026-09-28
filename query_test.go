@@ -508,7 +508,7 @@ func TestQuery_ErrorStopsAndIsShownBelowResults(t *testing.T) {
 	require.False(t, m.isQueryError(m.top))
 	errLine := m.top.Next.Next
 	require.True(t, m.isQueryError(errLine))
-	require.Equal(t, theme.CurrentTheme.Error(errLine.Value), m.prettyPrint(errLine, false, false))
+	require.Equal(t, errLine.Value, m.prettyPrint(errLine, false, false), "errors are shown as plain text")
 
 	// The query is kept for fixing.
 	typeKeys(m, ".")
