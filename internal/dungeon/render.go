@@ -5,12 +5,14 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 )
 
 var (
 	wallColor   = rgb{0.78, 0.72, 0.66}
 	floorColor  = rgb{0.75, 0.7, 0.62}
 	memoryColor = rgb{0.2, 0.22, 0.32}
+	glow        = 0.14 // how much of the light tints the floor
 )
 
 var itemLook = map[itemKind]struct {
@@ -36,6 +38,31 @@ func (g *game) render() string {
 	if g.width == 0 {
 		return ""
 	}
+	return frame(g.screen(), g.width, g.height)
+}
+
+// frame paints the whole window black, whatever the terminal's own colors.
+func frame(s string, width, height int) string {
+	const paint = "\x1b[0;38;2;217;217;217;48;2;0;0;0m" // light gray on black
+	lines := strings.Split(s, "\n")
+	var sb strings.Builder
+	for i := range height {
+		line := ""
+		if i < len(lines) {
+			line = ansi.Truncate(lines[i], width, "")
+		}
+		sb.WriteString(paint)
+		sb.WriteString(line)
+		sb.WriteString(strings.Repeat(" ", width-ansi.StringWidth(line)))
+		sb.WriteString("\x1b[0m")
+		if i < height-1 {
+			sb.WriteByte('\n')
+		}
+	}
+	return sb.String()
+}
+
+func (g *game) screen() string {
 	if g.width < 40 || g.height < 12 {
 		return "The dungeon needs a bigger terminal."
 	}
@@ -51,10 +78,10 @@ func (g *game) render() string {
 	var p pen
 	for sy := range viewH {
 		for sx := range g.width {
-			ch, fg := g.cell(ox+sx, oy+sy)
-			p.draw(&sb, ch, fg)
+			ch, fg, bg := g.cell(ox+sx, oy+sy)
+			p.draw(&sb, ch, fg, bg)
 		}
-		p.reset(&sb)
+		p = pen{} // frame starts every line afresh
 		sb.WriteByte('\n')
 	}
 	g.status(&sb, &p)
@@ -77,7 +104,8 @@ func (g *game) render() string {
 			c = rgb{0.5, 0.5, 0.5} // the older message
 		}
 		sb.WriteByte('\n')
-		p.text(&sb, truncate(line, g.width), c)
+		p = pen{} // frame starts every line afresh
+		p.text(&sb, line, c)
 	}
 	return sb.String()
 }
@@ -90,10 +118,12 @@ func camera(pos, view, world int) int {
 	return min(max(pos-view/2, 0), world-view)
 }
 
-func (g *game) cell(x, y int) (rune, rgb) {
+// cell returns the glyph at (x, y) and its colors. Lit floor glows faintly
+// in the color of the light falling on it.
+func (g *game) cell(x, y int) (ch rune, fg, bg rgb) {
 	l := g.lvl
 	if !l.in(x, y) {
-		return ' ', rgb{}
+		return ' ', rgb{}, bg
 	}
 	i := l.idx(x, y)
 	t := l.at(x, y)
@@ -101,45 +131,48 @@ func (g *game) cell(x, y int) (rune, rgb) {
 	if g.visible[i] && lum.brightness() > threshold {
 		lum = tone(lum)
 		k := lum.brightness()
+		if t != wall {
+			bg = lum.scale(glow)
+		}
 		if x == g.p.x && y == g.p.y {
-			return '@', rgb{1, 1, 0.9}
+			return '@', rgb{1, 1, 0.9}, bg
 		}
 		if m := l.monsterAt(x, y); m != nil {
-			return m.glyph, m.color.scale(max(k, 0.55))
+			return m.glyph, m.color.scale(max(k, 0.55)), bg
 		}
 		if it := l.itemAt(x, y); it != nil {
 			look := itemLook[it.kind]
-			return look.glyph, look.color.scale(max(k, 0.5))
+			return look.glyph, look.color.scale(max(k, 0.5)), bg
 		}
 		switch t {
 		case wall:
-			return '#', wallColor.mul(lum).add(memoryColor.scale(1 - k))
+			return '#', wallColor.mul(lum).add(memoryColor.scale(1 - k)), bg
 		case stairs:
-			return '>', rgb{1, 1, 1}.scale(max(k, 0.6))
+			return '>', rgb{1, 1, 1}.scale(max(k, 0.6)), bg
 		case brazier:
-			return 'Ω', rgb{1, 0.65, 0.25}.scale(0.8 + 0.2*k)
+			return 'Ω', rgb{1, 0.65, 0.25}.scale(0.8 + 0.2*k), bg
 		case crystal:
-			return '*', rgb{0.55, 0.8, 1}.scale(0.8 + 0.2*k)
+			return '*', rgb{0.55, 0.8, 1}.scale(0.8 + 0.2*k), bg
 		}
-		return '.', floorColor.mul(lum).add(memoryColor.scale(1 - k))
+		return '.', floorColor.mul(lum).add(memoryColor.scale(1 - k)), bg
 	}
 	if !l.seen[i] {
-		return ' ', rgb{}
+		return ' ', rgb{}, bg
 	}
 	if it := l.itemAt(x, y); it != nil {
-		return itemLook[it.kind].glyph, memoryColor
+		return itemLook[it.kind].glyph, memoryColor, bg
 	}
 	switch t {
 	case wall:
-		return '#', memoryColor
+		return '#', memoryColor, bg
 	case stairs:
-		return '>', memoryColor.scale(1.6)
+		return '>', memoryColor.scale(1.6), bg
 	case brazier:
-		return 'Ω', memoryColor
+		return 'Ω', memoryColor, bg
 	case crystal:
-		return '*', memoryColor
+		return '*', memoryColor, bg
 	}
-	return '.', memoryColor
+	return '.', memoryColor, bg
 }
 
 func (g *game) status(sb *strings.Builder, p *pen) {
@@ -167,18 +200,11 @@ func bar(v, total, width int) string {
 	return strings.Repeat("█", n) + strings.Repeat("░", width-n)
 }
 
-func truncate(s string, width int) string {
-	r := []rune(s)
-	if len(r) > width {
-		return string(r[:width])
-	}
-	return s
-}
-
-// pen writes truecolor escape codes only when the color changes.
+// pen writes truecolor escape codes only when the colors change. Its zero
+// value matches the start of a line painted by frame: black background.
 type pen struct {
-	fg    [3]uint8
-	dirty bool // fg is set
+	fg, bg [3]uint8
+	hasFg  bool
 }
 
 func to8(c rgb) [3]uint8 {
@@ -187,13 +213,21 @@ func to8(c rgb) [3]uint8 {
 }
 
 func (p *pen) color(sb *strings.Builder, fg rgb) {
-	if c := to8(fg); !p.dirty || c != p.fg {
+	if c := to8(fg); !p.hasFg || c != p.fg {
 		fmt.Fprintf(sb, "\x1b[38;2;%d;%d;%dm", c[0], c[1], c[2])
-		p.fg, p.dirty = c, true
+		p.fg, p.hasFg = c, true
 	}
 }
 
-func (p *pen) draw(sb *strings.Builder, ch rune, fg rgb) {
+func (p *pen) background(sb *strings.Builder, bg rgb) {
+	if c := to8(bg); c != p.bg {
+		fmt.Fprintf(sb, "\x1b[48;2;%d;%d;%dm", c[0], c[1], c[2])
+		p.bg = c
+	}
+}
+
+func (p *pen) draw(sb *strings.Builder, ch rune, fg, bg rgb) {
+	p.background(sb, bg)
 	if ch != ' ' {
 		p.color(sb, fg)
 	}
@@ -201,15 +235,9 @@ func (p *pen) draw(sb *strings.Builder, ch rune, fg rgb) {
 }
 
 func (p *pen) text(sb *strings.Builder, s string, fg rgb) {
+	p.background(sb, rgb{})
 	p.color(sb, fg)
 	sb.WriteString(s)
-}
-
-func (p *pen) reset(sb *strings.Builder) {
-	if p.dirty {
-		sb.WriteString("\x1b[0m")
-	}
-	*p = pen{}
 }
 
 const help = `

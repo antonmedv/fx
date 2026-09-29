@@ -278,6 +278,9 @@ func (g *game) attack(m *monster) {
 }
 
 func (g *game) endTurn() {
+	if g.over {
+		return // nothing moves after the Golden Brace is taken
+	}
 	g.turn++
 	if g.p.fuel > 0 {
 		g.p.fuel--

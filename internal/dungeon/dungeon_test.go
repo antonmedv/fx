@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/require"
 )
 
@@ -211,12 +212,40 @@ func TestRenderSizes(t *testing.T) {
 	for _, size := range [][2]int{{0, 0}, {20, 5}, {40, 12}, {80, 24}, {300, 100}} {
 		g.Update(tea.WindowSizeMsg{Width: size[0], Height: size[1]})
 		out := g.render()
-		if size[0] >= 40 {
-			require.Len(t, strings.Split(out, "\n"), size[1])
+		if size[0] == 0 {
+			require.Empty(t, out)
+			continue
+		}
+		lines := strings.Split(out, "\n")
+		require.Len(t, lines, size[1])
+		for _, line := range lines {
+			require.Contains(t, line, "48;2;0;0;0m", "black background")
+			require.Equal(t, size[0], ansi.StringWidth(line), "fills the width")
 		}
 	}
 	press(g, "?")
 	require.Contains(t, g.render(), "Golden Brace")
 	press(g, "x")
 	require.False(t, g.showHelp)
+}
+
+func TestWinningEndsTheGame(t *testing.T) {
+	g := newGame(4)
+	for g.depth < maxDepth {
+		g.descend()
+	}
+	var b *item
+	for _, it := range g.lvl.items {
+		if it.kind == brace {
+			b = it
+		}
+	}
+	require.NotNil(t, b)
+	g.lvl.monsters = []*monster{{kind: dragon, x: b.x + 1, y: b.y, hp: 1000, awake: true}}
+	g.p.x, g.p.y = b.x-1, b.y
+	g.p.hp = 1
+	g.lvl.set(g.p.x, g.p.y, floor)
+	g.move(1, 0)
+	require.True(t, g.won)
+	require.Equal(t, 1, g.p.hp, "the dragon does not strike after the win")
 }
