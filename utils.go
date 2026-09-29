@@ -49,7 +49,6 @@ const (
 	actionVersion
 	actionThemes
 	actionExportThemes
-	actionGameOfLife
 	actionDungeon
 )
 
@@ -78,8 +77,6 @@ func parseFlags(argv []string) (args []string, act action, err error) {
 			return nil, actionThemes, nil
 		case "--export-themes":
 			return nil, actionExportThemes, nil
-		case "--game-of-life":
-			return nil, actionGameOfLife, nil
 		case "--dungeon":
 			return nil, actionDungeon, nil
 		case "--raw", "-r":

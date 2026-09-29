@@ -36,7 +36,7 @@ func usage() string {
 %v    --strict              strict mode
     --no-inline           disable inlining in output
     --no-tui              print output instead of the viewer
-    --game-of-life        play the game of life
+    --dungeon             play the dungeon
 
   %v
     https://fx.wtf

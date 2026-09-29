@@ -112,9 +112,6 @@ func main() {
 	case actionExportThemes:
 		theme.ExportThemes()
 		return
-	case actionGameOfLife:
-		utils.GameOfLife()
-		return
 	case actionDungeon:
 		if err := dungeon.Run(); err != nil {
 			fmt.Fprintln(os.Stderr, "Error:", err)

@@ -47,7 +47,6 @@ func TestParseFlags(t *testing.T) {
 		{name: "version", argv: []string{"--version"}, action: actionVersion},
 		{name: "themes", argv: []string{"--themes"}, action: actionThemes},
 		{name: "export themes", argv: []string{"--export-themes"}, action: actionExportThemes},
-		{name: "game of life", argv: []string{"--game-of-life"}, action: actionGameOfLife},
 		{name: "dungeon", argv: []string{"--dungeon"}, action: actionDungeon},
 	}
 	for _, tt := range tests {
