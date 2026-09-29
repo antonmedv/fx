@@ -1,14 +1,29 @@
 name: fx
-version: 39.2.0
-summary: Terminal JSON viewer
-description: Terminal JSON viewer
-base: core20
+summary: Terminal JSON viewer & processor
+description: |
+  Terminal JSON viewer & processor. Supports JSON, YAML, TOML, EDN and XML.
+  Interactive TUI with search, JavaScript queries and in-place editing.
+
+  This snap is strictly confined. It reads files under $HOME, and under
+  /media, /mnt and /run/media once the removable-media interface is connected:
+
+      sudo snap connect fx:removable-media
+
+  For files elsewhere (/etc, /var, /srv, /opt, ...) pipe them in:
+
+      sudo cat /etc/foo.json | fx
+
+  Other install methods (Homebrew, GitHub release binaries, go install) have
+  no such restriction: https://github.com/antonmedv/fx
+adopt-info: fx
+base: core24
 grade: stable
 confinement: strict
-architectures:
-  - build-on: armhf
-  - build-on: amd64
-  - build-on: arm64
+
+platforms:
+  amd64:
+  arm64:
+  armhf:
 
 plugs:
   dot-fxrc-js:
@@ -19,12 +34,17 @@ plugs:
 apps:
   fx:
     command: bin/fx
-    plugs: [ dot-fxrc-js, home, network ]
+    plugs: [dot-fxrc-js, home, removable-media, x11, wayland]
 
 parts:
   fx:
     plugin: go
-    source: https://github.com/antonmedv/fx.git
-    source-type: git
-    stage-snaps:
-      - node/18/stable
+    source: .
+    build-snaps:
+      - go/1.26/stable
+    stage-packages: # yank: fx execs wl-copy / xclip; host binaries invisible to strict snap
+      - wl-clipboard
+      - xclip
+    override-pull: |
+      craftctl default
+      craftctl set version="$(git -C "$CRAFT_PROJECT_DIR" describe --tags --abbrev=0)"

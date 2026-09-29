@@ -6,14 +6,10 @@ jobs:
   snap:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: master
-
-      - name: Set up Go
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.21
+          fetch-depth: 0 # tags, for `git describe` in snapcraft.yaml
 
       - uses: snapcore/action-build@v1
         id: build
