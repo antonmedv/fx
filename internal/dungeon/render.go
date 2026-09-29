@@ -243,7 +243,7 @@ func (p *pen) text(sb *strings.Builder, s string, fg rgb) {
 const help = `
   fx dungeon
 
-  Find the Golden Brace { on depth 8 and escape the Stack Overflow dragon.
+  Find the Golden Brace { on depth 8 and escape the dragon.
 
   Move        arrows, hjkl, wasd; yubn for diagonals
   Attack      walk into a monster
@@ -257,6 +257,8 @@ const help = `
 
   Your torch burns down as you walk; its light shrinks with it.
   Monsters in the dark stay hidden until light falls on them.
+  You heal slowly over time, but the torch keeps burning.
+  Bats and NaNs are fast: you cannot outrun them.
 
   Press any key to return.
 `

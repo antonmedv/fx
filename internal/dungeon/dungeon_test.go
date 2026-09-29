@@ -249,3 +249,48 @@ func TestWinningEndsTheGame(t *testing.T) {
 	require.True(t, g.won)
 	require.Equal(t, 1, g.p.hp, "the dragon does not strike after the win")
 }
+
+func TestMonstersGrowWithDepth(t *testing.T) {
+	k := bestiary[0]
+	home := spawn(k, 0, 0, k.minDepth)
+	deep := spawn(k, 0, 0, k.minDepth+4)
+	require.Equal(t, k.hp, home.hp)
+	require.Zero(t, home.bonus)
+	require.Greater(t, deep.hp, home.hp)
+	require.Positive(t, deep.bonus)
+}
+
+func TestFastMonstersActTwice(t *testing.T) {
+	g := newGame(5)
+	g.lvl.monsters = nil
+	straight := func() bool {
+		for dx := range 4 {
+			if g.lvl.at(g.p.x+dx, g.p.y) != floor {
+				return false
+			}
+		}
+		return true
+	}
+	for !straight() {
+		g.p.x--
+		require.Positive(t, g.p.x, "no straight run of floor")
+	}
+	var fast *kind
+	for _, k := range bestiary {
+		if k.fast {
+			fast = k
+			break
+		}
+	}
+	m := spawn(fast, g.p.x+3, g.p.y, fast.minDepth)
+	g.lvl.monsters = []*monster{m}
+	g.look()
+
+	for !m.awake {
+		g.monstersAct()
+	}
+	require.Equal(t, g.p.x+3, m.x, "waking up takes the whole turn")
+
+	g.monstersAct()
+	require.Equal(t, g.p.x+1, m.x, "two steps in one turn")
+}

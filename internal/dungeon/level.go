@@ -290,7 +290,7 @@ func (l *level) populate(r *rand.Rand, depth, exitX, exitY int) {
 		}
 		if x, y, ok := l.free(r, room); ok {
 			k := kinds[r.IntN(len(kinds))]
-			l.monsters = append(l.monsters, &monster{kind: k, x: x, y: y, hp: k.hp})
+			l.monsters = append(l.monsters, spawn(k, x, y, depth))
 		}
 	}
 	if depth == maxDepth {
@@ -298,7 +298,7 @@ func (l *level) populate(r *rand.Rand, depth, exitX, exitY int) {
 		for _, d := range dirs8 {
 			x, y := exitX+d[0], exitY+d[1]
 			if l.at(x, y) == floor && l.monsterAt(x, y) == nil {
-				l.monsters = append(l.monsters, &monster{kind: dragon, x: x, y: y, hp: dragon.hp})
+				l.monsters = append(l.monsters, spawn(dragon, x, y, depth))
 				break
 			}
 		}
@@ -313,7 +313,7 @@ func (l *level) populate(r *rand.Rand, depth, exitX, exitY int) {
 	}
 	drop(potion, 1+r.IntN(2))
 	drop(gold, 3+r.IntN(3))
-	drop(torch, 1+r.IntN(2))
+	drop(torch, r.IntN(2))
 	if r.Float64() < 0.4 {
 		drop(weapon, 1)
 	}

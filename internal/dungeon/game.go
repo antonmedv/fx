@@ -15,24 +15,33 @@ type kind struct {
 	color              rgb
 	hp, atk, def, xp   int
 	minDepth, maxDepth int
+	fast               bool // acts twice a turn: no outrunning it
 }
 
 var bestiary = []*kind{
-	{"rat", 'r', rgb{0.7, 0.55, 0.4}, 3, 2, 0, 1, 1, 3},
-	{"null", 'n', rgb{0.75, 0.75, 0.85}, 4, 2, 0, 2, 1, 4},
-	{"goblin", 'g', rgb{0.4, 0.85, 0.3}, 7, 3, 1, 3, 2, 6},
-	{"undefined", 'u', rgb{0.8, 0.4, 0.9}, 9, 4, 1, 5, 3, 7},
-	{"orc", 'o', rgb{0.3, 0.7, 0.35}, 13, 5, 2, 7, 4, 8},
-	{"NaN", 'N', rgb{1, 0.35, 0.35}, 15, 6, 2, 9, 5, 8},
-	{"troll", 'T', rgb{0.55, 0.75, 0.4}, 24, 7, 3, 14, 6, 8},
+	{"rat", 'r', rgb{0.7, 0.55, 0.4}, 3, 2, 0, 1, 1, 3, false},
+	{"null", 'n', rgb{0.75, 0.75, 0.85}, 4, 2, 0, 2, 1, 4, false},
+	{"bat", 'b', rgb{0.6, 0.5, 0.7}, 4, 2, 0, 3, 2, 5, true},
+	{"goblin", 'g', rgb{0.4, 0.85, 0.3}, 7, 3, 1, 3, 2, 6, false},
+	{"undefined", 'u', rgb{0.8, 0.4, 0.9}, 9, 4, 1, 5, 3, 7, false},
+	{"orc", 'o', rgb{0.3, 0.7, 0.35}, 13, 5, 2, 7, 4, 8, false},
+	{"NaN", 'N', rgb{1, 0.35, 0.35}, 12, 5, 1, 9, 5, 8, true},
+	{"troll", 'T', rgb{0.55, 0.75, 0.4}, 24, 7, 3, 14, 6, 8, false},
 }
 
-var dragon = &kind{"Stack Overflow dragon", 'D', rgb{1, 0.3, 0.1}, 45, 9, 4, 50, maxDepth, maxDepth}
+var dragon = &kind{"Dragon", 'D', rgb{1, 0.3, 0.1}, 45, 9, 4, 50, maxDepth, maxDepth, false}
 
 type monster struct {
 	*kind
 	x, y, hp int
+	bonus    int // attack on top of the kind's, from depth
 	awake    bool
+}
+
+// spawn makes a monster that grows tougher the deeper below its home it is.
+func spawn(k *kind, x, y, depth int) *monster {
+	extra := depth - k.minDepth
+	return &monster{kind: k, x: x, y: y, hp: k.hp + extra*k.hp/5, bonus: extra / 3}
 }
 
 type itemKind int
@@ -67,6 +76,7 @@ const (
 	maxFuel     = 900
 	fullTorch   = 500 // fuel at which the torch burns at full radius
 	threshold   = 0.035
+	regenTurns  = 20 // turns per hit point healed; resting burns the torch
 )
 
 type tickMsg struct{}
@@ -223,14 +233,14 @@ func (g *game) pickup() {
 	}
 	switch it.kind {
 	case potion:
-		heal := 8 + g.depth
+		heal := 6 + g.depth
 		g.p.hp = min(g.p.maxHP, g.p.hp+heal)
 		g.log("You drink a potion. You feel better.")
 	case gold:
 		g.p.gold += it.amount
 		g.log("You pick up %d gold.", it.amount)
 	case torch:
-		g.p.fuel = min(maxFuel, g.p.fuel+300)
+		g.p.fuel = min(maxFuel, g.p.fuel+250)
 		g.log("You light a fresh torch.")
 	case weapon:
 		g.p.atk++
@@ -267,8 +277,8 @@ func (g *game) attack(m *monster) {
 	for g.p.xp >= g.p.level*10 {
 		g.p.xp -= g.p.level * 10
 		g.p.level++
-		g.p.maxHP += 5
-		g.p.hp = g.p.maxHP
+		g.p.maxHP += 4
+		g.p.hp = min(g.p.maxHP, g.p.hp+g.p.maxHP/2)
 		g.p.atk++
 		if g.p.level%2 == 1 {
 			g.p.def++
@@ -291,7 +301,7 @@ func (g *game) endTurn() {
 			g.log("Your torch burns out. Only embers remain.")
 		}
 	}
-	if g.turn%12 == 0 && g.p.hp < g.p.maxHP {
+	if g.turn%regenTurns == 0 && g.p.hp < g.p.maxHP {
 		g.p.hp++
 	}
 	g.look()
@@ -360,47 +370,58 @@ func (g *game) lit(i int) bool {
 }
 
 func (g *game) monstersAct() {
-	l := g.lvl
-	dist := l.distances(g.p.x, g.p.y)
-	for _, m := range l.monsters {
-		i := l.idx(m.x, m.y)
-		if !m.awake {
-			if g.visible[i] && dist[i] >= 0 && dist[i] <= 9 && g.rng.IntN(3) > 0 {
-				m.awake = true
-				if g.lit(i) {
-					g.log("The %s notices you.", m.name)
-				}
-			}
-			continue
+	dist := g.lvl.distances(g.p.x, g.p.y)
+	for _, m := range g.lvl.monsters {
+		awake := m.awake // waking up takes the whole turn, even for fast ones
+		g.act(m, dist)
+		if m.fast && awake && !g.over {
+			g.act(m, dist)
 		}
-		if max(abs(m.x-g.p.x), abs(m.y-g.p.y)) == 1 {
-			d := g.roll(m.atk, g.p.def)
-			if d == 0 {
-				g.log("The %s misses.", m.name)
-				continue
-			}
-			g.p.hp -= d
-			g.log("The %s hits you for %d.", m.name, d)
-			if g.p.hp <= 0 {
-				g.p.hp = 0
-				g.over = true
-				g.cause = fmt.Sprintf("Slain by the %s on depth %d.", m.name, g.depth)
-				return
-			}
-			continue
+		if g.over {
+			return
 		}
-		best, bx, by := dist[i], m.x, m.y
-		for _, d := range dirs8 {
-			nx, ny := m.x+d[0], m.y+d[1]
-			if !l.at(nx, ny).passable() || l.monsterAt(nx, ny) != nil {
-				continue
-			}
-			if j := l.idx(nx, ny); dist[j] >= 0 && (best < 0 || dist[j] < best) {
-				best, bx, by = dist[j], nx, ny
-			}
-		}
-		m.x, m.y = bx, by
 	}
+}
+
+// act gives the monster one move: wake up, attack or step closer.
+func (g *game) act(m *monster, dist []int) {
+	l := g.lvl
+	i := l.idx(m.x, m.y)
+	if !m.awake {
+		if g.visible[i] && dist[i] >= 0 && dist[i] <= 9 && g.rng.IntN(3) > 0 {
+			m.awake = true
+			if g.lit(i) {
+				g.log("The %s notices you.", m.name)
+			}
+		}
+		return
+	}
+	if max(abs(m.x-g.p.x), abs(m.y-g.p.y)) == 1 {
+		d := g.roll(m.atk+m.bonus, g.p.def)
+		if d == 0 {
+			g.log("The %s misses.", m.name)
+			return
+		}
+		g.p.hp -= d
+		g.log("The %s hits you for %d.", m.name, d)
+		if g.p.hp <= 0 {
+			g.p.hp = 0
+			g.over = true
+			g.cause = fmt.Sprintf("Slain by the %s on depth %d.", m.name, g.depth)
+		}
+		return
+	}
+	best, bx, by := dist[i], m.x, m.y
+	for _, d := range dirs8 {
+		nx, ny := m.x+d[0], m.y+d[1]
+		if !l.at(nx, ny).passable() || l.monsterAt(nx, ny) != nil {
+			continue
+		}
+		if j := l.idx(nx, ny); dist[j] >= 0 && (best < 0 || dist[j] < best) {
+			best, bx, by = dist[j], nx, ny
+		}
+	}
+	m.x, m.y = bx, by
 }
 
 func remove[T comparable](s []T, v T) []T {
