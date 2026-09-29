@@ -53,7 +53,12 @@ func prepare(t *testing.T, opts ...options) *teatest.TestModel {
 	tm := teatest.NewTestModel(
 		t, m,
 		teatest.WithInitialTermSize(80, 40),
-		teatest.WithProgramOptions(tea.WithColorProfile(colorprofile.ANSI)),
+		teatest.WithProgramOptions(
+			tea.WithColorProfile(colorprofile.ANSI),
+			// The renderer picks cursor moves by TERM; pin it so the golden
+			// files match on CI, where TERM is unset.
+			tea.WithEnvironment([]string{"TERM=xterm-256color"}),
+		),
 	)
 	return tm
 }
