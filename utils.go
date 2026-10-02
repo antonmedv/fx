@@ -16,14 +16,16 @@ import (
 	"github.com/antonmedv/fx/internal/jsonx"
 )
 
-func lookup(names []string, defaultEditor string) string {
+// lookup returns the first set, non-empty environment variable of names,
+// or fallback.
+func lookup(names []string, fallback string) string {
 	for _, name := range names {
 		env, ok := os.LookupEnv(name)
 		if ok && env != "" {
 			return env
 		}
 	}
-	return defaultEditor
+	return fallback
 }
 
 func open(filePath string) *os.File {

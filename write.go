@@ -8,8 +8,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -130,8 +130,14 @@ func (m *model) writeFile(path string, same bool) bool {
 		}
 		return false
 	}
-	m.infof("\"%s\" %dL, %dB written", path, bytes.Count(data, []byte{'\n'}), len(data))
+	m.infof("%s", writtenMessage(path, data))
 	return true
+}
+
+// writtenMessage is the success report of :w: the target with the line and
+// the byte count of data.
+func writtenMessage(name string, data []byte) string {
+	return fmt.Sprintf("\"%s\" %dL, %dB written", name, bytes.Count(data, []byte{'\n'}), len(data))
 }
 
 // execProcess runs a command in place of the UI. Tests run it in-process.
@@ -139,11 +145,9 @@ var execProcess = tea.ExecProcess
 
 // shellDoneMsg reports that the command run by :w !cmd has exited.
 type shellDoneMsg struct {
-	cmd   string
-	lines int // lines piped
-	size  int // bytes piped
-	err   error
-	then  func() tea.Cmd
+	report string // the success message
+	err    error
+	then   func() tea.Cmd
 }
 
 // pipe runs :w !cmd: it feeds the displayed JSON to the shell command's
@@ -156,34 +160,28 @@ func (m *model) pipe(cmd string, then func() tea.Cmd) tea.Cmd {
 	data := m.viewJSON()
 	sh := shellCommand(cmd)
 	sh.Stdin = bytes.NewReader(data)
+	// A child left behind holding stdin, as with :w !tool &, must not
+	// block Wait, and so the UI, forever.
+	sh.WaitDelay = time.Second
+	report := writtenMessage("!"+cmd, data)
 	return execProcess(sh, func(err error) tea.Msg {
-		return shellDoneMsg{
-			cmd:   cmd,
-			lines: bytes.Count(data, []byte{'\n'}),
-			size:  len(data),
-			err:   err,
-			then:  then,
-		}
+		return shellDoneMsg{report: report, err: err, then: then}
 	})
-}
-
-// shellCommand runs cmd through the user's shell, so quotes and pipes work.
-func shellCommand(cmd string) *exec.Cmd {
-	if runtime.GOOS == "windows" {
-		return exec.Command(lookup([]string{"COMSPEC"}, "cmd"), "/C", cmd)
-	}
-	return exec.Command(lookup([]string{"SHELL"}, "sh"), "-c", cmd)
 }
 
 func (m *model) shellDone(msg shellDoneMsg) tea.Cmd {
 	if msg.err != nil {
 		var exitErr *exec.ExitError
 		if errors.As(msg.err, &exitErr) {
-			return m.errorf("shell returned %d", exitErr.ExitCode())
+			if code := exitErr.ExitCode(); code >= 0 {
+				return m.errorf("shell returned %d", code)
+			}
+			// Killed by a signal: "signal: interrupt".
+			return m.errorf("%v", exitErr)
 		}
 		return m.errorf("%v", msg.err)
 	}
-	m.infof("\"!%s\" %dL, %dB written", msg.cmd, msg.lines, msg.size)
+	m.infof("%s", msg.report)
 	if msg.then != nil {
 		return msg.then()
 	}

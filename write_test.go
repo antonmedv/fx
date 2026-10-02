@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -520,8 +521,13 @@ func TestWriteQuit_StaysOnError(t *testing.T) {
 // handing it the terminal.
 func runShellInline(t *testing.T) {
 	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("the tests run POSIX shell commands")
+	}
+	t.Setenv("SHELL", "sh")
 	old := execProcess
 	execProcess = func(c *exec.Cmd, fn tea.ExecCallback) tea.Cmd {
+		c.Stderr = os.Stderr
 		return func() tea.Msg { return fn(c.Run()) }
 	}
 	t.Cleanup(func() { execProcess = old })
@@ -567,6 +573,16 @@ func TestWrite_PipeShellFailure(t *testing.T) {
 
 	require.True(t, m.message.isErr)
 	require.Equal(t, "shell returned 3", m.message.text)
+}
+
+func TestWrite_PipeKilledBySignal(t *testing.T) {
+	runShellInline(t)
+	m := newQueryModel(t, `1`)
+
+	typeCommand(m, "w !kill -TERM $$")
+
+	require.True(t, m.message.isErr)
+	require.Equal(t, "signal: terminated", m.message.text)
 }
 
 func TestWrite_PipeNeedsCommand(t *testing.T) {
