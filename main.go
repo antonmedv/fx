@@ -9,7 +9,6 @@ import (
 	"io"
 	"math"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime/pprof"
 	"strconv"
@@ -54,8 +53,8 @@ var flags = []string{
 	"--version",
 	"--strict",
 	"--no-inline",
-	"--dungeon",
 	"--no-tui",
+	"--dungeon",
 }
 
 func init() {
@@ -498,6 +497,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case queryDoneMsg:
 		return m, m.handleQueryDone(msg)
+
+	case shellDoneMsg:
+		return m, m.shellDone(msg)
 
 	case previewTickMsg:
 		return m, m.handlePreviewTick(msg)
@@ -1141,9 +1143,6 @@ func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keyMap.Print):
 		return m, m.print()
 
-	case key.Matches(msg, keyMap.Open):
-		return m, m.open()
-
 	case key.Matches(msg, keyMap.Reload):
 		return m, m.reload()
 
@@ -1740,28 +1739,6 @@ func (m *model) dig(v string) *Node {
 func (m *model) print() tea.Cmd {
 	m.printOnExit = true
 	return tea.Quit
-}
-
-func (m *model) open() tea.Cmd {
-	if engine.FilePath == "" {
-		return nil
-	}
-	command := append(
-		strings.Split(lookup([]string{"FX_EDITOR", "EDITOR"}, "vim"), " "),
-		engine.FilePath,
-	)
-	if command[0] == "vi" || command[0] == "vim" || command[0] == "hx" {
-		at, ok := m.cursorPointsTo()
-		if ok {
-			tail := command[1:]
-			command = append([]string{command[0]}, fmt.Sprintf("+%d", at.LineNumber))
-			command = append(command, tail...)
-		}
-	}
-	execCmd := exec.Command(command[0], command[1:]...)
-	return tea.ExecProcess(execCmd, func(err error) tea.Msg {
-		return nil
-	})
 }
 
 // deleteAtCursor deletes the current key/value (node) from the view structure.

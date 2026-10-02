@@ -108,7 +108,7 @@ func help(keyMap KeyMap) string {
 	}
 
 	row := func(keyStr, desc string) {
-		keyFormatted := keyStyle.Render(fmt.Sprintf("%-20s", keyStr))
+		keyFormatted := keyStyle.Render(fmt.Sprintf("%-24s", keyStr))
 		descFormatted := descStyle.Render(desc)
 		sb.WriteString(fmt.Sprintf("    %s  %s\n", keyFormatted, descFormatted))
 	}

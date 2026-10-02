@@ -32,7 +32,6 @@ type KeyMap struct {
 	Delete              key.Binding `category:"Actions"`
 	Preview             key.Binding `category:"Actions"`
 	Print               key.Binding `category:"Actions"`
-	Open                key.Binding `category:"Actions"`
 	Reload              key.Binding `category:"Actions"`
 	ToggleWrap          key.Binding `category:"View"`
 	ShowSelector        key.Binding `category:"View"`
@@ -192,10 +191,6 @@ func init() {
 		Print: key.NewBinding(
 			key.WithKeys("P"),
 			key.WithHelp("", "print to stdout"),
-		),
-		Open: key.NewBinding(
-			key.WithKeys("v"),
-			key.WithHelp("", "open in editor"),
 		),
 		Reload: key.NewBinding(
 			key.WithKeys("r"),

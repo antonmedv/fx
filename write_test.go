@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -513,4 +514,96 @@ func TestWriteQuit_StaysOnError(t *testing.T) {
 	m.eof = false
 	require.Nil(t, typeCommandCmd(m, "wq "+out))
 	require.Equal(t, "Input is still loading", m.message.text)
+}
+
+// runShellInline makes :w !cmd run the command in the test process, without
+// handing it the terminal.
+func runShellInline(t *testing.T) {
+	t.Helper()
+	old := execProcess
+	execProcess = func(c *exec.Cmd, fn tea.ExecCallback) tea.Cmd {
+		return func() tea.Msg { return fn(c.Run()) }
+	}
+	t.Cleanup(func() { execProcess = old })
+}
+
+func TestWrite_PipeToCommand(t *testing.T) {
+	runShellInline(t)
+	m := newQueryModel(t, `{"a": [1, 2], "b": "x"}`)
+	out := filepath.Join(t.TempDir(), "out.json")
+
+	typeCommand(m, "w !cat > "+out)
+
+	want := "{\n  \"a\": [\n    1,\n    2\n  ],\n  \"b\": \"x\"\n}\n"
+	require.Equal(t, want, readFile(t, out))
+	require.Nil(t, m.confirm)
+	require.NotNil(t, m.message)
+	require.False(t, m.message.isErr)
+	require.Equal(t, fmt.Sprintf(`"!cat > %s" 7L, %dB written`, out, len(want)), m.message.text)
+}
+
+// The query result is piped, like it is written, without asking.
+func TestWrite_PipeQueryResult(t *testing.T) {
+	runShellInline(t)
+	file := filepath.Join(t.TempDir(), "f.json")
+	require.NoError(t, os.WriteFile(file, []byte(`{"a": [1, 2]}`), 0o644))
+	withInputFile(t, file)
+	m := newQueryModel(t, `{"a": [1, 2]}`)
+	drain(m, m.doQuery(".a"))
+	out := filepath.Join(t.TempDir(), "out.json")
+
+	typeCommand(m, "write !cat > "+out)
+
+	require.Nil(t, m.confirm)
+	require.Equal(t, "[\n  1,\n  2\n]\n", readFile(t, out))
+	require.Equal(t, `{"a": [1, 2]}`, readFile(t, file))
+}
+
+func TestWrite_PipeShellFailure(t *testing.T) {
+	runShellInline(t)
+	m := newQueryModel(t, `1`)
+
+	typeCommand(m, "w !exit 3")
+
+	require.True(t, m.message.isErr)
+	require.Equal(t, "shell returned 3", m.message.text)
+}
+
+func TestWrite_PipeNeedsCommand(t *testing.T) {
+	m := newQueryModel(t, `1`)
+
+	typeCommand(m, "w !")
+
+	require.True(t, m.message.isErr)
+	require.Equal(t, "Argument required", m.message.text)
+}
+
+func TestWrite_PipeBlocked(t *testing.T) {
+	m := newQueryModel(t, `1`)
+	m.eof = false
+
+	typeCommand(m, "w !cat")
+
+	require.True(t, m.message.isErr)
+	require.Equal(t, "Input is still loading", m.message.text)
+}
+
+func TestWriteQuit_Pipe(t *testing.T) {
+	runShellInline(t)
+	m := newQueryModel(t, `{"a": 1}`)
+	out := filepath.Join(t.TempDir(), "out.json")
+
+	cmd := typeCommandCmd(m, "wq !cat > "+out)
+	require.NotNil(t, cmd)
+	_, cmd = m.Update(cmd())
+
+	require.True(t, isQuit(cmd))
+	require.Equal(t, "{\n  \"a\": 1\n}\n", readFile(t, out))
+
+	// A failing command keeps fx open.
+	m = newQueryModel(t, `{"a": 1}`)
+	cmd = typeCommandCmd(m, "wq !exit 1")
+	_, cmd = m.Update(cmd())
+	require.Nil(t, cmd)
+	require.Equal(t, "shell returned 1", m.message.text)
 }

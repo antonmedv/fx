@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -20,6 +22,9 @@ import (
 // result if a query is applied, to file, or to the input file without one.
 // Overwriting the input file with a query result, or any other existing
 // file, asks for confirmation, unless ! is given.
+//
+// :w !cmd pipes the JSON to the shell command's stdin instead, as in vim:
+// :w !less, :w !vim -, :w !code -, :w !pbcopy.
 func (m *model) write(c call) tea.Cmd {
 	return m.writeThen(c, nil)
 }
@@ -33,6 +38,9 @@ func (m *model) writeQuit(c call) tea.Cmd {
 func (m *model) writeThen(c call, then func() tea.Cmd) tea.Cmd {
 	if reason := m.writeBlocked(); reason != "" {
 		return m.errorf("%s", reason)
+	}
+	if cmd, ok := strings.CutPrefix(c.arg, "!"); ok {
+		return m.pipe(strings.TrimSpace(cmd), then)
 	}
 	path := c.arg
 	if path == "" {
@@ -124,6 +132,62 @@ func (m *model) writeFile(path string, same bool) bool {
 	}
 	m.infof("\"%s\" %dL, %dB written", path, bytes.Count(data, []byte{'\n'}), len(data))
 	return true
+}
+
+// execProcess runs a command in place of the UI. Tests run it in-process.
+var execProcess = tea.ExecProcess
+
+// shellDoneMsg reports that the command run by :w !cmd has exited.
+type shellDoneMsg struct {
+	cmd   string
+	lines int // lines piped
+	size  int // bytes piped
+	err   error
+	then  func() tea.Cmd
+}
+
+// pipe runs :w !cmd: it feeds the displayed JSON to the shell command's
+// stdin. The command takes over the terminal while it runs, so pagers and
+// editors work. then runs once the command exits successfully, if it is.
+func (m *model) pipe(cmd string, then func() tea.Cmd) tea.Cmd {
+	if cmd == "" {
+		return m.errorf("Argument required")
+	}
+	data := m.viewJSON()
+	sh := shellCommand(cmd)
+	sh.Stdin = bytes.NewReader(data)
+	return execProcess(sh, func(err error) tea.Msg {
+		return shellDoneMsg{
+			cmd:   cmd,
+			lines: bytes.Count(data, []byte{'\n'}),
+			size:  len(data),
+			err:   err,
+			then:  then,
+		}
+	})
+}
+
+// shellCommand runs cmd through the user's shell, so quotes and pipes work.
+func shellCommand(cmd string) *exec.Cmd {
+	if runtime.GOOS == "windows" {
+		return exec.Command(lookup([]string{"COMSPEC"}, "cmd"), "/C", cmd)
+	}
+	return exec.Command(lookup([]string{"SHELL"}, "sh"), "-c", cmd)
+}
+
+func (m *model) shellDone(msg shellDoneMsg) tea.Cmd {
+	if msg.err != nil {
+		var exitErr *exec.ExitError
+		if errors.As(msg.err, &exitErr) {
+			return m.errorf("shell returned %d", exitErr.ExitCode())
+		}
+		return m.errorf("%v", msg.err)
+	}
+	m.infof("\"!%s\" %dL, %dB written", msg.cmd, msg.lines, msg.size)
+	if msg.then != nil {
+		return msg.then()
+	}
+	return nil
 }
 
 // viewJSON serializes the displayed JSON documents: a single one indented,

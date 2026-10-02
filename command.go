@@ -45,15 +45,15 @@ var commands = []command{
 	{
 		name: "w[rite]",
 		bang: true,
-		args: "[file]",
-		desc: "write JSON to file, ! skips confirmation",
+		args: "[file|!cmd]",
+		desc: "write to file or pipe to cmd, ! skips confirmation",
 		run:  (*model).write,
 	},
 	{
 		name: "wq",
 		bang: true,
-		args: "[file]",
-		desc: "write JSON to file and quit",
+		args: "[file|!cmd]",
+		desc: "write, then quit",
 		run:  (*model).writeQuit,
 	},
 	{
