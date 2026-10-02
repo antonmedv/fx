@@ -2,6 +2,7 @@ package engine
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
@@ -50,7 +51,21 @@ func StartPreview(parser Parser, args []string, out chan *jsonx.Node, errCh chan
 	return start(parser, args, out, errCh, cancel, true)
 }
 
-func start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error, cancel <-chan struct{}, preview bool) int {
+func start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error, cancel <-chan struct{}, preview bool) (exitCode int) {
+	// The engine runs in its own goroutine, where a panic would kill the
+	// process, the UI included. Whatever goes wrong in here, a bug in fx,
+	// in goja or in the input conversion, is reported as an error instead.
+	defer func() {
+		if r := recover(); r != nil {
+			if isCancelled(cancel) {
+				exitCode = 0
+				return
+			}
+			sendErr(errCh, &Error{fmt.Sprintf("internal error: %v", r)}, cancel)
+			exitCode = 1
+		}
+	}()
+
 	isPrettyPrintArg := len(args) == 1 && (args[0] == "." || args[0] == "this" || args[0] == "x")
 
 	// Fast path.
@@ -155,7 +170,8 @@ func start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error,
 			}
 			nodeOut, err := jsonx.Parse([]byte(jsonOut))
 			if err != nil {
-				panic(err)
+				sendErr(errCh, &Error{fmt.Sprintf("internal error: %v", err)}, cancel)
+				return 1, true
 			}
 			if !send(out, nodeOut, cancel) {
 				return 0, true
@@ -181,7 +197,11 @@ func start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error,
 		}
 		values++
 
-		input := node.ToValue(vm)
+		input, err := node.ToValue(vm)
+		if err != nil {
+			sendErr(errCh, err, cancel)
+			return 1
+		}
 		output, exit, err := callMain(main, input)
 		if exit != nil {
 			return exit.Code
@@ -262,6 +282,11 @@ func stringify(output goja.Value, vm *goja.Runtime) (json string, exit *ExitErro
 				err = e
 			case *goja.InterruptedError:
 				err = e
+			case *goja.StackOverflowError:
+				err = e
+			case goja.Value:
+				// Thrown by Stringify, as on a circular structure.
+				err = errors.New(e.String())
 			default:
 				err = fmt.Errorf("internal error: %v", r)
 			}

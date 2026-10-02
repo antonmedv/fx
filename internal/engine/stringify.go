@@ -11,7 +11,34 @@ import (
 	"github.com/dop251/goja"
 )
 
+// Stringify serializes value as indented JSON. A circular structure throws
+// a TypeError, as JSON.stringify does, instead of recursing forever.
 func Stringify(value goja.Value, vm *goja.Runtime, depth int) string {
+	s := stringifier{vm: vm}
+	return s.stringify(value, depth)
+}
+
+type stringifier struct {
+	vm    *goja.Runtime
+	stack []*goja.Object // The objects and arrays being serialized.
+}
+
+// enter pushes obj, throwing if it is already being serialized.
+func (s *stringifier) enter(obj *goja.Object) {
+	for _, o := range s.stack {
+		if o.SameAs(obj) {
+			panic(s.vm.NewTypeError("Converting circular structure to JSON"))
+		}
+	}
+	s.stack = append(s.stack, obj)
+}
+
+func (s *stringifier) leave() {
+	s.stack = s.stack[:len(s.stack)-1]
+}
+
+func (s *stringifier) stringify(value goja.Value, depth int) string {
+	vm := s.vm
 	rtype := value.ExportType()
 	if rtype == nil {
 		// Convert both null and undefined to null (save as JSON.stringify)
@@ -58,6 +85,8 @@ func Stringify(value goja.Value, vm *goja.Runtime, depth int) string {
 		if len(keys) == 0 {
 			return "{}"
 		}
+		s.enter(obj)
+		defer s.leave()
 
 		var out strings.Builder
 		out.WriteString("{")
@@ -71,7 +100,7 @@ func Stringify(value goja.Value, vm *goja.Runtime, depth int) string {
 			out.WriteString(Quote(key))
 			out.WriteString(":")
 			out.WriteString(" ")
-			out.WriteString(Stringify(obj.Get(key), vm, depth+1))
+			out.WriteString(s.stringify(obj.Get(key), depth+1))
 			if i < len(keys)-1 {
 				out.WriteString(",")
 			}
@@ -90,6 +119,8 @@ func Stringify(value goja.Value, vm *goja.Runtime, depth int) string {
 		if len(keys) == 0 {
 			return "[]"
 		}
+		s.enter(arr)
+		defer s.leave()
 
 		var out strings.Builder
 		out.WriteString("[")
@@ -98,7 +129,7 @@ func Stringify(value goja.Value, vm *goja.Runtime, depth int) string {
 		for i, key := range keys {
 			item := arr.Get(key)
 			out.WriteString(strings.Repeat("  ", depth+1))
-			out.WriteString(Stringify(item, vm, depth+1))
+			out.WriteString(s.stringify(item, depth+1))
 			if i < len(keys)-1 {
 				out.WriteString(",")
 			}

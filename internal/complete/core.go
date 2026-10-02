@@ -136,7 +136,13 @@ func (r *Request) EngineKeys(doc *jsonx.Node, cancel <-chan struct{}) Names {
 	return engineKeys([]*jsonx.Node{doc}, append(r.Args[:len(r.Args):len(r.Args)], last), cancel)
 }
 
-func engineKeys(docs []*jsonx.Node, args []string, cancel <-chan struct{}) Names {
+func engineKeys(docs []*jsonx.Node, args []string, cancel <-chan struct{}) (names Names) {
+	// It runs in the background of the UI, where a panic would kill fx.
+	defer func() {
+		if recover() != nil {
+			names = Names{}
+		}
+	}()
 	var code strings.Builder
 	code.WriteString(prelude)
 	code.WriteString(engine.Stdlib)
@@ -165,7 +171,11 @@ func engineKeys(docs []*jsonx.Node, args []string, cancel <-chan struct{}) Names
 		return Names{}
 	}
 	for _, doc := range docs {
-		if _, err := callMain(main, doc.ToValue(vm)); err != nil {
+		input, err := doc.ToValue(vm)
+		if err != nil {
+			continue // Not valid JSON, so there is nothing to complete.
+		}
+		if _, err := callMain(main, input); err != nil {
 			if _, ok := err.(*goja.InterruptedError); ok {
 				return Names{}
 			}

@@ -26,7 +26,9 @@ func TestToValue_WrappedAndCollapsed(t *testing.T) {
 	require.True(t, collapsed)
 
 	vm := goja.New()
-	got, err := json.Marshal(n.ToValue(vm).Export())
+	value, err := n.ToValue(vm)
+	require.NoError(t, err)
+	got, err := json.Marshal(value.Export())
 	require.NoError(t, err)
 
 	var want, have any

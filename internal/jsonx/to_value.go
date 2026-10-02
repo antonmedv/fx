@@ -1,45 +1,110 @@
 package jsonx
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"math/big"
 	"strconv"
+	"strings"
 
 	"github.com/dop251/goja"
 
+	"github.com/antonmedv/fx/internal/jsonpath"
 	"github.com/antonmedv/fx/internal/utils"
 )
 
-func (n *Node) ToValue(vm *goja.Runtime) goja.Value {
+// ValueError is a value the lenient parser accepted that is not valid JSON,
+// as the string "\g", so it has no JS value.
+type ValueError struct {
+	kind  string   // "string", "key" or "number".
+	token string   // As in the input.
+	path  []string // Innermost first.
+}
+
+func (e *ValueError) Error() string {
+	var b strings.Builder
+	b.WriteString("Invalid JSON ")
+	b.WriteString(e.kind)
+	b.WriteByte(' ')
+	writeToken(&b, e.token)
+	if len(e.path) > 0 {
+		b.WriteString(" at ")
+		for i := len(e.path) - 1; i >= 0; i-- {
+			b.WriteString(e.path[i])
+		}
+	}
+	return b.String()
+}
+
+// writeToken writes token shortened, with control characters escaped, so
+// the message stays on one line.
+func writeToken(b *strings.Builder, token string) {
+	const max = 40
+	n := 0
+	for _, r := range token {
+		if n == max {
+			b.WriteString("…")
+			return
+		}
+		n++
+		switch {
+		case r == '\t':
+			b.WriteString(`\t`)
+		case r == '\n':
+			b.WriteString(`\n`)
+		case r == '\r':
+			b.WriteString(`\r`)
+		case r < 0x20 || r == 0x7f:
+			fmt.Fprintf(b, `\u%04x`, r)
+		default:
+			b.WriteRune(r)
+		}
+	}
+}
+
+// InvalidString is the error for a string token that is not valid JSON.
+func InvalidString(token string) error {
+	return &ValueError{kind: "string", token: token}
+}
+
+// ToValue converts n to a JS value. Values that are not valid JSON, which
+// the lenient parser accepts, are a *ValueError rather than a guess.
+func (n *Node) ToValue(vm *goja.Runtime) (goja.Value, error) {
+	v, err := n.toValue(vm)
+	if err != nil {
+		return nil, err
+	}
+	return v, nil
+}
+
+func (n *Node) toValue(vm *goja.Runtime) (goja.Value, *ValueError) {
 	switch n.Kind {
 	case Null:
-		return goja.Null()
+		return goja.Null(), nil
 
 	case Bool:
-		if n.Value == "true" {
-			return vm.ToValue(true)
-		} else {
-			return vm.ToValue(false)
-		}
+		return vm.ToValue(n.Value == "true"), nil
 
 	case Number:
 		i, ok := ParseNumber(n.Value)
 		if ok {
-			return vm.ToValue(i)
+			return vm.ToValue(i), nil
 		}
+		// Out of range, as 1e400, is ±Inf, as JSON.parse reads it.
 		f, err := strconv.ParseFloat(n.Value, 64)
-		if err == nil {
-			return vm.ToValue(f)
+		if err != nil && !errors.Is(err, strconv.ErrRange) {
+			return nil, &ValueError{kind: "number", token: n.Value}
 		}
-		panic(err)
+		return vm.ToValue(f), nil
 
 	case String:
 		unquoted, err := utils.Unquote(n.Value)
 		if err != nil {
-			panic(err)
+			return nil, &ValueError{kind: "string", token: n.Value}
 		}
-		return vm.ToValue(unquoted)
+		return vm.ToValue(unquoted), nil
 
 	case Object:
 		obj := vm.NewObject()
@@ -53,21 +118,24 @@ func (n *Node) ToValue(vm *goja.Runtime) goja.Value {
 			}
 
 			for it != nil && it != n.End {
-				unquotedKey, err := utils.Unquote(it.Key)
+				key, err := utils.Unquote(it.Key)
 				if err != nil {
-					panic(err)
+					return nil, &ValueError{kind: "key", token: it.Key}
 				}
-
-				err = obj.Set(unquotedKey, it.ToValue(vm))
-				if err != nil {
-					panic(err)
+				value, verr := it.toValue(vm)
+				if verr != nil {
+					verr.path = append(verr.path, keyPath(key))
+					return nil, verr
+				}
+				if err := obj.Set(key, value); err != nil {
+					return nil, &ValueError{kind: "key", token: it.Key}
 				}
 
 				it = it.nextSibling()
 			}
 		}
 
-		return obj
+		return obj, nil
 
 	case Array:
 		var arr []any
@@ -80,29 +148,41 @@ func (n *Node) ToValue(vm *goja.Runtime) goja.Value {
 				it = it.Next
 			}
 
-			for it != nil && it != n.End {
-				arr = append(arr, it.ToValue(vm))
+			for i := 0; it != nil && it != n.End; i++ {
+				value, verr := it.toValue(vm)
+				if verr != nil {
+					verr.path = append(verr.path, "["+strconv.Itoa(i)+"]")
+					return nil, verr
+				}
+				arr = append(arr, value)
 
 				it = it.nextSibling()
 			}
 		}
 
-		return vm.NewArray(arr...)
+		return vm.NewArray(arr...), nil
 
 	case NaN:
-		return vm.ToValue(math.NaN())
+		return vm.ToValue(math.NaN()), nil
 
 	case Infinity:
 		if n.Value[0] == '-' {
-			return vm.ToValue(math.Inf(-1))
+			return vm.ToValue(math.Inf(-1)), nil
 		}
-		return vm.ToValue(math.Inf(1))
-
-	case Undefined:
-		return goja.Undefined()
+		return vm.ToValue(math.Inf(1)), nil
 
 	}
-	panic(fmt.Sprintf("unsupported node kind %d", n.Kind))
+	// Undefined, and kinds that are no JSON value.
+	return goja.Undefined(), nil
+}
+
+// keyPath is the path segment of an object key: .key or ["key"].
+func keyPath(key string) string {
+	if jsonpath.Identifier.MatchString(key) {
+		return "." + key
+	}
+	quoted, _ := json.Marshal(key)
+	return "[" + string(quoted) + "]"
 }
 
 // nextSibling returns the node after n and all its children and wrap chunks.

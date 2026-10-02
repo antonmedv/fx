@@ -213,14 +213,18 @@ func main() {
 		}()
 
 		var exitCode int
+		failed := false
 	loop:
 		for {
 			select {
 			case node := <-out:
 				if node.Kind == String {
+					// Only an input string, on the fast path, may be invalid.
 					unquoted, err := utils.Unquote(node.Value)
 					if err != nil {
-						panic(err)
+						fmt.Fprintln(os.Stderr, InvalidString(node.Value))
+						failed = true
+						continue
 					}
 					fmt.Println(unquoted)
 				} else {
@@ -233,6 +237,9 @@ func main() {
 			}
 		}
 
+		if exitCode == 0 && failed {
+			exitCode = 1
+		}
 		if exitCode != 0 {
 			os.Exit(exitCode)
 		}

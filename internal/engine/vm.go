@@ -38,6 +38,9 @@ func CloseInput() {
 	}
 }
 
+// maxCallStackSize is the deepest JS call stack, about what V8 allows.
+const maxCallStackSize = 10_000
+
 // ExitError is used by exit() to signal a specific exit code.
 type ExitError struct {
 	Code int
@@ -54,6 +57,9 @@ func NewVM(writeOut func(string), preview bool) *goja.Runtime {
 // always fails.
 func newVM(writeOut func(string), preview bool, severalValues func() (bool, error)) *goja.Runtime {
 	vm := goja.New()
+	// Unbounded recursion is a RangeError, as in browsers, instead of
+	// growing memory until the process is killed.
+	vm.SetMaxCallStackSize(maxCallStackSize)
 
 	if err := vm.Set("println", func(s string) any {
 		writeOut(s)
