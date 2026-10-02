@@ -54,6 +54,7 @@ var flags = []string{
 	"--version",
 	"--strict",
 	"--no-inline",
+	"--dungeon",
 	"--no-tui",
 }
 
