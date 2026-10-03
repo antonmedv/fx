@@ -59,7 +59,7 @@ func requireListSound(t *testing.T, m *model) {
 	n := 0
 	for it := m.top; it != nil; it = it.Next {
 		n++
-		require.Less(t, n, 10_000, "the list loops")
+		require.Less(t, n, 1_000_000, "the list loops")
 		if it.Next != nil {
 			require.Same(t, it, it.Next.Prev, "Next.Prev of %q", it.Key+it.Value)
 		}

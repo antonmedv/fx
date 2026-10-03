@@ -89,7 +89,9 @@ func TestTimeout_OnlyPreviews(t *testing.T) {
 	assert.Empty(t, errs)
 	require.Len(t, outs, 1)
 	assert.Equal(t, "1", outs[0].Value)
-	assert.GreaterOrEqual(t, took, 300*time.Millisecond)
+	// Ran well past the preview timeout. Date.now() has millisecond
+	// resolution, so the 300ms in JS may be a little less in Go.
+	assert.Greater(t, took, 4*previewTimeout)
 }
 
 func TestTimeout_PreviewAllowsFastQueries(t *testing.T) {

@@ -370,9 +370,9 @@ type model struct {
 	gotoSymbolInput       textinput.Model
 	commandInput          textinput.Model
 	searchInput           textinput.Model
-	searching             bool          // search in progress
-	searchCancel          chan struct{} // cancel channel for search
-	searchID              uint64        // increments with each search to detect stale results
+	searching             bool       // search in progress
+	searchRun             *searchRun // the search running in the background
+	searchID              uint64     // increments with each search to detect stale results
 	yank                  bool
 	showHelp              bool
 	help                  viewport.Model
@@ -447,6 +447,12 @@ func (m *model) Init() tea.Cmd {
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	defer m.repairHead()
+	switch msg.(type) {
+	case tea.KeyPressMsg, tea.MouseClickMsg, tea.WindowSizeMsg:
+		// A search in the background reads the list, which these may edit.
+		// The user searches again.
+		m.cancelSearch()
+	}
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.termWidth = msg.Width
@@ -535,7 +541,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.searching = false
-		m.searchCancel = nil
+		m.searchRun = nil
 		if msg.search != nil {
 			m.search = msg.search
 			m.selectSearchResult(0)
@@ -547,7 +553,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.searching = false
-		m.searchCancel = nil
+		m.searchRun = nil
 		return m, nil
 
 	case tea.ResumeMsg:
@@ -869,6 +875,7 @@ func (m *model) handleShowSelectorKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) 
 	case key.Matches(msg, showLineNumbers):
 		m.showLineNumbers = !m.showLineNumbers
 		Wrap(m.top, m.viewWidth())
+		m.redoSearch()
 	}
 	m.showShowSelector = false
 	return m, nil

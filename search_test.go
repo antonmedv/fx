@@ -15,7 +15,7 @@ func doSearch(m *model, s string) {
 		return
 	}
 
-	result, err := executeSearch(m.top, s, nil)
+	result, err := executeSearch(m.top, nil, s, nil)
 	if err != nil {
 		m.search = newSearch()
 		m.search.err = err
