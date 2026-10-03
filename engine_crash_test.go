@@ -2,6 +2,7 @@ package main
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -47,4 +48,20 @@ func TestPreview_RuntimeFailuresKeepView(t *testing.T) {
 	preview(m, ".a")
 	preview(m, "x => (x.self = x, x)")
 	require.Equal(t, []string{"1"}, lines(m))
+}
+
+func TestPreview_NeverEndingQueryTimesOut(t *testing.T) {
+	m := newQueryModel(t, `{"a": 1}`)
+	preview(m, ".a")
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		preview(m, "x => { while (true) {} }")
+	}()
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the preview did not stop at its time limit")
+	}
+	require.Equal(t, []string{"1"}, lines(m), "the last good result stays")
 }

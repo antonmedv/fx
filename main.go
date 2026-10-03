@@ -446,6 +446,7 @@ func (m *model) Init() tea.Cmd {
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	defer m.repairHead()
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.termWidth = msg.Width
@@ -455,6 +456,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.preview.SetWidth(m.termWidth)
 		m.preview.SetHeight(m.termHeight - 1)
 		Wrap(m.top, m.viewWidth())
+		m.repairHead()
 		m.redoSearch()
 
 	case eofMsg:
@@ -1074,6 +1076,7 @@ func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 					n = n.End.Next
 				}
 			}
+			m.repairHead()
 			m.selectNode(at.Root())
 			m.recordHistory()
 		}
@@ -1115,6 +1118,7 @@ func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		} else {
 			DropWrapAll(m.top)
 		}
+		m.repairHead()
 		if at.Chunk != "" && at.Value == "" {
 			at = at.Parent
 		}
@@ -1549,6 +1553,28 @@ func (m *model) selectNodeInView(n *Node) {
 	}
 }
 
+// repairHead moves the first displayed line back into the list when it is
+// no longer a line of it: hidden by collapsing, deleted, or a wrap chunk
+// dropped by re-wrapping. Rendering and scrolling walk the list from head,
+// and a stale head walks nodes that are not linked, or loops.
+func (m *model) repairHead() {
+	h := m.head
+	for h != nil && !h.IsLinked() {
+		switch {
+		case h.HiddenBy() != nil:
+			h = h.HiddenBy()
+		case h.IsWrap():
+			h = h.Parent
+		default:
+			h = h.Prev // Deleted: its Prev was the line before it.
+		}
+	}
+	if h == nil {
+		h = m.top
+	}
+	m.head = h
+}
+
 func (m *model) selectNode(n *Node) {
 	if n == nil {
 		return
@@ -1611,7 +1637,7 @@ func (m *model) cursorValue() string {
 		if at.Chunk != "" && at.Value == "" {
 			at = parent
 		}
-		if len(at.Value) >= 1 && at.Value[0] == '}' || at.Value[0] == ']' {
+		if len(at.Value) >= 1 && (at.Value[0] == '}' || at.Value[0] == ']') {
 			at = parent
 		}
 	}
@@ -1755,6 +1781,7 @@ func (m *model) deleteAtCursor() {
 		return
 	}
 	if next, ok := DeleteNode(at); ok {
+		m.repairHead()
 		m.selectNode(next)
 		m.recordHistory()
 	}

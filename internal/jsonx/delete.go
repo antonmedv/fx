@@ -21,6 +21,11 @@ func DeleteNode(at *Node) (*Node, bool) {
 	if parent == nil { // avoid deleting root
 		return nil, false
 	}
+	// Only a displayed line can be deleted: relinking around a node hidden
+	// in a collapsed container, or already deleted, would make a cycle.
+	if !at.IsLinked() {
+		return nil, false
+	}
 	// If current points to a wrap placeholder, move to its parent value
 	if at.Chunk != "" && at.Value == "" && at.Parent != nil {
 		at = at.Parent

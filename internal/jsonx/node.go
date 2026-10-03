@@ -127,6 +127,37 @@ func (n *Node) IsCollapsed() bool {
 	return n.Collapsed != nil
 }
 
+// IsLinked reports whether n is a line of the displayed list: not inside a
+// collapsed container, not deleted, and not a wrap chunk dropped by
+// re-wrapping.
+func (n *Node) IsLinked() bool {
+	return n.HiddenBy() == nil && n.isAttached()
+}
+
+// HiddenBy returns the outermost collapsed container n is inside, or nil.
+func (n *Node) HiddenBy() *Node {
+	var hiddenBy *Node
+	for p := n.Parent; p != nil; p = p.Parent {
+		if p.IsCollapsed() {
+			hiddenBy = p
+		}
+	}
+	return hiddenBy
+}
+
+// isAttached reports whether n is still linked into the list it was in.
+func (n *Node) isAttached() bool {
+	if n.IsWrap() {
+		for it := n.Parent.Next; it != nil && it.IsWrap() && it.Parent == n.Parent; it = it.Next {
+			if it == n {
+				return true
+			}
+		}
+		return false
+	}
+	return n.Prev == nil || n.Prev.Next == n
+}
+
 func (n *Node) Collapse() *Node {
 	if n.End != nil && !n.IsCollapsed() {
 		n.Collapsed = n.Next

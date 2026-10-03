@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/dop251/goja"
 
@@ -17,9 +19,10 @@ import (
 var Stdlib string
 
 func init() {
-	fxrc, err := readFxrc()
-	if err != nil {
-		panic(err)
+	fxrc, errs := readFxrc()
+	for _, err := range errs {
+		// fx still works without it, so a warning rather than a failure.
+		fmt.Fprintf(os.Stderr, "fx: skipping .fxrc.js: %v\n", err)
 	}
 	Stdlib += fxrc
 }
@@ -42,27 +45,40 @@ func (e *Error) Error() string {
 }
 
 func Start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error, cancel <-chan struct{}) int {
-	return start(parser, args, out, errCh, cancel, false)
+	return start(parser, args, out, errCh, cancel, false, 0)
 }
 
 // StartPreview is Start for live previews: save() and exit() are disabled,
 // as a preview runs while the user is still typing the expression.
 func StartPreview(parser Parser, args []string, out chan *jsonx.Node, errCh chan error, cancel <-chan struct{}) int {
-	return start(parser, args, out, errCh, cancel, true)
+	return start(parser, args, out, errCh, cancel, true, previewTimeout)
 }
 
-func start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error, cancel <-chan struct{}, preview bool) (exitCode int) {
+func start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error, cancel <-chan struct{}, preview bool, timeout time.Duration) (exitCode int) {
+	var w *watchdog // Set once the VM runs.
+
+	// fail reports err, unless the run was stopped: on cancel quietly, on
+	// the timeout with why.
+	fail := func(err error) int {
+		if w != nil {
+			if limitErr := w.limitError(); limitErr != nil {
+				sendErr(errCh, limitErr, cancel)
+				return 1
+			}
+		}
+		if isCancelled(cancel) {
+			return 0
+		}
+		sendErr(errCh, err, cancel)
+		return 1
+	}
+
 	// The engine runs in its own goroutine, where a panic would kill the
 	// process, the UI included. Whatever goes wrong in here, a bug in fx,
 	// in goja or in the input conversion, is reported as an error instead.
 	defer func() {
 		if r := recover(); r != nil {
-			if isCancelled(cancel) {
-				exitCode = 0
-				return
-			}
-			sendErr(errCh, &Error{fmt.Sprintf("internal error: %v", r)}, cancel)
-			exitCode = 1
+			exitCode = fail(&Error{fmt.Sprintf("internal error: %v", r)})
 		}
 	}()
 
@@ -121,24 +137,15 @@ func start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error,
 		send(out, &jsonx.Node{Kind: jsonx.Err, Value: s}, cancel)
 	}, preview, severalValues)
 
-	// Interrupt running JS on cancel: cancel alone is checked only between
-	// documents, so a never-ending expression would never stop.
+	// Interrupt running JS on cancel or past the timeout: cancel alone is
+	// checked only between documents, so a never-ending expression would
+	// never stop.
 	finished := make(chan struct{})
 	defer close(finished)
-	go func() {
-		select {
-		case <-cancel:
-			vm.Interrupt("cancelled")
-		case <-finished:
-		}
-	}()
+	w = startWatchdog(vm, cancel, finished, timeout)
 
 	if _, err := vm.RunString(code.String()); err != nil {
-		if isCancelled(cancel) {
-			return 0
-		}
-		sendErr(errCh, &Error{gojaErrorToString(err)}, cancel)
-		return 1
+		return fail(&Error{gojaErrorToString(err)})
 	}
 
 	skip := vm.Get("skip")
@@ -157,16 +164,12 @@ func start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error,
 				return 0, true
 			}
 		} else {
-			jsonOut, exit, err := stringify(output, vm)
+			jsonOut, exit, err := stringify(output, vm, w.abort)
 			if exit != nil {
 				return exit.Code, true
 			}
 			if err != nil {
-				if isCancelled(cancel) {
-					return 0, true
-				}
-				sendErr(errCh, &Error{gojaErrorToString(err)}, cancel)
-				return 1, true
+				return fail(&Error{gojaErrorToString(err)}), true
 			}
 			nodeOut, err := jsonx.Parse([]byte(jsonOut))
 			if err != nil {
@@ -181,10 +184,8 @@ func start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error,
 	}
 
 	for {
-		select {
-		case <-cancel:
-			return 0
-		default:
+		if w.stopped() {
+			return fail(nil)
 		}
 
 		node, err := parser.Parse()
@@ -207,11 +208,7 @@ func start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error,
 			return exit.Code
 		}
 		if err != nil {
-			if isCancelled(cancel) {
-				return 0
-			}
-			sendErr(errCh, &Error{gojaErrorToString(err)}, cancel)
-			return 1
+			return fail(&Error{gojaErrorToString(err)})
 		}
 
 		if output.StrictEquals(skip) {
@@ -271,8 +268,9 @@ func callMain(main goja.Callable, input goja.Value) (output goja.Value, exit *Ex
 }
 
 // stringify serializes output like callMain runs main: getters run JS here,
-// which may throw, call exit() or be interrupted on cancel.
-func stringify(output goja.Value, vm *goja.Runtime) (json string, exit *ExitError, err error) {
+// which may throw, call exit() or be interrupted on cancel. The Go side
+// stops once abort is closed.
+func stringify(output goja.Value, vm *goja.Runtime, abort <-chan struct{}) (json string, exit *ExitError, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			switch e := r.(type) {
@@ -287,12 +285,18 @@ func stringify(output goja.Value, vm *goja.Runtime) (json string, exit *ExitErro
 			case goja.Value:
 				// Thrown by Stringify, as on a circular structure.
 				err = errors.New(e.String())
+			case error:
+				if e == errAborted {
+					err = e
+					return
+				}
+				err = fmt.Errorf("internal error: %v", r)
 			default:
 				err = fmt.Errorf("internal error: %v", r)
 			}
 		}
 	}()
-	json = Stringify(output, vm, 0)
+	json = stringifyCompact(output, vm, abort)
 	return
 }
 

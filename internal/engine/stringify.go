@@ -2,7 +2,6 @@ package engine
 
 import (
 	"fmt"
-	"math"
 	"math/big"
 	"reflect"
 	"strings"
@@ -14,131 +13,153 @@ import (
 // Stringify serializes value as indented JSON. A circular structure throws
 // a TypeError, as JSON.stringify does, instead of recursing forever.
 func Stringify(value goja.Value, vm *goja.Runtime, depth int) string {
-	s := stringifier{vm: vm}
-	return s.stringify(value, depth)
+	s := stringifier{vm: vm, indent: true}
+	return s.run(value, depth)
 }
+
+// stringifyCompact serializes value as JSON without whitespace, which keeps
+// deeply nested output linear in size. It stops with errAborted once abort
+// is closed, as the work is Go code that interrupting the VM can't stop.
+func stringifyCompact(value goja.Value, vm *goja.Runtime, abort <-chan struct{}) string {
+	s := stringifier{vm: vm, abort: abort}
+	return s.run(value, 0)
+}
+
+// errAborted is the panic of a stringifier stopped by its abort channel.
+var errAborted = fmt.Errorf("aborted")
 
 type stringifier struct {
-	vm    *goja.Runtime
-	stack []*goja.Object // The objects and arrays being serialized.
+	vm     *goja.Runtime
+	indent bool
+	abort  <-chan struct{}
+	out    strings.Builder
+	seen   map[*goja.Object]struct{} // The objects and arrays being serialized.
+	steps  int
 }
 
-// enter pushes obj, throwing if it is already being serialized.
+func (s *stringifier) run(value goja.Value, depth int) string {
+	s.seen = make(map[*goja.Object]struct{})
+	s.write(value, depth)
+	return s.out.String()
+}
+
+// enter marks obj as being serialized, throwing if it already is.
 func (s *stringifier) enter(obj *goja.Object) {
-	for _, o := range s.stack {
-		if o.SameAs(obj) {
-			panic(s.vm.NewTypeError("Converting circular structure to JSON"))
-		}
+	if _, ok := s.seen[obj]; ok {
+		panic(s.vm.NewTypeError("Converting circular structure to JSON"))
 	}
-	s.stack = append(s.stack, obj)
+	s.seen[obj] = struct{}{}
 }
 
-func (s *stringifier) leave() {
-	s.stack = s.stack[:len(s.stack)-1]
+func (s *stringifier) leave(obj *goja.Object) {
+	delete(s.seen, obj)
 }
 
-func (s *stringifier) stringify(value goja.Value, depth int) string {
+// check panics with errAborted once abort is closed. It looks every so many
+// values, a select per value would slow serializing down.
+func (s *stringifier) check() {
+	s.steps++
+	if s.abort == nil || s.steps%1024 != 0 {
+		return
+	}
+	select {
+	case <-s.abort:
+		panic(errAborted)
+	default:
+	}
+}
+
+// newline starts a line indented to depth, in indented mode.
+func (s *stringifier) newline(depth int) {
+	if !s.indent {
+		return
+	}
+	s.out.WriteByte('\n')
+	for range depth {
+		s.out.WriteString("  ")
+	}
+}
+
+func (s *stringifier) write(value goja.Value, depth int) {
+	s.check()
 	vm := s.vm
 	rtype := value.ExportType()
 	if rtype == nil {
 		// Convert both null and undefined to null (save as JSON.stringify)
-		return "null"
+		s.out.WriteString("null")
+		return
 	}
 
 	switch rtype {
 	case bigIntType:
-		bi := value.Export().(*big.Int)
-		return bi.String()
+		s.out.WriteString(value.Export().(*big.Int).String())
+		return
 	case timeTimeType:
-		t := value.Export().(time.Time)
-		quoted := Quote(t.String())
-		return quoted
+		s.out.WriteString(Quote(value.Export().(time.Time).String()))
+		return
 	}
 
 	switch rtype.Kind() {
 	case reflect.Bool:
 		if value.ToBoolean() {
-			return "true"
+			s.out.WriteString("true")
 		} else {
-			return "false"
+			s.out.WriteString("false")
 		}
 
-	case reflect.Int64:
-		return value.String()
-
-	case reflect.Float64:
-		f := value.ToFloat()
-		if math.IsInf(f, 0) {
-			return value.String()
-		} else if math.IsNaN(f) {
-			return value.String()
-		}
-		return value.String()
+	case reflect.Int64, reflect.Float64:
+		// NaN and ±Infinity print as such: fx shows them as values.
+		s.out.WriteString(value.String())
 
 	case reflect.String:
-		return Quote(value.String())
+		s.out.WriteString(Quote(value.String()))
 
 	case reflect.Map:
 		obj := value.ToObject(vm)
 		keys := obj.Keys()
-
 		if len(keys) == 0 {
-			return "{}"
+			s.out.WriteString("{}")
+			return
 		}
 		s.enter(obj)
-		defer s.leave()
-
-		var out strings.Builder
-		out.WriteString("{")
-		out.WriteString("\n")
-
-		ident := strings.Repeat("  ", depth)
-		identKey := strings.Repeat("  ", depth+1)
-
+		s.out.WriteByte('{')
 		for i, key := range keys {
-			out.WriteString(identKey)
-			out.WriteString(Quote(key))
-			out.WriteString(":")
-			out.WriteString(" ")
-			out.WriteString(s.stringify(obj.Get(key), depth+1))
-			if i < len(keys)-1 {
-				out.WriteString(",")
+			if i > 0 {
+				s.out.WriteByte(',')
 			}
-			out.WriteString("\n")
-
+			s.newline(depth + 1)
+			s.out.WriteString(Quote(key))
+			s.out.WriteByte(':')
+			if s.indent {
+				s.out.WriteByte(' ')
+			}
+			s.write(obj.Get(key), depth+1)
 		}
-
-		out.WriteString(ident)
-		out.WriteString("}")
-		return out.String()
+		s.newline(depth)
+		s.out.WriteByte('}')
+		s.leave(obj)
 
 	case reflect.Slice:
 		arr := value.ToObject(vm)
 		keys := arr.Keys()
-
 		if len(keys) == 0 {
-			return "[]"
+			s.out.WriteString("[]")
+			return
 		}
 		s.enter(arr)
-		defer s.leave()
-
-		var out strings.Builder
-		out.WriteString("[")
-		out.WriteString("\n")
-
+		s.out.WriteByte('[')
 		for i, key := range keys {
-			item := arr.Get(key)
-			out.WriteString(strings.Repeat("  ", depth+1))
-			out.WriteString(s.stringify(item, depth+1))
-			if i < len(keys)-1 {
-				out.WriteString(",")
+			if i > 0 {
+				s.out.WriteByte(',')
 			}
-			out.WriteString("\n")
+			s.newline(depth + 1)
+			s.write(arr.Get(key), depth+1)
 		}
+		s.newline(depth)
+		s.out.WriteByte(']')
+		s.leave(arr)
 
-		out.WriteString(strings.Repeat("  ", depth))
-		out.WriteString("]")
-		return out.String()
+	default:
+		panic(fmt.Sprintf("Unsupported value type: %v", rtype.Kind()))
 	}
-	panic(fmt.Sprintf("Unsupported value type: %v", rtype.Kind()))
 }
