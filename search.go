@@ -44,15 +44,28 @@ func (m *model) cancelSearch() {
 	}
 }
 
+// selectSearchResult selects result i, wrapping around. A result deleted
+// since the search is skipped, in the direction from the current one.
 func (m *model) selectSearchResult(i int) {
-	if len(m.search.results) == 0 {
+	n := len(m.search.results)
+	if n == 0 {
 		return
 	}
-	if i < 0 {
-		i = len(m.search.results) - 1
+	step := 1
+	if i < m.search.cursor {
+		step = -1
 	}
-	if i >= len(m.search.results) {
-		i = 0
+	found := false
+	for range n {
+		i = (i%n + n) % n
+		if m.search.results[i].InDocument() {
+			found = true
+			break
+		}
+		i += step
+	}
+	if !found {
+		return
 	}
 	m.search.cursor = i
 	result := m.search.results[i]

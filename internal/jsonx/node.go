@@ -127,11 +127,23 @@ func (n *Node) IsCollapsed() bool {
 	return n.Collapsed != nil
 }
 
-// IsLinked reports whether n is a line of the displayed list: not inside a
-// collapsed container, not deleted, and not a wrap chunk dropped by
-// re-wrapping.
+// IsLinked reports whether n is a line of the displayed list: in the
+// document, and not inside a collapsed container.
 func (n *Node) IsLinked() bool {
-	return n.HiddenBy() == nil && n.isAttached()
+	return n.HiddenBy() == nil && n.InDocument()
+}
+
+// InDocument reports whether n is still part of its document: neither n
+// nor a container it is in was deleted, and n is not a wrap chunk dropped by
+// re-wrapping. A node hidden by collapsing is in the document. Nodes of a
+// deleted subtree still link to each other, so every ancestor is checked.
+func (n *Node) InDocument() bool {
+	for it := n; it != nil; it = it.Parent {
+		if !it.isAttached() {
+			return false
+		}
+	}
+	return true
 }
 
 // HiddenBy returns the outermost collapsed container n is inside, or nil.
@@ -145,7 +157,9 @@ func (n *Node) HiddenBy() *Node {
 	return hiddenBy
 }
 
-// isAttached reports whether n is still linked into the list it was in.
+// isAttached reports whether n is still linked into the list it was in,
+// also when hidden: the first child of a collapsed container hangs off its
+// Collapsed.
 func (n *Node) isAttached() bool {
 	if n.IsWrap() {
 		for it := n.Parent.Next; it != nil && it.IsWrap() && it.Parent == n.Parent; it = it.Next {
@@ -155,7 +169,7 @@ func (n *Node) isAttached() bool {
 		}
 		return false
 	}
-	return n.Prev == nil || n.Prev.Next == n
+	return n.Prev == nil || n.Prev.Next == n || n.Prev.Collapsed == n
 }
 
 func (n *Node) Collapse() *Node {

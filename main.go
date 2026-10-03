@@ -1196,28 +1196,28 @@ func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.recordHistory()
 
 	case key.Matches(msg, keyMap.GoBack):
-		if m.locationIndex > 0 {
-			at, ok := m.cursorPointsTo()
-			if !ok {
-				return m, nil
-			}
-			m.locationIndex--
-
-			loc := m.locationHistory[m.locationIndex]
-			for loc.node == at && m.locationIndex > 0 {
-				m.locationIndex--
-				loc = m.locationHistory[m.locationIndex]
-			}
-			m.selectNode(loc.head)
-			m.selectNode(loc.node)
+		at, ok := m.cursorPointsTo()
+		if !ok {
+			return m, nil
+		}
+		// Skip the current location, and locations deleted since.
+		i := m.locationIndex - 1
+		for i >= 0 && (m.locationHistory[i].node == at || !m.locationHistory[i].node.InDocument()) {
+			i--
+		}
+		if i >= 0 {
+			m.locationIndex = i
+			m.goToLocation(m.locationHistory[i])
 		}
 
 	case key.Matches(msg, keyMap.GoForward):
-		if m.locationIndex < len(m.locationHistory)-1 {
-			m.locationIndex++
-			loc := m.locationHistory[m.locationIndex]
-			m.selectNode(loc.head)
-			m.selectNode(loc.node)
+		i := m.locationIndex + 1
+		for i < len(m.locationHistory) && !m.locationHistory[i].node.InDocument() {
+			i++
+		}
+		if i < len(m.locationHistory) {
+			m.locationIndex = i
+			m.goToLocation(m.locationHistory[i])
 		}
 
 	case key.Matches(msg, keyMap.Delete):
@@ -1268,6 +1268,15 @@ func (m *model) down() {
 			m.head = m.head.Next
 		}
 	}
+}
+
+// goToLocation selects the node of loc, scrolled as it was if its head is
+// still in the document.
+func (m *model) goToLocation(loc location) {
+	if loc.head.InDocument() {
+		m.selectNode(loc.head)
+	}
+	m.selectNode(loc.node)
 }
 
 func (m *model) recordHistory() {
@@ -1558,6 +1567,15 @@ func (m *model) selectNodeInView(n *Node) {
 // dropped by re-wrapping. Rendering and scrolling walk the list from head,
 // and a stale head walks nodes that are not linked, or loops.
 func (m *model) repairHead() {
+	if m.head == nil || m.head.IsLinked() {
+		if m.head == nil {
+			m.head = m.top
+		}
+		return
+	}
+	// The cursor is a row below head: keep it on its node if that is
+	// still displayed, as moving head shifts every row.
+	at, ok := m.cursorPointsTo()
 	h := m.head
 	for h != nil && !h.IsLinked() {
 		switch {
@@ -1573,6 +1591,11 @@ func (m *model) repairHead() {
 		h = m.top
 	}
 	m.head = h
+	if ok && at.IsLinked() {
+		showCursor := m.showCursor
+		m.selectNode(at)
+		m.showCursor = showCursor
+	}
 }
 
 func (m *model) selectNode(n *Node) {

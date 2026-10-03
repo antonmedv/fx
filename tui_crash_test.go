@@ -123,3 +123,109 @@ func TestCursorValue_BlankTextLine(t *testing.T) {
 		require.NotPanics(t, func() { keys(m, seq...) }, "%v", seq)
 	}
 }
+
+// findKey returns the first node of the list with key.
+func findKey(m *model, key string) *Node {
+	for it := m.top; it != nil; it = it.Next {
+		if it.Key == key {
+			return it
+		}
+	}
+	return nil
+}
+
+// visit selects the node with key and records it, as a jump to it does.
+func visit(t *testing.T, m *model, key string) {
+	n := findKey(m, key)
+	require.NotNil(t, n, key)
+	m.selectNode(n)
+	m.recordHistory()
+}
+
+// requireNotDeleted checks the cursor and every line on screen are in the
+// document.
+func requireNotDeleted(t *testing.T, m *model) {
+	t.Helper()
+	at, ok := m.cursorPointsTo()
+	require.True(t, ok, "cursor on a line")
+	require.True(t, at.InDocument(), "cursor on deleted %q", at.Key+at.Value)
+	it := m.head
+	for range m.viewHeight() {
+		if it == nil {
+			break
+		}
+		require.True(t, it.IsLinked(), "deleted %q on screen", it.Key+it.Value)
+		it = it.Next
+	}
+}
+
+const nestedInput = `{"a":{"b":{"k0":0,"k1":1,"k2":2,"k3":3,"k4":4,"k5":5,"k6":6,"k7":7,"k8":8,"c":9,"d":10},"e":3},"f":4}`
+
+func TestHistory_SkipsDeletedSubtree(t *testing.T) {
+	for _, height := range []int{7, 20} {
+		m := loadModel(t, nestedInput, 80, height)
+		visit(t, m, `"f"`)
+		visit(t, m, `"c"`)
+		visit(t, m, `"b"`)
+		keys(m, "d", "d") // Deletes .a.b
+		requireListSound(t, m)
+
+		keys(m, "[")
+		requireNotDeleted(t, m)
+		at, _ := m.cursorPointsTo()
+		require.Equal(t, `"f"`, at.Key, "back past the deleted .a.b and .a.b.c, height %d", height)
+
+		keys(m, "[", "]")
+		requireNotDeleted(t, m)
+	}
+}
+
+func TestHistory_ForwardSkipsDeleted(t *testing.T) {
+	m := loadModel(t, nestedInput, 80, 7)
+	visit(t, m, `"f"`)
+	visit(t, m, `"c"`)
+	visit(t, m, `"e"`)
+	keys(m, "[", "[") // Back to "f", with "c" and "e" ahead.
+	require.Equal(t, 0, m.locationIndex)
+	require.Len(t, m.locationHistory, 3)
+
+	// Delete .a.b without recording history, which would drop what's ahead.
+	_, ok := DeleteNode(findKey(m, `"b"`))
+	require.True(t, ok)
+
+	keys(m, "]")
+	requireNotDeleted(t, m)
+	at, _ := m.cursorPointsTo()
+	require.Equal(t, `"e"`, at.Key, "forward past the deleted .a.b.c")
+	require.Equal(t, 2, m.locationIndex)
+}
+
+func TestSearch_SkipsDeletedResults(t *testing.T) {
+	m := loadModel(t, `{"a":{"x":"needle","y":"needle"},"b":"needle","c":{"z":"needle"}}`, 80, 7)
+	doSearch(m, "needle")
+	require.Len(t, m.search.results, 4)
+
+	m.selectNode(findKey(m, `"a"`))
+	keys(m, "d", "d") // Deletes the first two results.
+	onMatch := func() {
+		t.Helper()
+		requireNotDeleted(t, m)
+		at, _ := m.cursorPointsTo()
+		require.Equal(t, `"needle"`, at.Value, "n lands on a match, not on %q", at.Key+at.Value)
+	}
+	for range 6 {
+		keys(m, "n")
+		onMatch()
+	}
+	for range 6 {
+		keys(m, "N")
+		onMatch()
+	}
+
+	m.selectNode(findKey(m, `"b"`))
+	keys(m, "d", "d")
+	m.selectNode(findKey(m, `"c"`))
+	keys(m, "d", "d") // No result left in the document.
+	require.NotPanics(t, func() { keys(m, "n", "N") })
+	requireListSound(t, m)
+}
