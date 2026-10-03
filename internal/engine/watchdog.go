@@ -10,8 +10,8 @@ import (
 
 // previewTimeout bounds a live preview, which runs while the user types and
 // may be a half-typed expression that never ends or allocates without end.
-// A query the user runs has no limit: Esc cancels it.
-const previewTimeout = 2 * time.Second
+// A query the user runs has no limit: Esc cancels it. A variable for tests.
+var previewTimeout = 2 * time.Second
 
 // watchdog stops a run on cancel or after its timeout: it interrupts the
 // JS and closes abort, which the Go side of the run checks.

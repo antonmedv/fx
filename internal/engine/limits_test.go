@@ -13,9 +13,20 @@ import (
 	"github.com/antonmedv/fx/internal/jsonx"
 )
 
+// startFunc is the signature of Start and StartPreview.
+type startFunc func(Parser, []string, chan *jsonx.Node, chan error, <-chan struct{}) int
+
 // run starts the engine on input with timeout, returning the exit code, the
 // outputs and the errors, and how long it took.
 func run(t *testing.T, input, arg string, preview bool, timeout time.Duration) (int, []*jsonx.Node, []string, time.Duration) {
+	t.Helper()
+	return runWith(t, input, arg, func(p Parser, args []string, out chan *jsonx.Node, errCh chan error, cancel <-chan struct{}) int {
+		return start(p, args, out, errCh, cancel, preview, timeout)
+	})
+}
+
+// runWith is run through an entry point, as Start or StartPreview.
+func runWith(t *testing.T, input, arg string, startFn startFunc) (int, []*jsonx.Node, []string, time.Duration) {
 	t.Helper()
 	out := make(chan *jsonx.Node)
 	errCh := make(chan error)
@@ -36,7 +47,7 @@ func run(t *testing.T, input, arg string, preview bool, timeout time.Duration) (
 		}
 	}()
 	begin := time.Now()
-	code := start(jsonx.NewJsonParser(strings.NewReader(input), false), []string{arg}, out, errCh, make(chan struct{}), preview, timeout)
+	code := startFn(jsonx.NewJsonParser(strings.NewReader(input), false), []string{arg}, out, errCh, make(chan struct{}))
 	took := time.Since(begin)
 	close(out)
 	close(errCh)
@@ -62,6 +73,26 @@ func TestTimeout_StopsAllocatingQuery(t *testing.T) {
 
 func TestTimeout_OnlyPreviews(t *testing.T) {
 	assert.Equal(t, 2*time.Second, previewTimeout)
+
+	// A query busy for longer than the preview timeout.
+	saved := previewTimeout
+	previewTimeout = 50 * time.Millisecond
+	defer func() { previewTimeout = saved }()
+	slow := `x => { const end = Date.now() + 300; while (Date.now() < end) {} return 1 }`
+
+	code, _, errs, _ := runWith(t, `1`, slow, StartPreview)
+	assert.Equal(t, 1, code, "a preview is stopped")
+	assert.Equal(t, []string{"Query stopped: it took longer than 50ms"}, errs)
+
+	code, outs, errs, took := runWith(t, `1`, slow, Start)
+	assert.Equal(t, 0, code, "a query the user runs is not")
+	assert.Empty(t, errs)
+	require.Len(t, outs, 1)
+	assert.Equal(t, "1", outs[0].Value)
+	assert.GreaterOrEqual(t, took, 300*time.Millisecond)
+}
+
+func TestTimeout_PreviewAllowsFastQueries(t *testing.T) {
 	code, outs, errs, _ := run(t, `[1,2,3]`, `x => x.map(y => y * 2)`, true, previewTimeout)
 	assert.Equal(t, 0, code)
 	assert.Empty(t, errs)

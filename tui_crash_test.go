@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"io"
+	"strings"
 	"testing"
 	"time"
 
@@ -227,5 +228,26 @@ func TestSearch_SkipsDeletedResults(t *testing.T) {
 	m.selectNode(findKey(m, `"c"`))
 	keys(m, "d", "d") // No result left in the document.
 	require.NotPanics(t, func() { keys(m, "n", "N") })
+	requireListSound(t, m)
+}
+
+// Deleting a wrapped string whose continuation line is the first on screen
+// must not leave its lines displayed: deleting such a ghost line deleted the
+// string again, and the array size dropped below its length.
+func TestDelete_WrappedStringUnderHead(t *testing.T) {
+	m := loadModel(t, `["`+strings.Repeat("a", 400)+`", 1, 2, 3]`, 40, 6)
+	keys(m, "z")
+	for range 20 {
+		if at, _ := m.cursorPointsTo(); at.Value == "1" {
+			break
+		}
+		keys(m, "j")
+	}
+	require.True(t, m.head.IsWrap(), "the first screen line is a continuation of the string")
+	keys(m, "k", "d", "d")
+	requireListSound(t, m)
+	requireNotDeleted(t, m)
+	keys(m, "k", "k", "d", "d")
+	require.Equal(t, 3, m.top.Size)
 	requireListSound(t, m)
 }
