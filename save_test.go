@@ -85,8 +85,6 @@ func TestSaveRefusesSeveralValues(t *testing.T) {
 		args              []string
 	}{
 		{"json lines", "f.jsonl", "{\"a\":1}\n{\"a\":2}\n", nil},
-		{"yaml stream", "f.yaml", "a: 1\n---\na: 2\n", nil},
-		{"raw lines", "f.txt", "a\nb\n", []string{"-r"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -120,16 +118,35 @@ func TestSaveRefusesMalformedRest(t *testing.T) {
 	require.Equal(t, input, string(data), "file must be untouched")
 }
 
-// More() reaching the end must keep it: save() then closes the file.
-func TestSaveRawSingleLine(t *testing.T) {
-	file := filepath.Join(t.TempDir(), "f.txt")
-	require.NoError(t, os.WriteFile(file, []byte("hello\n"), 0o644))
+// save() writes JSON: it must not replace a file read as another format,
+// as :w doesn't.
+func TestSaveRefusesNonJSONFile(t *testing.T) {
+	tests := []struct {
+		name, file, input, format string
+		args                      []string
+	}{
+		{"toml", "f.toml", "a = 1\n", "TOML", nil},
+		{"yaml", "f.yaml", "a: 1\n", "YAML", nil},
+		{"yaml stream", "f.yaml", "a: 1\n---\na: 2\n", "YAML", nil},
+		{"edn", "f.edn", "{:a 1}\n", "EDN", nil},
+		{"xml", "f.xml", "<r><a>1</a></r>\n", "XML", nil},
+		{"yaml flag", "f.json", "a: 1\n", "YAML", []string{"--yaml"}},
+		{"raw line", "f.txt", "hello\n", "raw text", []string{"-r"}},
+		{"raw lines", "f.txt", "a\nb\n", "raw text", []string{"-r"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			file := filepath.Join(t.TempDir(), tt.file)
+			require.NoError(t, os.WriteFile(file, []byte(tt.input), 0o644))
 
-	stdout, stderr, code := runFxArgs(t, "-r", file, "save")
-	require.Equal(t, 0, code, stderr)
-	require.Empty(t, stderr)
-	require.Equal(t, "hello\n", stdout)
-	data, err := os.ReadFile(file)
-	require.NoError(t, err)
-	require.Equal(t, "\"hello\"\n", string(data))
+			args := append(tt.args, file, "save")
+			stdout, stderr, code := runFxArgs(t, args...)
+			require.Equal(t, 1, code)
+			require.Empty(t, stdout)
+			require.Contains(t, stderr, "save writes JSON, but "+file+" is "+tt.format)
+			data, err := os.ReadFile(file)
+			require.NoError(t, err)
+			require.Equal(t, tt.input, string(data), "file must be untouched")
+		})
+	}
 }

@@ -167,6 +167,12 @@ func main() {
 		src = f
 		file = f
 		engine.FilePath = filePath
+		switch {
+		case flagRaw:
+			engine.FileFormat = "raw text"
+		case inputFormat != nil:
+			engine.FileFormat = strings.ToUpper(inputFormat.Name)
+		}
 		engine.SetInput(f)
 		fileName = filepath.Base(filePath)
 		args = args[1:]

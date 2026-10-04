@@ -15,6 +15,10 @@ import (
 // FilePath is the file being processed, empty if stdin.
 var FilePath string
 
+// FileFormat is what FilePath holds when it is not JSON, as "toml" or
+// "raw text": save() writes JSON, so it must not replace such a file.
+var FileFormat string
+
 var (
 	inputMu sync.Mutex
 	input   io.Closer
@@ -74,6 +78,9 @@ func newVM(writeOut func(string), preview bool, severalValues func() (bool, erro
 		}
 		if FilePath == "" {
 			return fmt.Errorf("specify a file as the first argument to be able to save: fx file.json ")
+		}
+		if FileFormat != "" {
+			return fmt.Errorf("save writes JSON, but %s is %s: it can't replace it", FilePath, FileFormat)
 		}
 		mode, _, err := saveMode(FilePath)
 		if err != nil {

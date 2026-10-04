@@ -345,3 +345,28 @@ func TestStart_GoPanicInBuiltinIsError(t *testing.T) {
 	require.Len(t, errs, 1)
 	assert.Contains(t, errs[0], "internal error")
 }
+
+func TestStart_SaveRefusesNonJSONFile(t *testing.T) {
+	for _, format := range []string{"TOML", "raw text"} {
+		t.Run(format, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "config.toml")
+			const original = "a = 1\n"
+			require.NoError(t, os.WriteFile(path, []byte(original), 0644))
+			oldPath, oldFormat := engine.FilePath, engine.FileFormat
+			engine.FilePath, engine.FileFormat = path, format
+			t.Cleanup(func() { engine.FilePath, engine.FileFormat = oldPath, oldFormat })
+
+			errCh := make(chan error, 10)
+			parser := jsonx.NewJsonParser(strings.NewReader(`{"a": 1}`), false)
+			exitCode := engine.Start(parser, []string{`x => (x.a = 2, save(x), skip)`}, make(chan *jsonx.Node, 10), errCh, make(chan struct{}))
+			close(errCh)
+
+			assert.Equal(t, 1, exitCode)
+			err := <-errCh
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "save writes JSON, but "+path+" is "+format)
+			data, _ := os.ReadFile(path)
+			assert.Equal(t, original, string(data), "the file is untouched")
+		})
+	}
+}
