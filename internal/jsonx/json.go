@@ -26,6 +26,7 @@ type JsonParser struct {
 	err            error // error found by More, until Recover
 	readFailed     bool  // err is a read error: no more input
 	nesting        int   // Depth without wrapping, to limit recursion.
+	valueStart     int   // Offset in data of the value being parsed.
 }
 
 // MaxNesting is the deepest nesting of arrays and objects parsed, as in
@@ -125,12 +126,15 @@ func (p *JsonParser) Parse() (node *Node, err error) {
 		return nil, p.err
 	}
 	p.nesting = 0
+	p.markValueStart()
 	p.skipWhitespace()
 	if p.eof {
 		return nil, io.EOF
 	}
+	p.markValueStart()
 	node = p.parseValue(true)
 	p.count++
+	p.markValueStart() // Parsed: nothing to recover before here.
 	return
 }
 
@@ -150,8 +154,17 @@ func (p *JsonParser) More() (more bool, err error) {
 			more, err = false, p.err
 		}
 	}()
+	p.markValueStart()
 	p.skipWhitespace()
+	p.markValueStart()
 	return !p.eof, nil
+}
+
+// markValueStart records the current character as where the next value
+// starts: Recover returns the text of a value that failed from there. It is
+// marked before skipping whitespace too, as a bad comment fails in it.
+func (p *JsonParser) markValueStart() {
+	p.valueStart = p.end - 1
 }
 
 // Recover returns the text from the last error to the next value, or nil
@@ -175,7 +188,9 @@ func (p *JsonParser) Recover() (node *Node) {
 	p.depth = 0
 	p.nesting = 0
 
-	start := p.end - 1
+	// The text of the value that failed, from its start: the error is
+	// somewhere in it, as in INFO, read as the start of Infinity.
+	start := p.valueStart
 	for {
 		p.next()
 		if p.eof {
@@ -192,6 +207,10 @@ func (p *JsonParser) Recover() (node *Node) {
 	}
 
 	start = max(0, min(start, end))
+	// A value failing in a comment starts before the whitespace skipped.
+	for start < end && (p.data[start] == '\n' || p.data[start] == '\r') {
+		start++
+	}
 	text := string(p.data[start:end])
 	text = strings.ReplaceAll(text, "\t", "    ")
 	text = strings.ReplaceAll(text, "\r", "")

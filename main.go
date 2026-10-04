@@ -461,7 +461,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.help.SetHeight(m.termHeight - 1)
 		m.preview.SetWidth(m.termWidth)
 		m.preview.SetHeight(m.termHeight - 1)
-		Wrap(m.top, m.viewWidth())
+		if m.wrap {
+			Wrap(m.top, m.viewWidth())
+		}
 		m.repairHead()
 		m.redoSearch()
 
@@ -874,7 +876,10 @@ func (m *model) handleShowSelectorKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) 
 		m.showSizes = !m.showSizes
 	case key.Matches(msg, showLineNumbers):
 		m.showLineNumbers = !m.showLineNumbers
-		Wrap(m.top, m.viewWidth())
+		if m.wrap {
+			// The line numbers take width from the strings.
+			Wrap(m.top, m.viewWidth())
+		}
 		m.redoSearch()
 	}
 	m.showShowSelector = false
