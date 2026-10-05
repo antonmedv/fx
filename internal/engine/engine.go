@@ -82,33 +82,9 @@ func start(parser Parser, args []string, out chan *jsonx.Node, errCh chan error,
 		}
 	}()
 
-	isPrettyPrintArg := len(args) == 1 && (args[0] == "." || args[0] == "this" || args[0] == "x")
-
 	// Fast path.
-	if isPrettyPrintArg {
-		for {
-			select {
-			case <-cancel:
-				return 0
-			default:
-			}
-
-			node, err := parser.Parse()
-
-			if err != nil {
-				if err == io.EOF {
-					break
-				}
-				sendErr(errCh, err, cancel)
-				return 1
-			}
-
-			if !send(out, node, cancel) {
-				return 0
-			}
-		}
-
-		return 0
+	if steps, ok := compileFastPath(args); ok {
+		return runFastPath(steps, parser, out, errCh, cancel, timeout)
 	}
 
 	for i := range args {
