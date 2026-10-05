@@ -8,7 +8,7 @@ jobs:
     steps:
       - name: Set up Homebrew
         id: set-up-homebrew
-        uses: Homebrew/actions/setup-homebrew@master
+        uses: Homebrew/actions/setup-homebrew@main
         with:
           test-bot: false
 
@@ -16,13 +16,13 @@ jobs:
         run: brew install-bundler-gems
 
       - name: Configure Git user
-        uses: Homebrew/actions/git-user-config@master
+        uses: Homebrew/actions/git-user-config@main
 
       - name: Update brew
         run: brew update
 
       - name: Bump formulae
-        uses: Homebrew/actions/bump-packages@master
+        uses: Homebrew/actions/bump-packages@main
         with:
           token: ${{ secrets.MY_HOMEBREW_RELEASE_GITHUB_TOKEN }}
           formulae: |
