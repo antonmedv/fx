@@ -18,6 +18,7 @@ import (
 type options struct {
 	showSizes       bool
 	showLineNumbers bool
+	height          int // terminal rows; 0 means 40
 }
 
 func prepare(t *testing.T, opts ...options) *teatest.TestModel {
@@ -45,14 +46,18 @@ func prepare(t *testing.T, opts ...options) *teatest.TestModel {
 		commandInput: newInput(),
 	}
 
+	height := 40
 	if len(opts) > 0 {
 		m.showSizes = opts[0].showSizes
 		m.showLineNumbers = opts[0].showLineNumbers
+		if opts[0].height > 0 {
+			height = opts[0].height
+		}
 	}
 
 	tm := teatest.NewTestModel(
 		t, m,
-		teatest.WithInitialTermSize(80, 40),
+		teatest.WithInitialTermSize(80, height),
 		teatest.WithProgramOptions(
 			tea.WithColorProfile(colorprofile.ANSI),
 			// The renderer picks cursor moves by TERM; pin it so the golden

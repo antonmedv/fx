@@ -246,8 +246,9 @@ func TestScrollUpAtTopIsNoop(t *testing.T) {
 }
 
 func TestScrollUpPushesCursorAtBottom(t *testing.T) {
-	tm := prepare(t)
-	tm.Send(smallWindow)
+	// Start small rather than resize: teatest delivers its initial size
+	// asynchronously, so a resize sent here can be overtaken by it.
+	tm := prepare(t, options{height: smallWindow.Height})
 	sendKeys(tm, keyCtrlE, keyCtrlE, keyDown, keyDown, keyDown, keyDown, keyCtrlY)
 
 	m := finalModel(t, tm)
