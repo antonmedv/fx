@@ -13,8 +13,11 @@ description: |
 
       sudo cat /etc/foo.json | fx
 
+  `:w !cmd` runs inside the snap too, so it can't reach your shell or the
+  tools installed on your system.
+
   Other install methods (Homebrew, GitHub release binaries, go install) have
-  no such restriction: https://github.com/antonmedv/fx
+  no such restriction: https://fx.wtf/install
 adopt-info: fx
 base: core24
 grade: stable
