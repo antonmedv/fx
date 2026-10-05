@@ -9,7 +9,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: master
-          fetch-depth: 0 # tags, for `git describe` in snapcraft.yaml
 
       - uses: snapcore/action-build@v1
         id: build

@@ -18,7 +18,7 @@ description: |
 
   Other install methods (Homebrew, GitHub release binaries, go install) have
   no such restriction: https://fx.wtf/install
-adopt-info: fx
+version: 40.0.0
 base: core24
 grade: stable
 confinement: strict
@@ -48,6 +48,3 @@ parts:
     stage-packages: # yank: fx execs wl-copy / xclip; host binaries invisible to strict snap
       - wl-clipboard
       - xclip
-    override-pull: |
-      craftctl default
-      craftctl set version="$(git -C "$CRAFT_PROJECT_DIR" describe --tags --abbrev=0)"
