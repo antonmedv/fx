@@ -20,7 +20,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.4.3
 	github.com/rivo/uniseg v0.4.7
 	github.com/stretchr/testify v1.12.1
-	golang.org/x/net v0.52.0
+	golang.org/x/net v0.55.0
 	golang.org/x/text v0.42.0
 )
 
