@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/mattn/go-runewidth"
 
 	"github.com/antonmedv/fx/internal/ident"
 	. "github.com/antonmedv/fx/internal/jsonx"
@@ -163,14 +164,14 @@ func (m *model) render() string {
 	if m.gotoSymbolInput.Focused() && m.fuzzyMatch != nil {
 		var matchedStr []byte
 		str := m.fuzzyMatch.Str
-		for i := 0; i < len(str); i++ {
+		for i, char := range []rune(str) {
 			if utils.Contains(i, m.fuzzyMatch.Pos) {
-				matchedStr = append(matchedStr, theme.CurrentTheme.Search(string(str[i]))...)
+				matchedStr = append(matchedStr, theme.CurrentTheme.Search(string(char))...)
 			} else {
-				matchedStr = append(matchedStr, theme.CurrentTheme.StatusBar(string(str[i]))...)
+				matchedStr = append(matchedStr, theme.CurrentTheme.StatusBar(string(char))...)
 			}
 		}
-		repeatCount := m.termWidth - len(str)
+		repeatCount := m.termWidth - runewidth.StringWidth(str)
 		if repeatCount > 0 {
 			matchedStr = append(matchedStr, theme.CurrentTheme.StatusBar(strings.Repeat(" ", repeatCount))...)
 		}
