@@ -183,7 +183,7 @@ func main() {
 
 	parser, err := newParser(src)
 	if err != nil {
-		fmt.Print(err.Error())
+		fmt.Fprint(os.Stderr, err.Error())
 		os.Exit(1)
 		return
 	}
