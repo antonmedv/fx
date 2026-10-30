@@ -128,6 +128,7 @@ function chunk(size) {
 }
 
 function zip(...x) {
+  if (x.length === 0) return []
   const length = Math.min(...x.map(a => a.length))
   const res = []
   for (let i = 0; i < length; i++) {
