@@ -27,6 +27,16 @@ async function runNoPipe(code = '') {
 }
 
 void async function main() {
+  await test('zip empty input', async t => {
+    const {spawnSync} = await import('node:child_process')
+    const {status, stdout, error} = spawnSync(process.execPath, ['index.js', 'x => zip(...x)'], {
+      input: '[]', encoding: 'utf8', timeout: 2000
+    })
+    t.ifError(error)
+    t.equal(status, 0)
+    t.equal(stdout, '[]\n')
+  })
+
   await test('properly formatted', async t => {
     const {stdout} = await run([{'greeting': 'hello world'}])
     t.deepEqual(stdout, '[\n  {\n    "greeting": "hello world"\n  }\n]\n')

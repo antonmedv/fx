@@ -101,6 +101,14 @@ func TestTimeout_PreviewAllowsFastQueries(t *testing.T) {
 	require.Len(t, outs, 1)
 }
 
+func TestZipEmptyInput(t *testing.T) {
+	code, outs, errs, _ := run(t, `[]`, `x => zip(...x)`, true, time.Second)
+	assert.Equal(t, 0, code)
+	assert.Empty(t, errs)
+	require.Len(t, outs, 1)
+	assert.Equal(t, "[]", outs[0].String())
+}
+
 func TestStringify_DeepOutputIsLinear(t *testing.T) {
 	code, outs, errs, took := run(t, `1`, `x => { let a = []; for (let i = 0; i < 9000; i++) a = [a]; return a }`, false, 0)
 	assert.Equal(t, 0, code)
