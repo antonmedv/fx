@@ -125,3 +125,27 @@ func TestStringify_Formats(t *testing.T) {
 	assert.Equal(t, `{"a":[1,{"b":null}],"c":{},"d":[],"e":"s"}`, stringifyCompact(value, vm, nil))
 	assert.Equal(t, "{\n  \"a\": [\n    1,\n    {\n      \"b\": null\n    }\n  ],\n  \"c\": {},\n  \"d\": [],\n  \"e\": \"s\"\n}", Stringify(value, vm, 0))
 }
+
+func TestStringify_ArrayIndexes(t *testing.T) {
+	for _, tc := range []struct {
+		name, expression string
+	}{
+		{"holes", `[1, , 3, ,]`},
+		{"only holes", `new Array(3)`},
+		{"extra property", `Object.assign([1, 2], {note: "metadata"})`},
+		{"hidden index", `Object.defineProperty([1, 2], "0", {enumerable: false})`},
+		{"deleted element", `(() => { const a = [1, 2, 3]; delete a[1]; return a })()`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			vm := goja.New()
+			value, err := vm.RunString("var value = " + tc.expression + "; value")
+			require.NoError(t, err)
+			compact, err := vm.RunString("JSON.stringify(value)")
+			require.NoError(t, err)
+			indented, err := vm.RunString("JSON.stringify(value, null, 2)")
+			require.NoError(t, err)
+			assert.Equal(t, compact.String(), stringifyCompact(value, vm, nil))
+			assert.Equal(t, indented.String(), Stringify(value, vm, 0))
+		})
+	}
+}
