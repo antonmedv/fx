@@ -29,6 +29,9 @@ func TestJsonParser_Parse(t *testing.T) {
 		{`// comment
 		"test"`, jsonx.String},
 		{`/* comment */"test"`, jsonx.String},
+		{`/** comment **/"test"`, jsonx.String},
+		{`/***/"test"`, jsonx.String},
+		{`{"a":1 /* comment **/}`, jsonx.Object},
 		{`{"a":1,}`, jsonx.Object},
 		{`[1,2,]`, jsonx.Array},
 		{`NaN`, jsonx.NaN},
@@ -68,6 +71,8 @@ func TestJsonParser_Parse_error(t *testing.T) {
 		{`1e`},
 		{`[1, 2`},
 		{`/* test`},
+		{`/*/ "test"`},
+		{`/* test *`},
 		{`[,]`},
 		{`{,}`},
 		{`[1,,]`},
