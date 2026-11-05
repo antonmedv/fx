@@ -635,14 +635,16 @@ function* parseJson(gen) {
         }
         skipWhitespace()
       } else if (lastChar === '*') {
+        next()
         while (!done) {
-          next()
           if (lastChar === '*') {
             next()
             if (lastChar === '/') {
               next()
               break
             }
+          } else {
+            next()
           }
         }
         skipWhitespace()

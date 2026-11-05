@@ -94,6 +94,13 @@ void async function main() {
     t.equal(stdout, '[\n  1\n]\n')
   })
 
+  await test('parseJson - block comments ending in **/', async t => {
+    const {stdout} = await run('/** comment **/ [1 /***/]')
+    t.equal(stdout, '[\n  1\n]\n')
+    const {stdout: opening} = await run('/*/ [2] */ [1]')
+    t.equal(opening, '[\n  1\n]\n')
+  })
+
   await test('parseYaml', async t => {
     const {stdout} = await run('- foo\n- bar', '--yaml')
     t.equal(stdout, '[\n  "foo",\n  "bar"\n]\n')

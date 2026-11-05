@@ -737,7 +737,7 @@ func (p *JsonParser) skipComment() {
 	case '*':
 		for {
 			p.next()
-			if p.char == '*' {
+			for p.char == '*' {
 				p.next()
 				if p.char == '/' {
 					p.next()
