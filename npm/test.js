@@ -170,6 +170,22 @@ void async function main() {
     t.deepEqual(JSON.parse(stdout), [1, 2, 3])
   })
 
+  await test('transform - groupBy preserves __proto__ groups', async t => {
+    const input = [
+      {key: '__proto__', id: 1},
+      {key: 'normal', id: 2},
+      {key: '__proto__', id: 3},
+    ]
+    for (const keyFn of ['x => x.key', '"key"']) {
+      const {stdout, stderr, status} = await run(input, `'groupBy(${keyFn})'`)
+      t.equal(status, 0, stderr)
+      t.deepEqual(JSON.parse(stdout), {
+        ['__proto__']: [input[0], input[2]],
+        normal: [input[1]],
+      })
+    }
+  })
+
   await test('transform - skip', async t => {
     const {stdout} = await run(42, `skip`)
     t.equal(stdout, '')

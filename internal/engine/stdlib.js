@@ -109,7 +109,14 @@ function groupBy(keyFn) {
     const grouped = {}
     for (const item of x) {
       const key = typeof keyFn === 'function' ? keyFn(item) : item[keyFn]
-      if (!Object.prototype.hasOwnProperty.call(grouped, key)) grouped[key] = []
+      if (!Object.prototype.hasOwnProperty.call(grouped, key)) {
+        Object.defineProperty(grouped, key, {
+          value: [],
+          writable: true,
+          enumerable: true,
+          configurable: true,
+        })
+      }
       grouped[key].push(item)
     }
     return grouped
