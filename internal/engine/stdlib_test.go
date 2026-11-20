@@ -1201,6 +1201,21 @@ func TestGroupByWithPrototypeKeys(t *testing.T) {
 		assert.Len(t, exported["toString"], 1)
 		assert.Len(t, exported["normal"], 1)
 	})
+
+	for _, keyFn := range []string{`x => x.key`, `"key"`} {
+		t.Run("groupBy with __proto__ key using "+keyFn, func(t *testing.T) {
+			result, err := vm.RunString(`(() => {
+				const grouped = groupBy(` + keyFn + `)([
+					{key: "__proto__", id: 1},
+					{key: "normal", id: 2},
+					{key: "__proto__", id: 3},
+				])
+				return JSON.stringify([grouped, Object.getPrototypeOf(grouped) === Object.prototype])
+			})()`)
+			require.NoError(t, err)
+			assert.JSONEq(t, `[{"__proto__":[{"key":"__proto__","id":1},{"key":"__proto__","id":3}],"normal":[{"key":"normal","id":2}]},true]`, result.String())
+		})
+	}
 }
 
 // TestChunkEdgeCases tests chunk with edge case sizes.
