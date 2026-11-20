@@ -62,6 +62,16 @@ function map(fn) {
   }
 }
 
+// __setOwn__ sets obj[key] as an own property, also for key "__proto__",
+// which assignment would take as a prototype change.
+function __setOwn__(obj, key, value) {
+  if (key === '__proto__') {
+    Object.defineProperty(obj, key, {value, writable: true, enumerable: true, configurable: true})
+  } else {
+    obj[key] = value
+  }
+}
+
 function walk(fn) {
   return function recurse(value, key = null) {
     if (Array.isArray(value)) {
@@ -70,7 +80,7 @@ function walk(fn) {
     } else if (value !== null && typeof value === 'object') {
       const result = {}
       for (const [k, v] of Object.entries(value)) {
-        result[k] = recurse(v, k)
+        __setOwn__(result, k, recurse(v, k))
       }
       return fn(result, key)
     } else {
@@ -97,7 +107,7 @@ function sortKeys(x) {
   if (typeof x === 'object' && x !== null) {
     const sorted = {}
     for (const key of Object.keys(x).sort()) {
-      sorted[key] = sortKeys(x[key])
+      __setOwn__(sorted, key, sortKeys(x[key]))
     }
     return sorted
   }

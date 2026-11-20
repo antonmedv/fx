@@ -32,7 +32,8 @@ func mamlToJS(vm *goja.Runtime, v maml.Value) goja.Value {
 	case v.IsObject():
 		obj := vm.NewObject()
 		for _, kv := range v.AsObject().Entries() {
-			_ = obj.Set(kv.Key, mamlToJS(vm, kv.Value))
+			// Define, not Set: Set would call the __proto__ setter.
+			_ = obj.DefineDataProperty(kv.Key, mamlToJS(vm, kv.Value), goja.FLAG_TRUE, goja.FLAG_TRUE, goja.FLAG_TRUE)
 		}
 		return obj
 	case v.IsArray():

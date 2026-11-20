@@ -246,6 +246,18 @@ void async function main() {
     t.equal(stdout, 'hello, world!\n')
   })
 
+  await test('__proto__ key - kept by parser, walk and sortKeys', async t => {
+    const json = '{"ok":2,"__proto__":{"b":1,"a":2}}'
+    let r = await run(json, `'Object.keys(this)'`)
+    t.equal(r.stdout, '[\n  "ok",\n  "__proto__"\n]\n', r.stderr)
+    r = await run(json, `'x => JSON.stringify(walk(x => x)(x))'`)
+    t.equal(r.stdout, '{"ok":2,"__proto__":{"b":1,"a":2}}\n', r.stderr)
+    r = await run(json, `'x => JSON.stringify(sortKeys(x))'`)
+    t.equal(r.stdout, '{"__proto__":{"a":2,"b":1},"ok":2}\n', r.stderr)
+    r = await run(json, `'x => Object.getPrototypeOf(sortKeys(x)) === Object.prototype'`)
+    t.equal(r.stdout, 'true\n', r.stderr)
+  })
+
   await test('cli - first arg is file', async t => {
     const {stdout} = await runNoPipe(`package.json .name`)
     t.equal(stdout, 'fx\n')

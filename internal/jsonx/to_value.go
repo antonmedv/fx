@@ -127,7 +127,8 @@ func (n *Node) toValue(vm *goja.Runtime) (goja.Value, *ValueError) {
 					verr.path = append(verr.path, keyPath(key))
 					return nil, verr
 				}
-				if err := obj.Set(key, value); err != nil {
+				// Define, not Set: Set would call the __proto__ setter.
+				if err := obj.DefineDataProperty(key, value, goja.FLAG_TRUE, goja.FLAG_TRUE, goja.FLAG_TRUE); err != nil {
 					return nil, &ValueError{kind: "key", token: it.Key}
 				}
 

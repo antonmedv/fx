@@ -202,7 +202,7 @@ async function run(json, code) {
       } else if (value !== null && typeof value === 'object') {
         const result = {}
         for (const [k, v] of Object.entries(value)) {
-          result[k] = recurse(v, k)
+          setOwn(result, k, recurse(v, k))
         }
         return fn(result, key)
       } else {
@@ -229,7 +229,7 @@ async function run(json, code) {
     if (typeof x === 'object' && x !== null) {
       const sorted = {}
       for (const key of Object.keys(x).sort()) {
-        sorted[key] = sortKeys(x[key])
+        setOwn(sorted, key, sortKeys(x[key]))
       }
       return sorted
     }
@@ -336,6 +336,16 @@ async function run(json, code) {
 
   function fromBase64(x) {
     return Buffer.from(x, 'base64').toString()
+  }
+}
+
+// setOwn sets obj[key] as an own property, also for key "__proto__",
+// which assignment would take as a prototype change.
+function setOwn(obj, key, value) {
+  if (key === '__proto__') {
+    Object.defineProperty(obj, key, {value, writable: true, enumerable: true, configurable: true})
+  } else {
+    obj[key] = value
   }
 }
 
@@ -564,7 +574,7 @@ function* parseJson(gen) {
       next()
       const value = parseValue()
       expectValue(value)
-      obj[key] = value
+      setOwn(obj, key, value)
       skipWhitespace()
       if (lastChar === '}') {
         next()

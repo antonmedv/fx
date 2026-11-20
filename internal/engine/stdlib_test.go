@@ -245,6 +245,10 @@ func TestWalk(t *testing.T) {
 		{"walk primitive", "walk(x => x * 2)(5)", int64(10)},
 		{"walk with key", "walk((v, k) => k === 'double' ? v * 2 : v)({double: 5, keep: 10})",
 			map[string]interface{}{"double": int64(10), "keep": int64(10)}},
+		{"walk keeps own __proto__", "JSON.stringify(walk(x => x)(JSON.parse('{\"__proto__\":{\"id\":1},\"ok\":2}')))",
+			`{"__proto__":{"id":1},"ok":2}`},
+		{"walk keeps prototype", "Object.getPrototypeOf(walk(x => x)(JSON.parse('{\"__proto__\":null}'))) === Object.prototype",
+			true},
 	}
 
 	for _, tc := range tests {
@@ -319,6 +323,20 @@ func TestSortKeys(t *testing.T) {
 			code: "JSON.stringify(sortKeys([{b: 1, a: 2}, {d: 3, c: 4}]))",
 			check: func(t *testing.T, result goja.Value) {
 				assert.Equal(t, `[{"a":2,"b":1},{"c":4,"d":3}]`, result.Export())
+			},
+		},
+		{
+			name: "own __proto__ kept",
+			code: `JSON.stringify(sortKeys(JSON.parse('{"ok":2,"__proto__":{"b":1,"a":2}}')))`,
+			check: func(t *testing.T, result goja.Value) {
+				assert.Equal(t, `{"__proto__":{"a":2,"b":1},"ok":2}`, result.Export())
+			},
+		},
+		{
+			name: "prototype unchanged by __proto__ key",
+			code: `Object.getPrototypeOf(sortKeys(JSON.parse('{"__proto__":null}'))) === Object.prototype`,
+			check: func(t *testing.T, result goja.Value) {
+				assert.Equal(t, true, result.Export())
 			},
 		},
 		{
@@ -826,6 +844,12 @@ func TestMAML(t *testing.T) {
 		result, err := vm.RunString(`Object.keys(MAML.parse('{\n  zebra: 1\n  alpha: [1, 2.5, "x"]\n}')).join()`)
 		require.NoError(t, err)
 		assert.Equal(t, "zebra,alpha", result.String())
+	})
+
+	t.Run("MAML.parse keeps own __proto__", func(t *testing.T) {
+		result, err := vm.RunString(`Object.keys(MAML.parse('{\n  __proto__: {id: 1}\n  ok: 2\n}')).join()`)
+		require.NoError(t, err)
+		assert.Equal(t, "__proto__,ok", result.String())
 	})
 
 	t.Run("MAML.parse values", func(t *testing.T) {
