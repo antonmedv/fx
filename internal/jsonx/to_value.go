@@ -69,6 +69,83 @@ func InvalidString(token string) error {
 	return &ValueError{kind: "string", token: token}
 }
 
+// NewValueError returns a ValueError with the specified kind, token and path.
+func NewValueError(kind string, token string, path []string) error {
+	return &ValueError{kind: kind, token: token, path: path}
+}
+
+// Validate checks that n contains valid JSON values (e.g. no invalid string escapes).
+func (n *Node) Validate() error {
+	verr := n.validate()
+	if verr == nil {
+		return nil
+	}
+	return verr
+}
+
+func (n *Node) validate() *ValueError {
+	switch n.Kind {
+	case Number:
+		_, ok := ParseNumber(n.Value)
+		if ok {
+			return nil
+		}
+		_, err := strconv.ParseFloat(n.Value, 64)
+		if err != nil && !errors.Is(err, strconv.ErrRange) {
+			return &ValueError{kind: "number", token: n.Value}
+		}
+		return nil
+
+	case String:
+		_, err := utils.Unquote(n.Value)
+		if err != nil {
+			return &ValueError{kind: "string", token: n.Value}
+		}
+		return nil
+
+	case Object:
+		if n.HasChildren() {
+			it := n
+			if it.IsCollapsed() {
+				it = it.Collapsed
+			} else {
+				it = it.Next
+			}
+			for it != nil && it != n.End {
+				key, err := utils.Unquote(it.Key)
+				if err != nil {
+					return &ValueError{kind: "key", token: it.Key}
+				}
+				if verr := it.validate(); verr != nil {
+					verr.path = append(verr.path, keyPath(key))
+					return verr
+				}
+				it = it.nextSibling()
+			}
+		}
+		return nil
+
+	case Array:
+		if n.HasChildren() {
+			it := n
+			if it.IsCollapsed() {
+				it = it.Collapsed
+			} else {
+				it = it.Next
+			}
+			for i := 0; it != nil && it != n.End; i++ {
+				if verr := it.validate(); verr != nil {
+					verr.path = append(verr.path, "["+strconv.Itoa(i)+"]")
+					return verr
+				}
+				it = it.nextSibling()
+			}
+		}
+		return nil
+	}
+	return nil
+}
+
 // ToValue converts n to a JS value. Values that are not valid JSON, which
 // the lenient parser accepts, are a *ValueError rather than a guess.
 func (n *Node) ToValue(vm *goja.Runtime) (goja.Value, error) {
