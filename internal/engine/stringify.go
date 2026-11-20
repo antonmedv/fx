@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -141,19 +142,23 @@ func (s *stringifier) write(value goja.Value, depth int) {
 
 	case reflect.Slice:
 		arr := value.ToObject(vm)
-		keys := arr.Keys()
-		if len(keys) == 0 {
+		length := arr.Get("length").ToInteger()
+		if length == 0 {
 			s.out.WriteString("[]")
 			return
 		}
 		s.enter(arr)
 		s.out.WriteByte('[')
-		for i, key := range keys {
+		for i := int64(0); i < length; i++ {
 			if i > 0 {
 				s.out.WriteByte(',')
 			}
 			s.newline(depth + 1)
-			s.write(arr.Get(key), depth+1)
+			item := arr.Get(strconv.FormatInt(i, 10))
+			if item == nil {
+				item = goja.Undefined()
+			}
+			s.write(item, depth+1)
 		}
 		s.newline(depth)
 		s.out.WriteByte(']')
