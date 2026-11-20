@@ -305,6 +305,10 @@ func main() {
 		spinner:             spinnerModel,
 	}
 
+	if err := m.loadHistory(os.Getenv("FX_HISTORY_FILE")); err != nil {
+		m.errorf("Cannot load history: %v", err)
+	}
+
 	if _, ok := os.LookupEnv("FX_NO_MOUSE"); ok {
 		m.noMouse = true
 	}
@@ -375,6 +379,10 @@ type model struct {
 	completion            completion // autocompletion of the query input
 	gotoSymbolInput       textinput.Model
 	commandInput          textinput.Model
+	historyFile           string
+	searchHistory         []string
+	searchHistoryIndex    int
+	searchHistoryDraft    string
 	searchInput           textinput.Model
 	searching             bool       // search in progress
 	searchRun             *searchRun // the search running in the background
@@ -798,9 +806,16 @@ func (m *model) handleSearchKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 
 	case msg.String() == "enter":
 		m.searchInput.Blur()
+		m.addSearchHistory(m.searchInput.Value())
 		m.cancelSearch()
 		m.search = newSearch()
 		return m, m.doSearch(m.searchInput.Value())
+
+	case msg.String() == "up":
+		m.searchHistoryPrev()
+
+	case msg.String() == "down":
+		m.searchHistoryNext()
 
 	default:
 		m.searchInput, cmd = m.searchInput.Update(msg)
@@ -1201,6 +1216,7 @@ func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.commandInput.Focus()
 
 	case key.Matches(msg, keyMap.Search):
+		m.searchHistoryIndex = len(m.searchHistory)
 		m.searchInput.CursorEnd()
 		m.searchInput.SetWidth(m.termWidth - 2) // -1 for the prompt, -1 for the cursor
 		m.searchInput.Focus()
