@@ -127,6 +127,16 @@ void async function main() {
     t.ok(stderr.includes('Unexpected end of input on line 1.'))
   })
 
+  await test('parseMaml - keeps own __proto__ key', async t => {
+    const maml = '{\n  __proto__: {id: 1}\n  ok: 2\n}'
+    let r = await run(maml, `--maml 'Object.keys(this).join()'`)
+    t.equal(r.stdout, '__proto__,ok\n', r.stderr)
+    r = await run(maml, `--maml 'x => JSON.stringify(x)'`)
+    t.equal(r.stdout, '{"__proto__":{"id":1},"ok":2}\n', r.stderr)
+    r = await run(maml, `--maml 'x => Object.getPrototypeOf(x) === Object.prototype'`)
+    t.equal(r.stdout, 'true\n', r.stderr)
+  })
+
   await test('transform - anonymous function', async t => {
     const {stdout} = await run({'key': 'value'}, '\'function (x) { return x.key }\'')
     t.equal(stdout, 'value\n')
