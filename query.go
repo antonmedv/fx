@@ -619,6 +619,7 @@ func (m *model) addQueryHistory(query string) {
 	if len(m.queryHistory) > queryHistorySize {
 		m.queryHistory = m.queryHistory[len(m.queryHistory)-queryHistorySize:]
 	}
+	m.saveHistory()
 }
 
 // queryHistoryPrev shows the previous history entry. Browsing does not
