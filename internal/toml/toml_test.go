@@ -110,6 +110,63 @@ x = 2
 	assertJSONStructEqual(t, got, `{"a":{"b":[{"x":1},{"x":2}]}}`)
 }
 
+func TestToJSON_NestedAOTInEveryParentElement(t *testing.T) {
+	// The example from the TOML spec: every [[fruits]] element starts its
+	// own [[fruits.varieties]] array.
+	in := []byte(`[[fruits]]
+name = "apple"
+
+[[fruits.varieties]]
+name = "red delicious"
+
+[[fruits.varieties]]
+name = "granny smith"
+
+[[fruits]]
+name = "banana"
+
+[[fruits.varieties]]
+name = "plantain"
+`)
+	got, err := ToJSON(in)
+	require.NoError(t, err)
+	assertJSONBytesEqual(t, got, `{"fruits":[{"name":"apple","varieties":[{"name":"red delicious"},{"name":"granny smith"}]},{"name":"banana","varieties":[{"name":"plantain"}]}]}`)
+}
+
+func TestToJSON_DeeplyNestedAOT(t *testing.T) {
+	in := []byte(`[[a]]
+[a.b]
+[[a.b.c]]
+x = 1
+[[a.b.c]]
+x = 2
+
+[[a]]
+[a.b]
+[[a.b.c]]
+x = 3
+`)
+	got, err := ToJSON(in)
+	require.NoError(t, err)
+	assertJSONBytesEqual(t, got, `{"a":[{"b":{"c":[{"x":1},{"x":2}]}},{"b":{"c":[{"x":3}]}}]}`)
+}
+
+func TestToJSON_AOTWithDotInQuotedKey(t *testing.T) {
+	in := []byte(`[["a.b"]]
+x = 1
+
+[a]
+[[a.b]]
+y = 2
+
+[["a.b"]]
+x = 3
+`)
+	got, err := ToJSON(in)
+	require.NoError(t, err)
+	assertJSONBytesEqual(t, got, `{"a.b":[{"x":1},{"x":3}],"a":{"b":[{"y":2}]}}`)
+}
+
 func TestToJSON_MixedTablesAndKeysOrder(t *testing.T) {
 	in := []byte(`title = "TOML Example"
 
