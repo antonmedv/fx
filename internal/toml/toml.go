@@ -52,10 +52,14 @@ func ToJSON(in []byte) ([]byte, error) {
 
 		case unstable.ArrayTable:
 			path := keyParts(e.Key())
-			k := dot(path)
+			k := pathKey(path)
 			idx := aotCount[k]
 			aotCount[k] = idx + 1
 			aotActive[k] = idx
+			// A new element starts with empty nested arrays of tables:
+			// forget the counters of every array of tables below it.
+			resetNested(aotCount, k)
+			resetNested(aotActive, k)
 			currentTablePath = path
 			_ = ensureContainer(root, path, aotActive)
 
@@ -88,7 +92,23 @@ func keyParts(it unstable.Iterator) []string {
 	}
 	return out
 }
-func dot(parts []string) string { return strings.Join(parts, ".") }
+
+// pathKey returns a map key for a table path. Encoding the path as a JSON
+// array keeps [a.b] and ["a.b"] apart, which joining with "." would not.
+func pathKey(parts []string) string {
+	b, _ := json.Marshal(parts)
+	return string(b)
+}
+
+// resetNested deletes the entries of m for paths nested below the path k.
+func resetNested(m map[string]int, k string) {
+	prefix := strings.TrimSuffix(k, "]") + ","
+	for p := range m {
+		if strings.HasPrefix(p, prefix) {
+			delete(m, p)
+		}
+	}
+}
 
 func ensureContainer(root *jobject, tablePath []string, aotActive map[string]int) *jobject {
 	cur := root
@@ -99,7 +119,7 @@ func ensureContainer(root *jobject, tablePath []string, aotActive map[string]int
 	prefix := []string{}
 	for i, seg := range tablePath {
 		prefix = append(prefix, seg)
-		pkey := dot(prefix)
+		pkey := pathKey(prefix)
 
 		// If this prefix is an active AOT, ensure an array & select the element.
 		if idx, ok := aotActive[pkey]; ok {
@@ -242,7 +262,7 @@ func lookupTyped(typed any, tablePath, rel []string, aotActive map[string]int) (
 			return nil, false
 		}
 		prefix = append(prefix, k)
-		if idx, ok := aotActive[dot(prefix)]; ok {
+		if idx, ok := aotActive[pathKey(prefix)]; ok {
 			arr, ok := x.([]any)
 			if !ok || idx >= len(arr) {
 				return nil, false
