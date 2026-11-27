@@ -1,9 +1,8 @@
 package jsonx
 
 import (
-	"unicode/utf8"
-
 	"github.com/mattn/go-runewidth"
+	"github.com/rivo/uniseg"
 
 	"github.com/antonmedv/fx/internal/ident"
 )
@@ -58,19 +57,25 @@ func doWrap(n *Node, termWidth int) ([]string, int) {
 	width := int(n.Depth) * ident.IdentWidth
 
 	if n.Key != "" {
-		for _, ch := range n.Key {
-			width += runewidth.RuneWidth(ch)
-		}
+		width += runewidth.StringWidth(n.Key)
 		width += 2 // for ": "
 	}
 
 	linesCount := 0
 	start, end := 0, 0
-	b := []byte(n.Value)
+	rest := n.Value
+	state := -1
 
-	for len(b) > 0 {
-		r, size := utf8.DecodeRune(b)
-		w := runewidth.RuneWidth(r)
+	// Advance a grapheme cluster at a time rather than a rune at a time. A
+	// flag, an emoji carrying a skin tone and a family joined by zero-width
+	// joiners are each several runes and one glyph: measured rune by rune a
+	// family counts as eight columns instead of two, so the line breaks long
+	// before it is full, and the break can land between the runes and tear
+	// the glyph in half.
+	for len(rest) > 0 {
+		var cluster string
+		cluster, rest, _, state = uniseg.FirstGraphemeClusterInString(rest, state)
+		w := runewidth.StringWidth(cluster)
 		if width+w > termWidth {
 			lines = append(lines, n.Value[start:end])
 			start = end
@@ -78,8 +83,7 @@ func doWrap(n *Node, termWidth int) ([]string, int) {
 			linesCount++
 		}
 		width += w
-		end += size
-		b = b[size:]
+		end += len(cluster)
 	}
 
 	if start < end {
